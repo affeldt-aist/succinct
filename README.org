@@ -1,0 +1,22 @@
+* Compact data structures in Coq
+
+A tentative formalization of compact data structures following [1]
+
+[1] Gonzalo Navarro, Compact Data Structures---A Practical Approach, Cambridge University Press, 2016
+
+** Files
+
+- [[compact_data_structures.v][compact_data_structures.v]]
+- [[rank_select.v][rank_select.v]]
+- [[jacobson_rank_complexity.v][jacobson_rank_complexity.v]]
+- [[louds.v][louds.v]]
+- [[insert_delete.v][insert_delete.v]]
+- [[set_clear.v][set_clear.v]]
+- [[dynamic_redblack.v][dynamic_redblack.v]]
+- [[dynamic_dependent_rb_another.v][dynamic_dependent_rb_another.v]]
+
+** Compilation
+
+1. ~coq_makefile -f _CoqProject -o Makefile~
+2. ~make~
+
