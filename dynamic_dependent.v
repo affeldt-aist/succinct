@@ -5,7 +5,7 @@ Require Import compact_data_structures rank_select insert_delete Program JMeq se
 
 Set Implicit Arguments.
 
-Section fundamental.
+Section insert.
   Inductive color := Red | Black.
 
   Definition color_ok parent child : bool :=
@@ -57,26 +57,17 @@ Section fundamental.
       tree s1 o1 d cl -> tree s2 o2 d cr ->
       tree (s1 + s2) (o1 + o2) (inc_black d c) c.
 
-  Definition is_leaf {s o d c} (t : tree s o d c) : bool :=
-    match t with
-    | Leaf s => true
-    | Node s1 o1 s2 o2 d cl cr p okl okr l r =>
-      false
-    end.
-
   Fixpoint size_of_tree {s o d c} (t : tree s o d c) : nat :=
     match t with
     | Leaf s => 1
     | Node _ _ _ _ _ _ _ _ _ _ l r => size_of_tree l + size_of_tree r
     end.
 
-  Lemma tree_size_pos {s o d c} (t : tree s o d c) : (size_of_tree t) >= 1.
+  Lemma size_of_tree_pos num ones d c (B : tree num ones d c) :
+    size_of_tree B > 0.
   Proof.
-    elim: t => //= ? ? ? ? ? ? ? ? ? ? t1 IH1 t2 IH2.
-    rewrite -(ltn_add2r (size_of_tree t1)) /= add0n in IH2.
-    move: (leq_ltn_trans IH1 IH2).
-    rewrite addnC.
-    auto.
+    elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
+    by rewrite addn_gt0 IHl orTb.
   Qed.
 
   Definition rb_ok: color_ok Red Black := erefl.
@@ -107,12 +98,6 @@ Section fundamental.
    * Kazunari: I totally agree. sorry for being lazy. 
    *)
   
-  (*
-  Definition fix_color {nl ml d c} (l : near_tree nl ml d c) : color.
-    destruct l. refine Red. refine Black.
-  Defined.
-   *)
-
   Definition fix_color {nl ml d c} (l : near_tree nl ml d c) :=
     match l with
     | Bad _ _ _ _ _ _ _ _ _ _ => Red
@@ -141,7 +126,7 @@ Section fundamental.
 
   Lemma dflatten_sizeK {n m d c} (B : tree n m d c) : size (dflatten B) = n.
   Proof.
-    elim: B => [s | nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr] //=.
+    elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
     by rewrite size_cat IHl IHr.
   Qed.
   
@@ -216,7 +201,7 @@ Section fundamental.
       then let n  := (size s') %/ 2 in
            let sl := take n s' in
            let sr := drop n s' in
-           Good c (Node rb_ok rb_ok (Leaf sl) (Leaf sr))
+           Good c (rnode (Leaf sl) (Leaf sr))
       else Good c (Leaf s')
     | Node s1 o1 s2 o2 d cl cr _ okl okr l r =>
       if i < s1
@@ -228,8 +213,7 @@ Section fundamental.
 
   Next Obligation. by rewrite -count_cat cat_take_drop. Qed.
 
-  Next Obligation. by rewrite -size_cat cat_take_drop size_insert /size addn1.
-  Qed.
+  Next Obligation. by rewrite -size_cat cat_take_drop size_insert /size addn1. Qed.
 
   Next Obligation.
     by rewrite -count_cat cat_take_drop /insert1 count_cat /= eqb_id
@@ -239,18 +223,18 @@ Section fundamental.
   Next Obligation.
     destruct dinsert'_func_obligation_4, dinsert'_func_obligation_3 => /=.
     rewrite (fun_if dflattenn) /= cat_take_drop.
-    destruct dinsert'_func_obligation_2, dinsert'_func_obligation_1=> /=.
+    destruct dinsert'_func_obligation_2, dinsert'_func_obligation_1 => /=.
     by rewrite if_same.
   Qed.
 
   Next Obligation.
-    apply /ltP; by rewrite -Heq_B /= -[X in X < _]addn0 ltn_add2l tree_size_pos.
+    apply /ltP; by rewrite -Heq_B /= -[X in X < _]addn0 ltn_add2l size_of_tree_pos.
   Qed.
 
   Next Obligation. by destruct dinsert',x,c. Qed.
 
   Next Obligation.
-    apply /ltP; by rewrite -Heq_B /= -[X in X < _]add0n ltn_add2r tree_size_pos.
+    apply /ltP; by rewrite -Heq_B /= -[X in X < _]add0n ltn_add2r size_of_tree_pos.
   Qed.
 
   Next Obligation. by destruct dinsert',x,c. Qed.
@@ -282,13 +266,13 @@ Section fundamental.
 
   Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
-  Proof. case: t => [n1 o1 n2 o2 n3 o3 d' x y z | ] //=. by rewrite catA. Qed.
+  Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
   
   Lemma dinsertK n m d c (B : tree n m d c) b i w :
     dflatten (dinsert B b i w) = insert1 (dflatten B) b i.
   Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i w)). Qed.
   
-End fundamental.
+End insert.
 
 Section query.
   
@@ -383,6 +367,12 @@ Section query.
     by rewrite rank_cat -dflatten_size IHl -IHr -dflatten_rank.
   Qed.
 
+  Lemma drank_ones num ones d c (B : tree num ones d c) :
+    drank B num = ones.
+  Proof.
+    by rewrite [in RHS](dflatten_rank B) drankK.
+  Qed.
+
   Lemma dselect1K nums ones d c (B : tree nums ones d c) i :
     dselect_1 B i = select true i (dflatten B).
   Proof.
@@ -407,20 +397,6 @@ End query.
 Require Import Compare_dec.
 
 Section set_clear.
-
-  Lemma drank_ones num ones d c (B : tree num ones d c) :
-    drank B num = ones.
-  Proof.
-    by rewrite [in RHS](dflatten_rank B) drankK.
-  Qed.
-  
-  Lemma size_of_tree_pos num ones d c (B : tree num ones d c) :
-    size_of_tree B > 0.
-  Proof.
-    elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
-    by rewrite addn_gt0 IHl orTb.
-  Qed.
-
   Obligation Tactic := idtac.
   
   Program Fixpoint bset num ones d c (B : tree num ones d c) i
@@ -512,5 +488,7 @@ Section set_clear.
                    
 End set_clear.
 
+(* 
 Extraction dinsert'_func.
-Extraction bset_func.
+Extraction bset_func. 
+*)
