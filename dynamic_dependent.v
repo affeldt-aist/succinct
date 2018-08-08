@@ -5,6 +5,9 @@ Require Import compact_data_structures rank_select insert_delete Program JMeq se
 
 Set Implicit Arguments.
 
+Variable w : nat.
+Axiom word_size_pos: w > 0.
+
 Section insert.
   Inductive color := Red | Black.
 
@@ -51,6 +54,8 @@ Section insert.
 
   Inductive tree : nat -> nat -> param nat -> color -> Type :=
   | Leaf : forall (arr : seq bool),
+      (w ^ 2) %/ 2 <= (size arr) ->
+      2 * (w ^ 2) > (size arr) ->
       tree (size arr) (count_one arr) (Param 0) Black
   | Node : forall {s1 o1 s2 o2 d cl cr c},
       color_ok c cl -> color_ok c cr ->
@@ -59,7 +64,7 @@ Section insert.
 
   Fixpoint size_of_tree {s o d c} (t : tree s o d c) : nat :=
     match t with
-    | Leaf s => 1
+    | Leaf _ _ s => 1
     | Node _ _ _ _ _ _ _ _ _ _ l r => size_of_tree l + size_of_tree r
     end.
 
@@ -121,7 +126,7 @@ Section insert.
   Fixpoint dflatten {n m d c} (B : tree n m d c) :=
     match B with
     | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
-    | Leaf s => s
+    | Leaf s _ _ => s
     end.
 
   Lemma dflatten_sizeK {n m d c} (B : tree n m d c) : size (dflatten B) = n.
@@ -191,40 +196,94 @@ Section insert.
     by rewrite size_cat -IHl -IHr.
   Qed.
 
-  Program Fixpoint dinsert' {n m d c} (B : tree n m d c) (b : bool) i w
+  Program Fixpoint dinsert' {n m d c} (B : tree n m d c) (b : bool) i
           {measure (size_of_tree B)} : { B' : near_tree n.+1 (m + b) d c
                               | dflattenn B' = insert1 (dflatten B) b i } :=
     match B with
-    | Leaf s =>
+    | Leaf s _ _ =>
       let s' := insert1 s b i in
-      if size s + 1 == 2 * (w ^ 2)
-      then let n  := (size s') %/ 2 in
-           let sl := take n s' in
-           let sr := drop n s' in
-           Good c (rnode (Leaf sl) (Leaf sr))
-      else Good c (Leaf s')
+      match size s' == 2 * (w ^ 2) with
+      | true => let n  := (size s') %/ 2 in
+                let sl := take n s' in
+                let sr := drop n s' in
+                Good c (rnode (Leaf sl _ _) (Leaf sr _ _))
+      | false => Good c (Leaf s' _ _)
+      end
     | Node s1 o1 s2 o2 d cl cr _ okl okr l r =>
       if i < s1
-      then proj1_sig (balanceL c (dinsert' l b i w) r _ okr)
-      else proj1_sig (balanceR c l (dinsert' r b (i - s1) w) okl _)
+      then proj1_sig (balanceL c (dinsert' l b i) r _ okr)
+      else proj1_sig (balanceR c l (dinsert' r b (i - s1)) okl _)
     end.
   
-  Next Obligation. by rewrite -size_cat cat_take_drop. Qed.
-
-  Next Obligation. by rewrite -count_cat cat_take_drop. Qed.
-
-  Next Obligation. by rewrite -size_cat cat_take_drop size_insert /size addn1. Qed.
-
   Next Obligation.
-    by rewrite -count_cat cat_take_drop /insert1 count_cat /= eqb_id
-               (addnC b) addnA -count_cat cat_take_drop.
+    move/eqP/eqnP : Heq_anonymous => /=.
+    rewrite size_take size_insert1.
+    move => H.
+    rewrite H.
+    case: ifP => H2. by rewrite mulKn // leq_div //.
+    have H3 : w ^ 2 %/ 2 <= w ^ 2. by rewrite leq_div.
+    have H4 : w ^ 2 <= 2 * w ^ 2. by rewrite leq_pmull.
+    by move:(leq_trans H3 H4).
   Qed.
 
   Next Obligation.
-    destruct dinsert'_func_obligation_4, dinsert'_func_obligation_3 => /=.
-    rewrite (fun_if dflattenn) /= cat_take_drop.
-    destruct dinsert'_func_obligation_2, dinsert'_func_obligation_1 => /=.
-    by rewrite if_same.
+    move/eqP/eqnP : Heq_anonymous => /=.
+    rewrite size_take size_insert1.
+    move => H.
+    rewrite H mulnC.
+    case: ifP => //.
+    rewrite mulnK //.
+    have H2 : w ^ 2 > 0. by rewrite expn_gt0 word_size_pos.
+    have H3 : w ^ 2 < w ^ 2 * 2. by rewrite -{1}[w ^ 2]muln1 ltn_mul2l H2 /=.
+    by rewrite H3.
+  Qed.
+
+  Next Obligation. 
+    move/eqP/eqnP : Heq_anonymous => /=.
+    rewrite size_drop size_insert1.
+    move => H.
+    by rewrite H mulKn // mulSn mul1n -addnBA // subnKC // leq_div.
+  Qed.
+
+  Next Obligation. 
+    move/eqP/eqnP : Heq_anonymous => /=.
+    rewrite size_drop size_insert1.
+    move => H.
+    by rewrite H mulKn // mulSn mul1n -addnBA // subnKC // -{1}[w ^ 2]addn0 ltn_add2l expn_gt0 word_size_pos.
+  Qed.
+
+  Next Obligation. by rewrite -size_cat cat_take_drop size_insert1. Qed.
+
+  Next Obligation.
+    rewrite -count_cat cat_take_drop /count_one count_insert1.
+    by destruct b.
+  Qed.
+
+  Next Obligation.
+    rewrite /dflattenn /insert1.
+    destruct dinsert'_func_obligation_5, dinsert'_func_obligation_6 => /=.
+    by rewrite cat_take_drop.
+  Qed.
+
+  Next Obligation.
+    rewrite size_insert1.
+    by apply: leq_trans.
+  Qed.
+
+  Next Obligation.
+    move/eqP/eqnP/eqP: Heq_anonymous => /=.
+    rewrite size_insert1 neq_ltn.
+    case/orP => //.
+    by rewrite ltnNge wildcard'0.
+  Qed.
+
+  Next Obligation. by rewrite size_insert1. Qed.
+
+  Next Obligation. rewrite /count_one count_insert1. by destruct b. Qed.
+
+  Next Obligation.
+    rewrite /dflattenn /insert1.
+    by destruct dinsert'_func_obligation_11, dinsert'_func_obligation_12, dinsert'_func_obligation_13 => /=.
   Qed.
 
   Next Obligation.
@@ -248,29 +307,28 @@ Section insert.
   Next Obligation.
     case: ifP => /= H.
     - set B' := balanceL _ _ _ _ _.
-      destruct dinsert'_func_obligation_15.
+      destruct dinsert'_func_obligation_23.
       rewrite (proj2_sig B') {B'}.
       destruct dinsert' => /=.
       by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
     - set B' := balanceR _ _ _ _ _.
-      rewrite /dflattenn => /=.
-      destruct dinsert'_func_obligation_15, dinsert'_func_obligation_14,
-               dinsert'_func_obligation_13.
+      rewrite /dflattenn /eq_rect => /=.
+      destruct dinsert'_func_obligation_23, dinsert'_func_obligation_22, dinsert'_func_obligation_21.
       rewrite -/(dflattenn (proj1_sig B')) (proj2_sig B') {B'}.
       destruct dinsert' => /=.
       by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
   Qed.
 
-  Definition dinsert n m d c (B : tree n m d c) (b : bool) (i : nat) (w : nat):=
-    real_tree (proj1_sig (dinsert' B b i w)).
+  Definition dinsert n m d c (B : tree n m d c) (b : bool) (i : nat) :=
+    real_tree (proj1_sig (dinsert' B b i)).
 
   Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
   
-  Lemma dinsertK n m d c (B : tree n m d c) b i w :
-    dflatten (dinsert B b i w) = insert1 (dflatten B) b i.
-  Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i w)). Qed.
+  Lemma dinsertK n m d c (B : tree n m d c) b i :
+    dflatten (dinsert B b i) = insert1 (dflatten B) b i.
+  Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i)). Qed.
   
 End insert.
 
@@ -278,7 +336,7 @@ Section query.
   
   Fixpoint daccess {n m d c} (tr : tree n m d c) i :=
     match tr with
-    | Leaf s => nth false s i
+    | Leaf s _ _ => nth false s i
     | Node lnum _ _ _ _ _ _ _ _ _ l r =>
       if i < lnum
       then daccess l i
@@ -287,7 +345,7 @@ Section query.
 
   Fixpoint drank {n m d c} (tr : tree n m d c) i :=
     match tr with
-    | Leaf s => rank true i s
+    | Leaf s _ _ => rank true i s
     | Node lnum lones rnum rones _ _ _ _ _ _ l r =>
       if i < lnum
       then drank l i
@@ -296,7 +354,7 @@ Section query.
 
   Fixpoint dselect_0 {n m d c} (tr : tree n m d c) i :=
     match tr with
-    | Leaf s => select false i s
+    | Leaf s _ _ => select false i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
       let zeroes := s1 - o1
       in if i <= zeroes 
@@ -306,7 +364,7 @@ Section query.
 
   Fixpoint dselect_1 {n m d c} (tr : tree n m d c) i :=
     match tr with
-    | Leaf s => select true i s
+    | Leaf s _ _ => select true i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
       if i <= o1
       then dselect_1 l i
@@ -399,12 +457,12 @@ Require Import Compare_dec.
 Section set_clear.
   Obligation Tactic := idtac.
   
-  Program Fixpoint bset num ones d c (B : tree num ones d c) i
+  Program Fixpoint bset {num ones d c} (B : tree num ones d c) i
     {measure (size_of_tree B)} :
     { B'b : (tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool)
     | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
     match B with
-    | Leaf s => (Leaf (bit_set s i), ~~ (access s i))
+    | Leaf s _ _ => (Leaf (bit_set s i) _ _, ~~ (access s i))
     | Node lnum lones rnum rones _ _ _ _ col cor l r =>
       match lt_dec i lnum with
       | left H =>
@@ -487,6 +545,34 @@ Section set_clear.
   Next Obligation. intuition. Qed.
                    
 End set_clear.
+
+Section delete.
+
+  (*
+ひだりからじゅんにつまっていき,とちゅうであき(< w ^ 2 / 2)があってはいけない?
+*)
+
+  Program Fixpoint ddelete {num ones d c} (B : tree num ones d c) i w {measure (size_of_tree B)} :
+    { B' : near_tree (num - 1) (ones + (daccess B i)) d c | dflattenn B' = delete (dflatten B) i} :=
+    match B with
+    | Leaf s => Good Black (Leaf (delete s i))
+    | Node s1 o1 s2 o2 d cl cr _ okl okr l r =>
+      if num == (w ^ 2) %/ 2
+      then if (daccess l i) == ~~ (daccess r 0)
+           then proj1_sig (balanceR c (fst (proj1_sig (bset l i))) (ddelete r 0 w) okl _)
+           else proj1_sig (balanceR c l (ddelete r 0 w) okl _)
+      else proj1_sig (balanceL c (ddelete l i w) r _ okr)
+      (* if i < s1 *)
+      (* then if num == (w ^ 2) %/ 2 *)
+      (*      then if (daccess l i) <> (daccess r 0) *)
+      (*           then proj1_sig (balanceR c (fst (proj1_sig (bset l i))) (ddelete r 0 w) okl _) *)
+      (*           else proj1_sig (balanceR c l (ddelete r 0 w) okl _) *)
+      (*      else proj1_sig (balanceL c (ddelete l i w) r _ okr) *)
+      (* else proj1_sig (balanceR c l (dinsert' r b (i - s1) w) okl _) *)
+    end.
+
+End delete.
+
 
 (* 
 Extraction dinsert'_func.
