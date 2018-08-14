@@ -605,9 +605,25 @@ Section delete.
 
   Lemma technical : forall(n : nat),n == n %/ 2 -> n == 0.
   Proof.
-    Admitted.
-    (* elim => // n IH. *)
-    (* rewrite -addn1. *)
+    move => n.
+    move/eqP.
+    rewrite {1}(divn_eq n 2) muln2 -addnn -[RHS]addn0 -addnA.
+    move/eqP.
+    rewrite eqn_add2l.
+    case_eq (n <= 2).
+     case: n => // n.
+     case: n => // n.
+     move/eqP.
+     rewrite -addn2 -addnBA // subnn addn0 => H.
+     by rewrite H add0n divnn modnn addn0 /=.
+    case: n => // n.
+    case: n => // n.
+    move/eqP.
+    rewrite -addn2 -addnBA // subnn addn0.
+    move/eqP => H.
+    rewrite divnDr // divnn /= modnDr.
+    by rewrite !addn_eq0 [1 == 0]gtn_eqF // andbF andFb.
+  Qed.
 
 
   Lemma size_of_node {n m d c} (tr : tree n m d c) : is_node tr -> n >= w ^ 2.
