@@ -6,10 +6,10 @@ Require Import compact_data_structures rank_select insert_delete Program JMeq se
 Set Implicit Arguments.
 
 Variable w : nat.
-Axiom wordsize_pos: w > 1.
+Axiom wordsize_gt1: w > 1.
 
 Lemma wordsize_gt0 : w > 0.
-Proof. apply ltnW. exact wordsize_pos. Qed.
+Proof. apply ltnW. exact wordsize_gt1. Qed.
 
 Lemma wordsize_neq0: w != 0.
 Proof. rewrite -lt0n. exact wordsize_gt0. Qed.
@@ -17,7 +17,7 @@ Proof. rewrite -lt0n. exact wordsize_gt0. Qed.
 Lemma wordsize_sqrn_gt2 : w ^ 2 > 2.
 Proof.
   case_eq w => n. move: wordsize_neq0. by rewrite n.
-  case_eq n => n' H. move/eqP: (ltn_eqF wordsize_pos). by rewrite H.
+  case_eq n => n' H. move/eqP: (ltn_eqF wordsize_gt1). by rewrite H.
   move => H'.
   rewrite -[n'.+2]addn2 sqrnD -!mulnn !muln2 -!addnn add2n addnC !addnA.
   apply/eqP.
@@ -25,13 +25,16 @@ Proof.
   by compute.
 Qed.
 
+Lemma wordsize_sqrn_gt0 : w ^ 2 > 0.
+Proof. exact: (ltnW (ltnW wordsize_sqrn_gt2)). Qed.
+
 Lemma wordsize_sqrn_div2_neq0 : (w ^ 2 %/ 2 <> 0).
 Proof.
   case_eq w => n. move: wordsize_neq0. by rewrite n.
   move => H1 H2.
   move: (divn_eq (n.+1 ^ 2) 2).
   rewrite H2 mul0n add0n.
-  case_eq n => [H3|n']. rewrite H3 in H1. move/eqP: (ltn_eqF wordsize_pos). by rewrite H1.
+  case_eq n => [H3|n']. rewrite H3 in H1. move/eqP: (ltn_eqF wordsize_gt1). by rewrite H1.
   move => H3 H4.
   rewrite -H3 -H1 in H4.
   have H5 : (0 < 2) => //.
@@ -799,9 +802,24 @@ Section delete.
     by rewrite mulnC addnn -muln2 ltn_mul2r /=.
   Qed.
 
+  Lemma leq_addln : forall(a b c: nat), a <= b -> a <= b + c.
+  Proof.
+    move => a b c leq1.
+    move: (leq0n c) => leq2.
+    rewrite -(leq_add2l b) addn0 in leq2.
+    exact: (leq_trans leq1 leq2).
+  Qed.
+
+  Lemma leq_addrn : forall(a b c: nat), a <= c -> a <= b + c.
+  Proof. move => a b c. rewrite addnC. exact: (leq_addln a c b). Qed.
+
   Fixpoint ddelete {num ones d c} (B : tree num ones d c) i (okB: wordsize_ok B) (oki : i < num) :
     { B' : near_tree (num - 1) (ones - (daccess B i)) d c | dflattenn B' = delete (dflatten B) i}.
 
+    move/eqP: wordsize_sqrn_div2_neq0. rewrite -lt0n => GUARD1.
+    move/eqP: wordsize_sqrn_div2_neq0. rewrite -lt0n => GUARD2.
+    rewrite  -(ltn_add2r (w ^ 2 %/ 2) 0 (w ^ 2 %/ 2)) add0n in GUARD1.
+    move: (ltn_trans GUARD2 GUARD1) => GUARD3.
     destruct B.
      rewrite subn1 -(size_delete oki) count_delete.
      case/andP: okB => w1 w2.
@@ -832,58 +850,61 @@ Section delete.
       move: (sizeW arr1 i7) => H8.
       clear IHB2_1 IHB2_2 okB.
       rewrite -(size_rcons_delete i9 (access arr0 0)) // in i2,i3.
-      case_eq (w ^ 2 %/ 2 == size arr0) => H4.
-       case_eq (w ^ 2 %/ 2 == size arr1) => H5.
+      case_eq (w ^ 2 %/ 2 == size arr0).
+       move/eqP => H4.
+       case_eq (w ^ 2 %/ 2 == size arr1).
+        move/eqP => H5.
         have i11 : size ((delete arr0 0) ++ arr1) < 2 * w ^ 2.
-         move/eqP: H4 => H4. move/eqP: H5 => H5.
-         move: (H7) => ?.
-         rewrite -H4 in H7.
-         rewrite size_cat size_delete //.
-         rewrite -H4 -H5 addnC -subn1 addnBA //.
-         apply/eqP/eqP.
-         rewrite -addn1 mulnC muln2 -addnn subnK -/(leq _ _).
-         have H6: w ^ 2 %/ 2 <= w ^ 2. exact: leq_div.
-         apply: leq_add => //.
-         (* About (leq_div (w ^ 2 %/ 2) (w ^ 2)). *)
-         move: (H7) => H9.
-         rewrite -(ltn_add2r (w ^ 2 %/ 2)) in H7.
-         exact: (ltn_trans H9 H7).
+        rewrite size_cat size_delete // -H4 -H5 addnC -subn1 !addnBA // -(ltn_add2r 1) subnK // addn1.
+         exact : (leqW (leq_divn2n_mul2 (w ^ 2) wordsize_sqrn_gt0)).
         rewrite [size _ + _ - _]addsubnC //.
         rewrite [count_one _ + _ - _]addsubnC;last exact: leq_nth_count.
         rewrite count_delete /count_one -!count_cat catA
                 (size_delete1 i9) H /= -addnBA // subnn addn0 -!size_cat catA
                -(cat_delete_behead arr arr0 H7) -catA count_cat size_cat.
         by exists (Good Black (bnode (Leaf (rcons (delete arr i9) (access arr0 0)) i2 i3) (Leaf ((delete arr0 0) ++ arr1) (leq_size_catr _ (delete arr0 0) arr1 i7) i11))).
-       clear x.
-       have H6 : size arr1 = (size (delete arr1 0)).+1. rewrite (size_delete H8) -subn1 -addn1 subnK //. 
-       rewrite leq_eqVlt H5 H6 /= in i7.
+       clear x => H5.
+       rewrite leq_eqVlt H5 (size_delete1 0) H8 /= addn1 in i7.
        move : (ltnW i8) => i8'.
-       rewrite H6 /= in i8'.
-       have H9 : size (rcons (delete arr0 0) (access arr1 0)) = size arr0. rewrite size_rcons size_delete // -addn1 -subn1 subnK //.
-       rewrite -H9 in i5,i6.
-       rewrite -H3 -H9 subn1 [size _ + size arr1]addnC -subn1 -addnBA;last first.
-        rewrite H9. rewrite -(ltn_add2r (size arr1)) add0n addnC in H7. exact: (ltn_trans H8 H7).
-       rewrite [size arr1 + _]addnC -addnBA // subn1 H6 -addn1 -subn1 -addnBA // subnn addn0.
-       have H10 : (rcons (delete arr i9) (access arr0 0)) ++ (rcons (delete arr0 0) (access arr1 0)) ++ (delete arr1 0) = (delete arr i9) ++ arr0 ++ arr1.
-        rewrite !cat_rcons -!catA drop1 take0 cat0s -cat_cons cons_head_behead // -cat_cons drop1 take0 cat_cons cat0s cons_head_behead //.
-       rewrite addsubnC;last first.
-        rewrite -(cat_take_drop i9 arr) /count_one count_cat nth_cat size_take.
-        case: ifP. case: ifP => H11. by rewrite ltnn. by rewrite H11.
-        case: ifP;last by rewrite H.
-        rewrite subnn nth0 /head /(count_mem _).
-        case (drop i9 arr) => // b.
-        destruct b => //.
-        case (take i9 arr) => // b.
-        destruct b => // /= l r.
-        rewrite add0n addnA ltn_addr // ltn_addl //.
-       rewrite count_delete /count_one -!count_cat -H10 2!count_cat.
+       rewrite (size_delete1 0) H8 /= addn1 /= in i8'.
+       rewrite -(size_rcons_delete 0 (access arr1 0)) // in i5,i6.
+       rewrite [size _ + _ - _]addsubnC //.
+       rewrite [count_one _ + _ - _]addsubnC;last exact: leq_nth_count.
+       rewrite count_delete /count_one -!count_cat catA
+               (size_delete1 i9) H /= -addnBA // subnn addn0 -!size_cat catA
+              -(cat_delete_behead arr arr0 H7) -catA count_cat size_cat
+              -(cat_delete_behead arr0 arr1 H8) size_cat count_cat.
        by exists (Good Black (bnode (Leaf (rcons (delete arr i9) (access arr0 0)) i2 i3)
                                     (rnode (Leaf (rcons (delete arr0 0) (access arr1 0)) i5 i6)
                                            (Leaf (delete arr1 0) i7 i8')))).
-      have H5 : size arr0 = (size (delete arr0 0)).+1. rewrite (size_delete H7) -subn1 -addn1 subnK //.
-      clear x.
-      rewrite leq_eqVlt H4 H5 /= in i5.
-      rewrite H5 in i6.
+      clear x => H5.
+      rewrite leq_eqVlt H5 (size_delete1 0) H7 /= addn1 in i5.
+      rewrite (size_delete1 0) H7 /= addn1 in i6.
+      rewrite /count_one -!count_cat catA 
+              -(size_rcons_delete i9 (access arr0 0)) //.
+      rewrite addnA addnC addnA -addnBA // subn1.
+      rewrite -(size_delete H7) -addnA addnC -addnA.
+      rewrite !count_cat [(count_mem _) _ + _]addnC addsubnC;last apply: leq_addrn leq_nth_count.
+      rewrite -addnBA -/(count_one arr);last exact: leq_nth_count.
+      rewrite count_delete.
+      rewrite [(count_mem _) _ + _]addnC -count_cat.
+      rewrite -(cat_delete_behead arr arr0 _) // count_cat -addnA.
+      exists (Good Black (bnode (Leaf (rcons (delete arr i9) (access arr0 0)) i2 i3)
+                                (rnode (Leaf (delete arr0 0) i5 (ltnW i6))
+                                       (Leaf arr1 i7 i8)))).
+      by rewrite /= -/(nth false _ 0) -/(access _ _) catA cat_delete_behead // -catA.
+       rewrite cons_head_behead.
+       rewrite cat_rcons -cat_cons.
+       rewrite rcons_cat.
+       rewrite /=.
+       rewrite cat_cons.
+       rewrite /count_one count_cat.
+               -catA count_cat size_cat
+       About size_delete.
+       rewrite -(size_delete i9).
+                H /= -!addnBA //;last rewrite addn1 ltn0Sn.
+       rewrite subnn addn0. -!size_cat catA.
+              -(cat_delete_behead arr arr0 H7) -catA count_cat size_cat.
       rewrite -H3 H5 subn1 [_.+1 + size arr1]addnC -subn1 -addnBA;last first.
        rewrite -H5. rewrite -(ltn_add2r (size arr1)) add0n addnC in H7. exact: (ltn_trans H8 H7).
       rewrite -addn1 addnA -addnBA // subnn addn0 [size arr1 + _]addnC.
@@ -900,9 +921,6 @@ Section delete.
        destruct b => // /= l r.
        rewrite add0n addnA ltn_addr // ltn_addl //.
       rewrite count_delete /count_one -!count_cat -H8 2!count_cat.
-      by exists (Good Black (bnode (Leaf (rcons (delete arr i9) (access arr0 0)) i2 i3)
-                                   (rnode (Leaf (delete arr0 0) i5 (ltnW i6))
-                                          (Leaf arr1 i7 i8)))).
      (* B2 = Leaf *)
      case_eq (w ^ 2 %/ 2 == size arr0) => H3.
      move: (sizeW arr i2) => H4.
