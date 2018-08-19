@@ -1198,13 +1198,12 @@ Section delete.
     by rewrite W.
   Qed.
 
-
   Definition balanceLR {s1 s2 s3 o1 o2 o3 cr d}
              (ll : tree s1 o1 d.+1 Black)
              (dlr : tree s2 o2 d Black)
              (r : tree s3 o3 d.+1 cr) :
-  {B' : near_tree' (s1 + s2 + s3) (o1 + o2 + o3) d.+1 Black |
-   dflattenn' B' = dflatten ll ++ dflatten dlr ++ dflatten r}.
+  {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) d.+2 Black |
+   dflattenn B' = dflatten ll ++ dflatten dlr ++ dflatten r}.
 
     remember_eq d.+1 d' wd.
     remember_eq Black c' cd.
@@ -1217,10 +1216,10 @@ Section delete.
      case (balanceL Black fst r erefl erefl) => snd sndK.
      rewrite /= -!catA [dflatten llr ++ _ ++ _]catA -badK catA -fstK -sndK.
      rewrite -[s1 + _ + _]addnA -[o1 + _ + _]addnA.
-     by exists (Stay snd).
+     by exists snd.
     move/eqP: wd dlr lll llr r. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => dlr lll llr r.
     rewrite -[s1 + _ + _]addnA -[o1 + _ + _]addnA.
-    exists (Stay (Good Black (bnode (bnode lll (rnode llr dlr)) r))).
+    exists (Good Black (bnode (bnode lll (rnode llr dlr)) r)).
     by rewrite /= !catA.
   Defined.
 
@@ -1228,8 +1227,8 @@ Section delete.
              (dll : tree s1 o1 d Black)
              (lr : tree s2 o2 d.+1 Black)
              (r : tree s3 o3 d.+1 cr) :
-  {B' : near_tree' (s1 + s2 + s3) (o1 + o2 + o3) d.+1 Black |
-   dflattenn' B' = dflatten dll ++ dflatten lr ++ dflatten r}.
+  {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) d.+2 Black |
+   dflattenn B' = dflatten dll ++ dflatten lr ++ dflatten r}.
 
     remember_eq d.+1 d' wd.
     remember_eq Black c' cd.
@@ -1241,10 +1240,10 @@ Section delete.
      case (balanceL Black bad lrr erefl erefl) => fst fstK.
      case (balanceL Black fst r erefl erefl) => snd sndK.
      rewrite /= -!catA !addnA catA -badK catA -fstK -sndK.
-     by exists (Stay snd).
+     by exists snd.
     move/eqP: wd dll lrl lrr r. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => dll lrl lrr r.
     rewrite !addnA.
-    exists (Stay (Good Black (bnode (bnode (rnode dll lrl) lrr) r))).
+    exists (Good Black (bnode (bnode (rnode dll lrl) lrr) r)).
     by rewrite !catA.
   Defined.
 
@@ -1252,8 +1251,8 @@ Section delete.
              (l : tree s1 o1 d.+1 cl)
              (drl : tree s2 o2 d Black)
              (rr : tree s3 o3 d.+1 Black) :
-  {B' : near_tree' (s1 + s2 + s3) (o1 + o2 + o3) d.+1 Black |
-   dflattenn' B' = dflatten l ++ dflatten drl ++ dflatten rr}.
+  {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) d.+2 Black |
+   dflattenn B' = dflatten l ++ dflatten drl ++ dflatten rr}.
 
     remember_eq d.+1 d' wd.
     remember_eq Black c' cd.
@@ -1265,18 +1264,18 @@ Section delete.
      case (balanceL Black bad rrr erefl erefl) => fst fstK.
      case (balanceR Black l fst erefl erefl) => snd sndK.
      rewrite /= [dflatten drl ++ _ ++ _]catA -!addnA [s2 + (_ + _)]addnA [o2 + (_ + _)]addnA -badK -fstK -sndK.
-     by exists (Stay snd).
+     by exists snd.
     move/eqP: wd l drl rrl rrr. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => l drl rrl rrr.
     rewrite /= [dflatten drl ++ _ ++ _]catA -!addnA [s2 + (_ + _)]addnA [o2 + (_ + _)]addnA.
-    by exists (Stay (Good Black (bnode l (bnode (rnode drl rrl) rrr)))).
+    by exists (Good Black (bnode l (bnode (rnode drl rrl) rrr))).
   Qed.
 
   Definition balanceRR {s1 s2 s3 o1 o2 o3 cl d}
              (l : tree s1 o1 d.+1 cl)
              (rl : tree s2 o2 d.+1 Black)
              (drr : tree s3 o3 d Black) :
-  {B' : near_tree' (s1 + s2 + s3) (o1 + o2 + o3) d.+1 Black |
-   dflattenn' B' = dflatten l ++ dflatten rl ++ dflatten drr}.
+  {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) d.+2 Black |
+   dflattenn B' = dflatten l ++ dflatten rl ++ dflatten drr}.
 
     remember_eq d.+1 d' wd.
     remember_eq Black c' cd.
@@ -1288,10 +1287,10 @@ Section delete.
      case (balanceR Black rll bad erefl erefl) => fst fstK.
      case (balanceR Black l fst erefl erefl) => snd sndK.
      rewrite /= -[(dflatten rll ++ _) ++ _]catA -badK -fstK -sndK -!addnA.
-     by exists (Stay snd).
+     by exists snd.
     move/eqP: wd l rll rlr drr. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => l rll rlr drr.
     rewrite /= -[(dflatten rll ++ _) ++ _]catA -!addnA.
-    by exists (Stay (Good Black (bnode l (bnode rll (rnode rlr drr))))).
+    by exists (Good Black (bnode l (bnode rll (rnode rlr drr)))).
   Qed.
 
   Fixpoint ddelete {num ones d} (B : tree num ones d.+1 Black) i :
@@ -1447,22 +1446,11 @@ Section delete.
          rewrite !addnA.
          exists (Stay (Good Black (bnode (rnode (proj1_sig bracken) lr) r))).
          by rewrite /= (proj2_sig bracken).
-        destruct lr as [ ? |? ? ? ? ? clrl clrr crl' ? ? lrl lrr] => //.
-        destruct clrl.
-         destruct crl' => //.
-         move/eqP in deq. rewrite /= eqSS in deq. move/eqP in deq.
-         move: dll. rewrite -deq => dll.
-         set bad := (makeBadR dll lrl).
-         set fst := (balanceL Black (` bad) lrr erefl erefl).
-         case (balanceL Black (` fst) r erefl erefl) => snd sndK.
-         rewrite !addnA /= catA -(proj2_sig bad) -(proj2_sig fst) -sndK.
-         by exists (Stay snd).
-        destruct crl' => //.
-        move/eqP in deq. rewrite /= eqSS in deq. move/eqP in deq.
-        move: dll. rewrite -deq => dll.
+        move: lr r. rewrite deq => lr r.
+        case (balanceLL dll lr r) => res resK.
         rewrite !addnA.
-        exists (Stay (Good Black (bnode (bnode (rnode dll lrl) lrr) r))).
-        by rewrite !catA.
+        exists (Stay res).
+        by rewrite /= resK catA.
        destruct cll,clr => //.
        rewrite ltnNge in Hlr.
        move/negP/negP in Hlr.
@@ -1497,16 +1485,9 @@ Section delete.
         move: ll r. rewrite deq => ll r.
         exists (Stay (Good Black (bnode (rnode ll (proj1_sig bracken)) r))).
         by rewrite /= (proj2_sig bracken).
-        About balanceLR.
-       move: ll r.
-       rewrite deq => ll r.
+       move: ll r. rewrite deq => ll r.
        case (balanceLR ll dlr r) => res resK.
-       exists res.
+       exists (Stay res).
        by rewrite /= resK catA.
+       (* todo : right part *)
 End delete.
-
-
-(* 
-Extraction dinsert'_func.
-Extraction bset_func. 
-*)
