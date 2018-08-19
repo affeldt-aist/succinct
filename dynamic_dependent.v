@@ -885,13 +885,13 @@ Section delete.
 
   Inductive near_tree' : nat -> nat -> nat -> color -> Type := 
   | Stay : forall {s o d},
-      tree s o d.+1 Black -> near_tree' s o d Black
+      near_tree s o d.+1 Black -> near_tree' s o d Black
   | Down : forall {s o d},
       near_tree s o d Black -> near_tree' s o d Black.
 
   Definition dflattenn' {s o d c} (tr : near_tree' s o d c) :=
     match tr with
-    | Stay _ _ _ t => dflatten t
+    | Stay _ _ _ t => dflattenn t
     | Down _ _ _ t =>  dflattenn t
    end.
 
@@ -958,6 +958,27 @@ Section delete.
 
   Lemma ltn_pred n : n > 0 -> n.-1 < n.
   Proof. case n => //. Qed.
+
+  Definition makeBadL {s1 s2 o1 o2 d} (l : tree s1 o1 d Red) (r : tree s2 o2 d Black) : { tr : near_tree (s1 + s2) (o1 + o2) d Red | dflattenn tr = dflatten l ++ dflatten r }.
+
+    move: r.
+    dependent inversion l as [|? ? ? ? ? cl cr ? ? ? ll lr seql oeql heql ceql ] => //.
+    destruct cl,cr => //. rewrite ceql /= in heql.
+    move: ll lr. rewrite heql /= => ll lr r.
+    exists (Bad ll lr r).
+    by rewrite /= catA.
+  Defined.
+
+  Definition makeBadR {s1 s2 o1 o2 d} (l : tree s1 o1 d Black) (r : tree s2 o2 d Red) : { tr : near_tree (s1 + s2) (o1 + o2) d Red | dflattenn tr = dflatten l ++ dflatten r }.
+
+    move: l.
+    dependent inversion r as [|? ? ? ? ? cl cr ? ? ? rl rr seqr oeqr heqr ceqr ] => //.
+    destruct cl,cr => //. rewrite ceqr /= in heqr.
+    move: rl rr. rewrite heqr /= => rl rr l.
+    rewrite !addnA.
+    exists (Bad l rl rr).
+    by rewrite /= catA.
+  Defined.
 
   Definition delete_leaves3
              (arrl arrrl arrrr : seq bool)
@@ -1166,6 +1187,15 @@ Section delete.
    by rewrite leqNgt addnC Hrl.
   Defined.
 
+  Lemma ltn_subln a b c : a < b + c -> c > 0 -> a - b < c.
+  Proof.
+    case H : (b <= a). intros. by rewrite -(ltn_add2r b) subnK // addnC.
+    move: H. rewrite leqNgt. move/negP/negP.
+    case b => // n H.
+    move/eqP: (ltnW H) => W.
+    by rewrite W.
+  Qed.
+
   Fixpoint ddelete {num ones d} (B : tree num ones d.+1 Black) i :
     { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) d Black | dflattenn' B' = delete (dflatten B) i}.
 
@@ -1175,7 +1205,7 @@ Section delete.
      clear heq c ceq B d0 num ones seq oeq.
      move: (sizeW' l) (sizeW' r) => GUARDL GUARDR.
      move: r.
-     dependent inversion l as [arrl leql ueql sleq | ? ? ? ? ? cll clr ? ? ? ll lr seql oeql heql ceql] => r.
+     dependent inversion l as [arrl leql ueql sleq | ? ? ? ? ? cll clr ? cllok clrok ll lr seql oeql heql ceql] => r.
       rewrite -sleq in Hl.
       clear l. rewrite /=.
       dependent inversion r as [arrr leqr ueqr sreq | ? ? ? ? ? crl crr ? ? ? rl rr seqr oeqr heqr ceqr].
@@ -1199,12 +1229,431 @@ Section delete.
       move: (delete_leaves3 arrl arrrl arrrr leql ueql leqrl ueqrl leqrr ueqrr i).
       rewrite -addnA  nth_cat.
       case: ifP => [? res|];last by rewrite Hl.
-      by exists (Stay (proj1_sig res));
+      by exists (Stay (Good Black (proj1_sig res)));
          rewrite /= (proj2_sig res) delete_cat;
          case: ifP;last by rewrite Hl.
 
-     destruct cr. rewrite ceql in heql. move: r. rewrite /= heql => r.
-      dependent inversion r as [arrr leqr ueqr sreq soeq deq | ? ? ? ? ? crl crr ? crlok crrok rl rr seqr oeqr heqr ceqr].
+      move: r cllok clrok.
+      case cleq : cl;last first.
+       case creq : cr.
+        move => r cllok clrok.
+        rewrite ceql cleq /= in heql. move: r. rewrite /= heql => r.
+        dependent inversion r as [| ? ? ? ? ? crl crr ? crlok crrok rl rr seqr oeqr heqr ceqr].
+        destruct crl,crr => //.
+        set l' := (Node cllok clrok ll lr).
+        rewrite ceqr /= in heqr. move: rl rr. rewrite heqr /= -heql => rl rr.
+        case (ddelete _ _ _ (bnode (rnode l' rl) rr) i) => /=.
+        case: ifP => [H1|];last by rewrite ltn_addr // seql.
+        case: ifP => [H2|];last by rewrite seql Hl.
+        rewrite !addnA => res resK.
+        exists res; rewrite resK /= !delete_cat !size_cat !dflatten_sizeK.
+        case: ifP;last by rewrite H1. case: ifP;last by rewrite H2.
+        case: ifP; by rewrite !catA.
+       move => r cllok clrok.
+       case: (ddelete _ _ _ (bnode ll lr) i).
+       rewrite /= delete_cat dflatten_sizeK.
+       rewrite seql Hl.
+       move => dl dlK.
+       rewrite -dlK.
+       rewrite ltn_addln // addsubnC // [_ + _ - _]addsubnC;last first.
+        case: ifP => H.
+         apply leq_addln; apply leq_access_count => //.
+        apply leq_addrn; apply leq_access_count => //.
+        rewrite -(ltn_add2r s0) subnK; last rewrite leqNgt H //.
+        rewrite addnC seql //.
+       clear l dlK.
+       move: r dl => /=. set b := (if _ then _ else _). move => r dl.
+       rewrite ceql /= in heql.
+       destruct dl as [? ? ? dl|? ? ? dl].
+        move: dl r. rewrite /= -cleq => dl r.
+        destruct dl as [|? ? ? dlc' p dl'] => //.
+        move: r. case peq : p. destruct p => //.
+        move: dl'. case dlceq : dlc' => dl' r.
+        case (balanceL Black (Good Black dl') r erefl erefl) => res resK.
+        rewrite -resK.
+        by exists (Stay res).
+       by exists (Down (Good Black (rnode dl' r))).
+       move: dl r. rewrite /= -cleq => dl r.
+       destruct dl as [|? ? ? dlc' p dl'] => //.
+       move: r. case peq : p. destruct p => //.
+       move: dl'. case dlceq : dlc' => dl' r.
+        set bracken := (black_of_red dl').
+        exists (Down (Good Black (rnode (proj1_sig bracken) r))).
+        by rewrite /= (proj2_sig bracken).
+       destruct p => //. rewrite /= in heql. move: r. rewrite /= heql => r.
+       destruct r as [| ? ? ? ? ? crl crr dc crlok crrok rl rr] => //.
+        destruct dc => //.
+        rewrite /= /dflatten.
+        move/eqP in heql. rewrite /= eqSS in heql. move/eqP in heql.
+        move: dl'. rewrite heql => dl'.
+        move: rl. case crleq : crl.
+         rewrite -crleq => rl.
+         destruct rl as [|? ? ? ? ? crll crlr dc ? ? rll rlr] => //.
+         destruct dc,crll,crlr => //.
+         rewrite -!addnA [s + _]addnA [o + _]addnA.
+         exists (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+         by rewrite /= !catA.
+        move => rl.
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' rl) rr))).
+        by rewrite /= !catA.
+       move => r cllok clrok.
+       rewrite /= delete_cat dflatten_sizeK.
+       move: heql Hl GUARDL GUARDR ll lr r.
+       rewrite ceql cleq /= => heql.
+       rewrite heql -seql => Hl GUARDL GUARDR.
+       case deq : d.
+        case clleq : cll. by destruct cll.
+        case clreq : clr. by destruct clr.
+        move => ll lr r.
+        move: (bzero_tree_is_leaf ll) (bzero_tree_is_leaf lr) => ? ?.
+        destruct ll as [arrll leqll ueqll | ];last first. done.
+        destruct lr as [arrlr leqlr ueqlr | ];last first. done.
+        case: (delete_leaves2 arrll arrlr leqll ueqll leqlr ueqlr i).
+        rewrite /= !delete_cat !nth_cat Hl.
+        set b := (if _ then _ else _). move => dl dlK.
+        rewrite -dlK [i < _ + _ ]ltn_addln //.
+        rewrite [_ + _ - _]addsubnC // [_ + _ - b]addsubnC;last first.
+         subst b; case :ifP => H. apply leq_addln; apply leq_nth_count. apply leq_addrn; apply leq_nth_count.
+        clear dlK. move: dl. rewrite -clleq => dl.
+        destruct dl as [|? ? ? ? dlc dll] => // /=.
+        move: dll. rewrite clleq => dll.
+        by exists (Stay (Good Black (bnode dll r))).
+       move => ll lr r.
+       case: ifP => [Hll|Hlr].
+        destruct cll,clr => //.
+        case (ddelete _ _ _ ll i).
+        set b := (daccess _ _).
+        rewrite Hll => dll dllK.
+        rewrite ltn_addln //.
+        rewrite -addnA -[_ + _ + _]addnA.
+        rewrite [_ + _ - _]addsubnC;last by apply (sizeW' ll).
+        rewrite [_ + _ - _]addsubnC;last subst b; last apply leq_access_count => //.
+        rewrite -dllK.
+        destruct dll as [? ? ? dll|? ? ? dll].
+         clear dllK b ll l heql. move: lr r dll. rewrite /= -deq => lr r dll.
+         rewrite !addnA.
+         destruct dll as [|? ? ? dllc p dll] => //.
+         destruct p => //.
+         destruct dllc.
+          set bad := (makeBadL dll lr).
+          case (balanceL Black (` bad) r erefl erefl) => res resK.
+          rewrite /= -(proj2_sig bad) -resK.
+          by exists (Stay res).
+         by exists (Stay (Good Black (bnode (rnode dll lr) r))).
+        clear dllK b ll l heql. move: lr r dll. rewrite /= -deq => lr r dll.
+        destruct dll as [? ? ? dll|? ? ? cdll tmp dll ] => //. destruct tmp => //.
+        destruct cdll.
+         set bracken := (black_of_red dll).
+         move: lr r. rewrite deq => lr r.
+         rewrite !addnA.
+         exists (Stay (Good Black (bnode (rnode (proj1_sig bracken) lr) r))).
+         by rewrite /= (proj2_sig bracken).
+        destruct lr as [ ? |? ? ? ? ? clrl clrr crl' ? ? lrl lrr] => //.
+        destruct clrl.
+         destruct crl' => //.
+         move/eqP in deq. rewrite /= eqSS in deq. move/eqP in deq.
+         move: dll. rewrite -deq => dll.
+         set bad := (makeBadR dll lrl).
+         set fst := (balanceL Black (` bad) lrr erefl erefl).
+         case (balanceL Black (` fst) r erefl erefl) => snd sndK.
+         rewrite !addnA /= catA -(proj2_sig bad) -(proj2_sig fst) -sndK.
+         by exists (Stay snd).
+        destruct crl' => //.
+        move/eqP in deq. rewrite /= eqSS in deq. move/eqP in deq.
+        move: dll. rewrite -deq => dll.
+        rewrite !addnA.
+        exists (Stay (Good Black (bnode (bnode (rnode dll lrl) lrr) r))).
+        by rewrite !catA.
+       destruct cll,clr => //.
+       rewrite ltnNge in Hlr.
+       move/negP/negP in Hlr.
+       case (ddelete _ _ _ lr (i - s0)).
+       set b := (daccess _ _).
+       rewrite ltn_addln //.
+       rewrite ltn_subln //;last exact (sizeW' lr).
+       move => dlr dlrK.
+       rewrite [_ + _ - _]addsubnC //.
+       rewrite -addnBA //;last exact (sizeW' lr).
+       rewrite [_ + _ - b]addsubnC //;last first.
+        apply leq_addrn. subst b; apply leq_access_count.
+        rewrite ltn_subln //;last exact (sizeW' lr).
+       rewrite -addnBA;last first.
+        subst b ; apply leq_access_count.
+        rewrite ltn_subln //;last exact (sizeW' lr).
+       rewrite -dlrK.
+       destruct dlr as [? ? ? dlr|? ? ? dlr].
+        clear dlrK. move: ll r dlr. rewrite /= -deq => ll r dlr.
+        destruct dlr as [|? ? ? dlrc p dlr] => //.
+        destruct p => //.
+        destruct dlrc.
+         set bad := (makeBadR ll dlr).
+         case (balanceL Black (` bad) r erefl erefl) => res resK.
+         rewrite /= -(proj2_sig bad) -resK.
+         by exists (Stay res).
+        by exists (Stay (Good Black (bnode (rnode ll dlr) r))).
+       clear dlrK. move: ll r dlr. rewrite /= -deq => ll r dlr.
+       destruct dlr as [? ? ? dlr|? ? ? cdlr tmp dlr ] => //. destruct tmp => //.
+       destruct cdlr.
+        set bracken := (black_of_red dlr).
+        move: ll r. rewrite deq => ll r.
+        exists (Stay (Good Black (bnode (rnode ll (proj1_sig bracken)) r))).
+        by rewrite /= (proj2_sig bracken).
+       destruct ll as [ ? |? ? ? ? ? clll cllr cll' ? ? lll llr] => //.
+       destruct cllr.
+        destruct cll' => //.
+        move/eqP in deq. rewrite /= eqSS in deq. move/eqP in deq.
+        move: dlr. rewrite -deq => dlr.
+        set bad := (makeBadL llr dlr).
+        set fst := (balanceR Black lll (` bad) erefl erefl).
+        case (balanceL Black (` fst) r erefl erefl) => snd sndK.
+        rewrite /= -!catA [dflatten llr ++ _ ++ _]catA -(proj2_sig bad) catA -(proj2_sig fst) -sndK.
+        rewrite -[s0 + _ + _]addnA -[o0 + _ + _]addnA.
+        by exists (Stay snd).
+       destruct cll' => //.
+       move/eqP in deq. rewrite /= eqSS in deq. move/eqP in deq.
+       move: dlr. rewrite -deq => dlr.
+       rewrite -[s0 + _ + _]addnA -[o0 + _ + _]addnA.
+       exists (Stay (Good Black (bnode (bnode lll (rnode llr dlr)) r))).
+       by rewrite /= !catA.
+
+
+
+
+       destruct rl as [arrrl leqrl ueqrl ? |? ? ? ? ? crll crlr crl' ? ? rll rlr].
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' (Leaf arrrl leqrl ueqrl)) rr))).
+        by rewrite /= catA.
+       destruct crl'.
+        destruct crll,crlr => //.
+        rewrite -!addnA [s + _]addnA [o + _]addnA.
+        exists (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+        by rewrite /= !catA.
+       rewrite [s + _]addnA [o + _]addnA.
+       exists (Down (Good Black (bnode (rnode dl' (bnode rll rlr)) rr))).
+       by rewrite /= -!catA.
+
+      | BNode (RNode (ll,b,(BNode (lgl,d,lgg) as lg)),a,g) ->
+         begin match bremove ll with
+         | mll,Succ ll' -> (mll,Succ (BNode (RNode (ll',b,lg),a,g)))
+         | mll,Red ll' -> (mll,Succ (BNode (RNode (black_of_red ll',b,lg),a,g)))
+         | mll,Black ll' ->
+            begin match lgl with
+            | RNode _ -> (mll,Succ (BNode ((balanceLG (ll',b) d lgg lgl),a,g)))
+            | BNode _ -> (mll,Succ (BNode (BNode (RNode (ll',b,lgl),d,lgg),a,g)))
+            | Leaf -> (mll,Succ (BNode (BNode (RNode (ll',b,lgl),d,lgg),a,g)))
+            end
+         end
+
+       destruct dll as [? ? ? dll|? ? ? dll].
+        destruct cr.
+         rewrite /= in heqr.
+         move: rl rr. rewrite heqr => rl rr.
+         destruct crl,crr => //.
+         rewrite addnA.
+         rewrite [o + (_ + _)]addnA.
+         exists (Stay (bnode (rnode dll (bnode lrl lrr)) (rnode rl rr))).
+         by rewrite /= -!catA.
+        move/eqP in heqr.
+        rewrite /= eqSS in heqr.
+        move/eqP in heqr.
+        move: rl rr. rewrite heqr => rl rr.
+        rewrite addnA.
+        rewrite [o + (_ + _)]addnA.
+        exists (Stay (bnode (rnode dll (bnode lrl lrr)) (bnode rl rr))).
+       destruct dll.
+
+
+      | BNode (RNode (Leaf,b,Leaf),a,Leaf) -> (b,Succ (BNode (Leaf,a,Leaf)))
+
+      | BNode (RNode (ll,b,(BNode (lgl,d,lgg) as lg)),a,g) ->
+         begin match bremove ll with
+         | mll,Succ ll' -> (mll,Succ (BNode (RNode (ll',b,lg),a,g)))
+         | mll,Red ll' -> (mll,Succ (BNode (RNode (black_of_red ll',b,lg),a,g)))
+         | mll,Black ll' ->
+            begin match lgl with
+            | RNode _ -> (mll,Succ (BNode ((balanceLG (ll',b) d lgg lgl),a,g)))
+            | BNode _ -> (mll,Succ (BNode (BNode (RNode (ll',b,lgl),d,lgg),a,g)))
+            | Leaf -> (mll,Succ (BNode (BNode (RNode (ll',b,lgl),d,lgg),a,g)))
+            end
+         end
+        
+        ;last by apply (sizeW' ll).
+        apply sizeW'.
+        // [_ + _ - b]addsubnC;last first.
+
+        apply leq_addln;subst b.
+        ;apply leq_access_count => //.
+        
+          case :ifP => H. apply leq_addln; apply leq_nth_count. apply leq_addrn; apply leq_nth_count.
+        
+
+        rewrite /= !delete_cat !nth_cat.
+        case: ifP;last by rewrite Hll.
+       move => /= ? dl dlK.
+       rewrite -dlK [i < _ + _ ]ltn_addln;last by apply ltn_addln => //.
+       clear dlK.
+       move: dl.
+       rewrite [i < _ + _ ]ltn_addln //.
+       rewrite [_ + (_  + _) - _]addsubnC;last apply ltn_addln; last apply sizeW => //.
+       rewrite [_ + (_  + _) - _]addsubnC ;last apply leq_addln ; last apply leq_nth_count => //.
+       rewrite !subn1 => dl.
+       destruct dlc => //.
+        
+        case (balanceL Black dl r erefl erefl) => res resK.
+        exists (Stay res).
+        rewrite addsubnC.
+        rewrite -addnBA.
+
+        move => r dl.
+        set b := 
+        ;last first.
+
+apply ltn_addln .
+        clear dlK.
+        move: dl.
+
+        rewrite [i < _ + _ ]ltn_addln //. => dl.
+        
+        ;last apply ltn_addln; last apply sizeW => //.
+       rewrite [_ + (_  + _) - _]addsubnC ;last apply leq_addln ; last apply leq_nth_count => //.
+       rewrite !subn1 => dl.
+       destruct dl as [|? ? ? ? dlc dll] => // /=.
+       destruct dlc => //.
+       by exists (Stay (bnode dll (rnode rl rr))).
+
+
+      destruct cll,clr => //.
+      destruct lr as [arrlr leqlr ueqlr ? |? ? ? ? ? clrl clrr clr' ? ? lrl lrr].
+       rewrite ceqr -heql /= in heqr. 
+       destruct cr,crl,crr => //.
+       move: rl rr. rewrite /= in heqr. rewrite /= heqr => rl rr.
+       move: (bzero_tree_is_leaf ll) (bzero_tree_is_leaf rl) (bzero_tree_is_leaf rr) => GUARD1 GUARD2 GUARD3.
+       destruct ll as [arrll leqll ueqll | ]; last first. by rewrite /= in GUARD1.
+       case: (delete_leaves2 arrll arrlr leqll ueqll leqlr ueqlr i).
+       rewrite /= !delete_cat !nth_cat.
+       case: ifP;last by rewrite Hll.
+        
+
+          by destruct cll.
+        rewrite -clleq -deq => ll.
+        clear l.
+        move: arrll Hl GUARDL GUARDR oeql ceql seql leqll ueqll .
+        rewrite -clreq -heql. => lr.
+         
+        rewrite -deq => ll lr r.
+
+       => ll lr r.
+        
+       ll lr r.
+       move: ll lr r.
+       rewrite heql
+
+
+       
+        move: dl'. rewrite heql => dl'.
+        
+        inversion rl as [|? ? ? ? ? crll crlr ?  ? ? rll rlr seqrl oeqrl heqrl ceqrl].
+         by rewrite ceqrl /= in heqrl.
+         destruct rl.
+        rewrite -seqrl.
+         rewrite ceqrl /= in heqrl. move: rll rr. rewrite heqr => rl rr.
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' (Leaf arrrl leqrl ueqrl)) rr))).
+
+        rewrite ceqrl /= in heqrl.
+        move: rll rr. rewrite heqr => rl rr.
+        Check (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' (Leaf arrrl leqrl ueqrl)) rr))).
+       rewrite /dflattenn' /= /dflattenn /dflatten .
+       clear b ll lr heql seql ceql oeql cllok clrok GUARDL GUARDR i0 i1 cll clr c d Hl.
+       dependent inversion r as [| ? ? ? ? ? crl crr ? crlok crrok rl rr seqr oeqr heqr ceqr].
+       rewrite /= -/(dflattenn' _).
+       move: dl' => /=.
+       rewrite ceqr /= in heqr. move/eqP in heqr. rewrite eqSS in heqr. move/eqP in heqr.
+       move: rl rr. rewrite heqr => rl rr.
+        destruct crl.
+        inversion rl as [|? ? ? ? ? crll crlr ?  ? ? rll rlr seqrl oeqrl heqrl ceqrl].
+        rewrite ceqrl /= in heqrl.
+        move: rll rr. rewrite heqr => rl rr.
+        Check (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' (Leaf arrrl leqrl ueqrl)) rr))).
+        by rewrite /= catA.
+       destruct crl'.
+        destruct crll,crlr => //.
+        rewrite -!addnA [s + _]addnA [o + _]addnA.
+        exists (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+        inversion r as [| ? ? ? ? ? crl crr ? crlok crrok rl rr seqr oeqr heqr ceqr].
+        rewrite -seqr.
+         
+
+            | RNode _ -> (ml,Red (balanceLG (l',a) c gg gl))
+            | BNode _ -> (ml,Black (BNode (RNode (l',a,gl),c,gg)))
+        Check (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+       rewrite /=.
+       dependent inversion r as [| ? ? ? ? ? crl crr ? crlok crrok rl rr seqr oeqr heqr ceqr].
+       destruct rl as [arrrl leqrl ueqrl ? |? ? ? ? ? crll crlr crl' ? ? rll rlr].
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' (Leaf arrrl leqrl ueqrl)) rr))).
+        by rewrite /= catA.
+       destruct crl'.
+        destruct crll,crlr => //.
+        rewrite -!addnA [s + _]addnA [o + _]addnA.
+        exists (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+        by rewrite /= !catA.
+       rewrite [s + _]addnA [o + _]addnA.
+       exists (Down (Good Black (bnode (rnode dl' (bnode rll rlr)) rr))).
+       by rewrite /= -!catA.
+       
+       destruct rl as [arrrl leqrl ueqrl ? |? ? ? ? ? crll crlr crl' ? ? rll rlr].
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' (Leaf arrrl leqrl ueqrl)) rr))).
+        by rewrite /= catA.
+       destruct crl'.
+        destruct crll,crlr => //.
+        rewrite -!addnA [s + _]addnA [o + _]addnA.
+        exists (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+        by rewrite /= !catA.
+       rewrite [s + _]addnA [o + _]addnA.
+       exists (Down (Good Black (bnode (rnode dl' (bnode rll rlr)) rr))).
+       by rewrite /= -!catA.
+       
+       destruct dl as [|? ? ? dlc' ? dl'].
+       dependent inversion dl as [|? ? ? dlc' ? dl'].
+       dependent inversion dl as [s o ? dl|? ? ? dl].
+       rewrite /= in heql.
+        move: dl. rewrite /= heql -heqr => dl.
+        by exists (Down (Good Black (rnode dl (bnode rl rr)))).
+
+       case: ifP;last by rewrite Hll.
+       rewrite -dlK.
+       clear l dlK.
+       rewrite [o0 + o3 + _ - _]addsubnC;last apply: leq_addln;last apply: leq_access_count => //.
+
+       rewrite -heqr in heql. move/eqP in heql. rewrite eqSS in heql. move/eqP in heql.
+       move: dl rl rr. rewrite /= heql => dl.
+       dependent inversion dl as [|? ? ? dlc' ? dl'] => rl rr.
+        destruct dlc'.
+        set bracken := (black_of_red dl').
+        exists (Down (Good Black (rnode (proj1_sig bracken) (bnode rl rr)))).
+        by rewrite /= (proj2_sig bracken).
+       destruct rl as [arrrl leqrl ueqrl ? |? ? ? ? ? crll crlr crl' ? ? rll rlr].
+        rewrite !addnA.
+        exists (Down (Good Black (bnode (rnode dl' (Leaf arrrl leqrl ueqrl)) rr))).
+        by rewrite /= catA.
+       destruct crl'.
+        destruct crll,crlr => //.
+        rewrite -!addnA [s + _]addnA [o + _]addnA.
+        exists (Down (Good Black (rnode (bnode dl' rll) (bnode rlr rr)))).
+        by rewrite /= !catA.
+       rewrite [s + _]addnA [o + _]addnA.
+       exists (Down (Good Black (bnode (rnode dl' (bnode rll rlr)) rr))).
+       by rewrite /= -!catA.
+        
+       
+      | BNode ((BNode _ as l),a,RNode (gl,b,gg)) -> bremove (BNode (RNode(l,a,gl),b,gg))
        rewrite -deq /= in heql.
        destruct cl,cll,clr => //.
        rewrite /= in heql.
@@ -1386,21 +1835,6 @@ Section delete.
       move: rl rr => /=.
       rewrite heqr.
       rewrite heql ll rl rr dll.
-
-
-      | BNode (RNode (Leaf,b,Leaf),a,Leaf) -> (b,Succ (BNode (Leaf,a,Leaf)))
-
-      | BNode (RNode (ll,b,(BNode (lgl,d,lgg) as lg)),a,g) ->
-         begin match bremove ll with
-         | mll,Succ ll' -> (mll,Succ (BNode (RNode (ll',b,lg),a,g)))
-         | mll,Red ll' -> (mll,Succ (BNode (RNode (black_of_red ll',b,lg),a,g)))
-         | mll,Black ll' ->
-            begin match lgl with
-            | RNode _ -> (mll,Succ (BNode ((balanceLG (ll',b) d lgg lgl),a,g)))
-            | BNode _ -> (mll,Succ (BNode (BNode (RNode (ll',b,lgl),d,lgg),a,g)))
-            | Leaf -> (mll,Succ (BNode (BNode (RNode (ll',b,lgl),d,lgg),a,g)))
-            end
-         end
 
        ;last by rewrite seql.
        ;last by rewrite seql.
@@ -1605,7 +2039,6 @@ Section delete.
       | BNode (Leaf,a,RNode (Leaf,c,Leaf)) -> (a,Succ (BNode (Leaf,c,Leaf)))
       | BNode (RNode (Leaf,b,Leaf),a,Leaf) -> (b,Succ (BNode (Leaf,a,Leaf)))
       | BNode (RNode (Leaf,b,Leaf),a,RNode (Leaf,c,Leaf)) -> (b,Succ (BNode (Leaf,a,RNode (Leaf,c,Leaf))))
-      | BNode ((BNode _ as l),a,RNode (gl,b,gg)) -> bremove (BNode (RNode(l,a,gl),b,gg))
       | BNode ((BNode _ as l),a,(BNode (gl,c,gg) as g)) -> 
          begin match bremove l with
          | ml,Succ l' -> (ml,Succ (BNode (l',a,g)))
