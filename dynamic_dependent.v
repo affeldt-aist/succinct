@@ -1221,52 +1221,6 @@ Section delete.
     by rewrite W.
   Qed.
 
-  Definition balanceRL {s1 s2 s3 o1 o2 o3 cl d}
-             (l : tree s1 o1 d.+1 cl)
-             (drl : tree s2 o2 d Black)
-             (rr : tree s3 o3 d.+1 Black) :
-  {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) d.+2 Black |
-   dflattenn B' = dflatten l ++ dflatten drl ++ dflatten rr}.
-
-    remember_eq d.+1 d' wd.
-    remember_eq Black c' wc.
-    move: l drl rr. rewrite -wd -wc => l drl rr.
-    destruct rr as [|? ? ? ? ? crrl ? crr ? ? rrl rrr] => //.
-    destruct crrl, crr => //.
-     move/eqP: wd l drl rrl rrr. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => l drl rrl rrr.
-     case (makeBadR drl rrl) => bad badK.
-     case (balanceL Black bad rrr erefl erefl) => fst fstK.
-     case (balanceR Black l fst erefl erefl) => snd sndK.
-     rewrite /= [dflatten drl ++ _ ++ _]catA -!addnA [s2 + (_ + _)]addnA [o2 + (_ + _)]addnA -badK -fstK -sndK.
-     by exists snd.
-    move/eqP: wd l drl rrl rrr. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => l drl rrl rrr.
-    rewrite /= [dflatten drl ++ _ ++ _]catA -!addnA [s2 + (_ + _)]addnA [o2 + (_ + _)]addnA.
-    by exists (Good Black (bnode l (bnode (rnode drl rrl) rrr))).
-  Qed.
-
-  Definition balanceRR {s1 s2 s3 o1 o2 o3 cl d}
-             (l : tree s1 o1 d.+1 cl)
-             (rl : tree s2 o2 d.+1 Black)
-             (drr : tree s3 o3 d Black) :
-  {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) d.+2 Black |
-   dflattenn B' = dflatten l ++ dflatten rl ++ dflatten drr}.
-
-    remember_eq d.+1 d' wd.
-    remember_eq Black c' wc.
-    move: l rl drr. rewrite -wd -wc => l rl drr.
-    destruct rl as [|? ? ? ? ? ? crlr crl ? ? rll rlr] => //.
-    destruct crlr, crl => //.
-     move/eqP: wd l rll rlr drr. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => l rll rlr drr.
-     case (makeBadL rlr drr) => bad badK.
-     case (balanceR Black rll bad erefl erefl) => fst fstK.
-     case (balanceR Black l fst erefl erefl) => snd sndK.
-     rewrite /= -[(dflatten rll ++ _) ++ _]catA -badK -fstK -sndK -!addnA.
-     by exists snd.
-    move/eqP: wd l rll rlr drr. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => l rll rlr drr.
-    rewrite /= -[(dflatten rll ++ _) ++ _]catA -!addnA.
-    by exists (Good Black (bnode l (bnode rll (rnode rlr drr)))).
-  Qed.
-
   Definition delete_leaves2' {s1 o1 s2 o2} (l : tree s1 o1 0 Black) (r : tree s2 o2 0 Black) (i : nat) :
     {B' : near_tree (s1 + s2 - (i < s1 + s2))
                     (o1 + o2 - access (dflatten l ++ dflatten r) i) 0 Black | dflattenn B' = delete (dflatten l ++ dflatten r) i}.
@@ -1311,10 +1265,10 @@ Section delete.
     (* dr = Stay, drc = Black *)
     by exists (Good Black (bnode (rnode l dr) r')).
     (* dr = Down, drc = Red *)
-    case (black_of_red dr) => bracken bK. exists (Good Black (bnode (rnode l bracken) r')). by rewrite -bK. 
+    case (black_of_red dr) => blacken bK. exists (Good Black (bnode (rnode l blacken) r')). by rewrite -bK. 
    (* dr = Down, drc = Black *)
-   move: l dr r'. rewrite -deq -ceq => l; destruct l as [|? ? ? ? ? ? cl' cr' ? ? l r] => //; destruct cr' => //;
-   destruct cl'; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r dr r'; rewrite /= -!catA [dflatten r ++ _ ++ _]catA catA -[s1 + _ + _]addnA -[o1 + _ + _]addnA.
+   move: l dr r'. rewrite -deq -ceq => l; destruct l as [|? ? ? ? ? cl' cr' c ? ? l r] => //; destruct c => //;
+   destruct cr'; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r dr r'; rewrite /= -!catA [dflatten r ++ _ ++ _]catA catA -[s1 + _ + _]addnA -[o1 + _ + _]addnA.
     case (makeBadL r dr) => bad badK. case (balanceR Black l bad erefl erefl) => fst fstK. rewrite -badK -fstK.
     exact (balanceL Black fst r' erefl erefl).
    by exists (Good Black (bnode (bnode l (rnode r dr)) r')). 
@@ -1330,74 +1284,60 @@ Section delete.
     remember_eq n.+1 d' deq. remember_eq Black c' ceq.
     destruct dl as [? ? ? dl|? ? ? dl]; move: dl r r'; rewrite /= -ceq -deq => dl;
      destruct dl as [|? ? ? dlc ? dl] => //; move: dl; rewrite /= ceq deq => dl r r'; destruct dlc; rewrite catA.
-      case (makeBadL dl r) => bad badK. case (balanceL Black bad r' erefl erefl) => res resK.
-      rewrite -badK -resK.
-      by exists res.
+      case (makeBadL dl r) => bad badK. rewrite -badK.
+      exact (balanceL Black bad r' erefl erefl).
      by exists (Good Black (bnode (rnode dl r) r')).
-     case (black_of_red dl) => bracken bK. rewrite -bK. by exists (Good Black (bnode (rnode bracken r) r')).
-    move: r dl r'. rewrite -deq -ceq => r.
-    destruct r as [|? ? ? ? ? ? cl' cr' ? ? l r] => //. destruct cr' => //.
-    destruct cl; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r dl r'; rewrite !addnA !catA.
+     case (black_of_red dl) => blacken bK. rewrite -bK. by exists (Good Black (bnode (rnode blacken r) r')).
+    move: r dl r'. rewrite -deq -ceq => r. destruct r as [|? ? ? ? ? cl' cr' c ? ? l r] => //. destruct c => //.
+    destruct cl'; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r dl r'; rewrite !addnA !catA.
      case (makeBadR dl l) => bad badK. case (balanceL Black bad r erefl erefl) => fst fstK. rewrite -badK -fstK. 
      exact (balanceL Black fst r' erefl erefl).
     by exists (Good Black (bnode (bnode (rnode dl l) r) r')).
   Defined.
 
-  Definition balanceRL' {n s1 s2 s3 o1 o2 o3} {cl}
+  Definition balanceRL {n s1 s2 s3 o1 o2 o3} {cl}
              (l' : tree s1 o1 n.+1 cl)
              (dl : near_tree' s2 o2 n Black)
              (r : tree s3 o3 n.+1 Black) :
   {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) n.+2 Black
   | dflattenn B' = dflatten l' ++ dflattenn' dl ++ dflatten r}.
 
-    remember_eq n.+1 d' deq.
-    destruct dl as [? ? ? dl|? ? ? dl].
-    remember_eq Black c' wc.  move: l' dl r. rewrite /= -wc -deq => l' dl r.
-     destruct dl as [|? ? ? dlc ? dl] => //. move: l' dl r. rewrite /= wc deq => l' dl r.
-     destruct dlc.
-      case (makeBadL dl r) => bad badK.
-      case (balanceR Black l' bad erefl erefl). rewrite badK => {bad badK} res resK.
-      rewrite -!addnA -resK.
-      by exists res.
-     rewrite -!addnA.
+    remember_eq n.+1 d' deq. remember_eq Black c' ceq.
+    destruct dl as [? ? ? dl|? ? ? dl]; move: l' dl r; rewrite /= -ceq -deq => l' dl r;
+     destruct dl as [|? ? ? dlc ? dl] => //; move: l' dl r; rewrite /= ceq deq => l' dl r; destruct dlc; rewrite -!addnA.
+      case (makeBadL dl r) => bad badK. rewrite -badK.
+      exact (balanceR Black l' bad erefl erefl). 
      by exists (Good Black (bnode l' (rnode dl r))).
-    remember_eq Black c' wc. move: l' dl r. rewrite /= -wc -deq => l' dl r.
-    destruct dl as [|? ? ? dlc ? dl] => //. move: l' dl r. rewrite /= wc deq => l' dl r.
-    destruct dlc.
-     case (black_of_red dl) => bracken bK. rewrite -bK => {bK}.
-     rewrite -!addnA.
-     by exists (Good Black (bnode l' (rnode bracken r))).
-    case (balanceRL l' dl r) => res resK.
-    rewrite -resK.
-    by exists res.
+     case (black_of_red dl) => blacken bK. rewrite -bK.
+     by exists (Good Black (bnode l' (rnode blacken r))).
+    move: r l' dl. rewrite -deq -ceq => r. destruct r as [|? ? ? ? ? cl' cr' c ? ? l r] => //. destruct c => //.
+    destruct cl'; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r l' dl; rewrite [_ + (_ + s2)]addnA [_ + (_ + o2)]addnA [dflatten dl ++ _ ++ _]catA.
+     case (makeBadR dl l) => bad badK. case (balanceL Black bad r erefl erefl) => fst fstK. rewrite -badK -fstK.
+     exact (balanceR Black l' fst erefl erefl).
+    by exists (Good Black (bnode l' (bnode (rnode dl l) r))).
   Defined.
 
-  Definition balanceRR' {n s1 s2 s3 o1 o2 o3} {cl}
+  Definition balanceRR {n s1 s2 s3 o1 o2 o3} {cl}
              (l' : tree s1 o1 n.+1 cl)
              (l : tree s2 o2 n.+1 Black)
              (dr : near_tree' s3 o3 n Black) :
   {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) n.+2 Black
   | dflattenn B' = dflatten l' ++ dflatten l ++ dflattenn' dr}.
 
-   remember_eq n.+1 d' deq.
-   destruct dr as [? ? ? dr|? ? ? dr].
-    remember_eq Black c' wc.  move: l' l dr. rewrite /= -wc -deq => l' l dr.
-    destruct dr as [|? ? ? drc ? dr] => //. move: l' l dr. rewrite /= wc deq => l' l dr.
-    destruct drc.
+   remember_eq n.+1 d' deq. remember_eq Black c' ceq.
+   destruct dr as [? ? ? dr|? ? ? dr]; move: l' l dr; rewrite /= -ceq -deq => l' l dr;
+    destruct dr as [|? ? ? drc ? dr] => //; move: l' l dr; rewrite /= ceq deq => l' l dr; destruct drc; rewrite -!addnA.
      case (makeBadR l dr) => bad badK.
-     case (balanceR Black l' bad erefl erefl). rewrite badK => {bad badK} res resK.
-     rewrite -resK -!addnA.
-     by exists res.
-    rewrite -!addnA.
+     rewrite -badK.
+     exact (balanceR Black l' bad erefl erefl).
     by exists (Good Black (bnode l' (rnode l dr))).
-   remember_eq Black c' wc. move: l' l dr. rewrite /= -wc -deq => l' l dr.
-   destruct dr as [|? ? ? drc ? dr] => //. move: l' l dr. rewrite /= wc deq => l' l dr.
-   destruct drc.
-    case (black_of_red dr) => bracken bK. rewrite -bK -!addnA => {bK}.
-    by exists (Good Black (bnode l' (rnode l bracken))).
-   case (balanceRR l' l dr) => res resK.
-   rewrite -resK.
-   by exists res.
+    case (black_of_red dr) => blacken bK. rewrite -bK.
+    by exists (Good Black (bnode l' (rnode l blacken))).
+   move: l l' dr. rewrite -deq -ceq => l. destruct l as [|? ? ? ? ? cl' cr' c ? ? l r] => //. destruct c => //.
+   destruct cr'; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r l' dr; rewrite -!catA -!addnA.
+    case (makeBadL r dr) => bad badK. case (balanceR Black l bad erefl erefl) => fst fstK. rewrite -badK -fstK.
+    exact (balanceR Black l' fst erefl erefl).
+   by exists (Good Black (bnode l' (bnode l (rnode r dr)))).
   Defined.
 
   Definition balanceL2 {s1 s2 o1 o2 d}
@@ -1411,8 +1351,8 @@ Section delete.
     case (balanceL Black dl r erefl erefl) => res resK. by exists (Stay res).
    move: dl r. rewrite /= -ceq -deq => dl r. destruct dl as [|? ? ? dlc ? dl] => //. destruct dlc.
     move: r. rewrite /= ceq deq /= => r.
-    case (black_of_red dl) => bracken bK. rewrite -bK.
-    by exists (Down (Good Black (rnode bracken r))).
+    case (black_of_red dl) => blacken bK. rewrite -bK.
+    by exists (Down (Good Black (rnode blacken r))).
    destruct r as [| ? ? ? ? ? crl ? c ? ? rl rr] => //. subst c. move/eqP: deq dl. rewrite /= eqSS. move/eqP => /= deq. rewrite -deq => dl.
    destruct crl; rewrite !addnA catA.
     case (makeBadR dl rl) => bad badK. case (balanceL Black bad rr erefl erefl) => res resK.
@@ -1429,11 +1369,11 @@ Section delete.
    remember_eq d.+1 d' deq. remember_eq Black c' ceq.
    destruct dr as [? ? ? dr|? ? ? dr].
     case (balanceR Black l dr erefl erefl) => res resK. by exists (Stay res).
-   move: dr l. rewrite /= -ceq -deq  => dr l. destruct dr as [|? ? ? drc ? dr] => //. destruct drc.
+   move: dr l. rewrite /= -ceq -deq => dr l. destruct dr as [|? ? ? drc ? dr] => //. destruct drc.
     move: l. rewrite /= ceq deq /= => l. 
-    case (black_of_red dr) => bracken bK. rewrite -bK.
-    by exists (Down (Good Black (rnode l bracken))).
-   destruct l as [| ? ? ? ? ? cll clr c cllok clrok ll lr] => //. subst c. move/eqP: deq dr. rewrite /= eqSS. move/eqP => /= deq. rewrite -deq => dr.
+    case (black_of_red dr) => blacken bK. rewrite -bK.
+    by exists (Down (Good Black (rnode l blacken))).
+   destruct l as [| ? ? ? ? ? ? clr c ? ? ll lr] => //. subst c. move/eqP: deq dr. rewrite /= eqSS. move/eqP => /= deq. rewrite -deq => dr.
    destruct clr; rewrite -!addnA -catA.
     case (makeBadL lr dr) => bad badK. case (balanceR Black ll bad erefl erefl) => res resK.
     rewrite -badK -resK. by exists (Down res).
@@ -1469,124 +1409,95 @@ Section delete.
 
     case val : (i < num);last first.
      move/negP/negP : val. rewrite ltnNge. move/negPn => val.
-     rewrite daccess_default //.
-     rewrite -delete_oversize;last by rewrite dflatten_sizeK.
-     rewrite !subn0.
+     rewrite daccess_default // !subn0 -delete_oversize;last by rewrite dflatten_sizeK.
      by exists (Stay (Good Black B)).
-    rewrite -val. remember_eq d.+1 d' wd. remember_eq Black c' wc. move: B. rewrite -wd -wc => B.
+    rewrite -val. remember_eq d.+1 d' deq. remember_eq Black c' ceq. move: B. rewrite -deq -ceq => B.
     destruct B as [|s1 o1 s2 o2 ? cl cr c ? ? l r] => //.
-    subst c. move/eqP: wd l r. rewrite /= eqSS. move/eqP => /= wd. rewrite wd => l r {wd}.
+    subst c. move/eqP: deq l r. rewrite /= eqSS. move/eqP => /= deq. rewrite deq => l r {deq}.
     rewrite delete_cat dflatten_sizeK.
-    move: (sizeW' l) (sizeW' r) => ? szwr.
-    move : l r. case_eq d => [deq l r| n deq l r].
-     destruct cl.
-      destruct cr; remember_eq Red c' wc; remember_eq 0 d' wd; move : l r; rewrite -wc -wd => l r.
-      case: ifP => [Hl|?];
-      [ move: (leq_access_count l i Hl) => ?;
-        move: r => r';
-        destruct l as [| ? ? ? ? d' cl cr c clok crok l r] => //;
-        destruct c,cl,cr,d' => //;
-        case (delete_leaves2' l r i);
-        rewrite Hl val access_cat !dflatten_sizeK /= -!daccessK;
-        set b := (if _ then _ else _) => del delK;
-        rewrite /= -delK addsubnC // [_ + _ - b]addsubnC // => {delK};
-        case (balanceL Black del r' erefl erefl) => res resK
-      | move: (ltn_subln i s1 s2 val szwr) => Hr;
-        move: (leq_access_count r (i - s1) Hr) => ?;
-        move: l => l';
-        destruct r as [| ? ? ? ? d' cl cr c clok crok l r] => //;
-        destruct c,cl,cr,d' => //;
-        case (delete_leaves2' l r (i - s1));
-        rewrite Hr val access_cat !dflatten_sizeK /= -!daccessK;
-        set b := (if _ then _ else _) => del delK;
-        rewrite /= -delK -addnBA // -[(_ + _) - b]addnBA // => {delK};
-        case (balanceR Black l' del erefl erefl) => res resK ]; rewrite -resK => {resK}; by exists (Stay res).
-     move: r => r'.
-     destruct l as [| ? ? ? ? d' cl cr c clok crok l r] => //.
-     destruct c,cl,cr,d' => //.
-     case (delete_leaves3' l r r' i); rewrite /= !daccessK !delete_cat !access_cat !dflatten_sizeK;
-     case:ifP => H;
-     [ move => res resK;
-       case:ifP;last by rewrite ltn_addln //;
-       exists (Stay (Good Black res));
-       by rewrite -catA -resK
-     | case: ifP => H2 res resK;
-       [ case: ifP;
-         [ exists (Stay (Good Black res)); by rewrite /= -catA -resK
-         | move/negP/negP : H; rewrite ltnNge; move/negPn => H; rewrite -(ltn_add2r s1) subnK // addnC in H2; by rewrite H2 ]
-       | case: ifP;
-         [ move/negP/negP : H2; move/negP/negP : H; rewrite -!leqNgt ltnNge => H;
-           rewrite -(leq_add2r s1) subnK // addnC => H2; by rewrite H2
-         | rewrite !subnDA => ?; exists (Stay (Good Black res)); by rewrite /= -!catA -resK ]
-       ]
-     ]; exists (Stay (Good Black res)); by rewrite /= -catA -resK.
-     destruct cr.
-      remember_eq Red c' wc; remember_eq 0 d' wd; move : l r; rewrite -wc -wd => l' r.
-      destruct r as [| ? ? ? ? d' cl cr c clok crok l r] => //.
-      destruct c,cl,cr,d' => //.
-      case (delete_leaves3' l' l r i).
-      rewrite /= !daccessK !delete_cat !access_cat !dflatten_sizeK.
-      case:ifP => H; [| case: ifP => H2 ]; move => res resK; rewrite !addnA /= -resK; by exists (Stay (Good Black res)).
-     case (delete_leaves2' l r i);
-     rewrite access_cat dflatten_sizeK !daccessK => res resK;
-     exists (Down res);
-     by rewrite /= resK delete_cat dflatten_sizeK.
+    move: (sizeW' l) (sizeW' r) => ? ?.
+    move: l r. case_eq d => [deq| n deq l r].
+    (* d = 0 *)
+     destruct cl,cr; [ | |
+     (* black,black*)
+     | move => l r; case (delete_leaves2' l r i);
+       rewrite access_cat dflatten_sizeK !daccessK => res resK; exists (Down res);
+       by rewrite /= resK delete_cat dflatten_sizeK
+     ]; remember_eq Red c' wc; remember_eq 0 d' wd; rewrite -wc -wd => l r;
+     [(* red,red *)
+       case: ifP => [Hl|?];
+        [ move: (leq_access_count l i Hl) r => ? r';
+          destruct l as [| ? ? ? ? d' cl cr c ? ? l r] => //; destruct c,cl,cr,d' => //;
+          case (delete_leaves2' l r i);
+          rewrite Hl val access_cat !dflatten_sizeK /= -!daccessK;
+          set b := (if _ then _ else _) => del delK;
+          rewrite /= -delK addsubnC // [_ + _ - b]addsubnC //;
+          case (balanceL Black del r' erefl erefl) => res resK
+        | move: l (ltn_subln i s1 s2 val (sizeW' r)) => l' Hr; move: (leq_access_count r (i - s1) Hr) => ?;
+          destruct r as [| ? ? ? ? d' cl cr c ? ? l r] => //; destruct c,cl,cr,d' => //;
+          case (delete_leaves2' l r (i - s1));
+          rewrite Hr val access_cat !dflatten_sizeK /= -!daccessK;
+          set b := (if _ then _ else _) => del delK;
+          rewrite /= -delK -addnBA // -[(_ + _) - b]addnBA //;
+          case (balanceR Black l' del erefl erefl) => res resK ]; rewrite -resK; by exists (Stay res)
+      (* red,black or black,red *)
+     | move: r => c; destruct l as [| ? ? ? ? d' cl cr c' ? ? a b] => //; destruct c',cl,cr,d' => // 
+     | move: l => a; destruct r as [| ? ? ? ? d' cl cr c' ? ? b c] => //; destruct c',cl,cr,d' => //; rewrite !addnA ];
+     case (delete_leaves3' a b c i); rewrite /= !daccessK !delete_cat !access_cat !dflatten_sizeK;
+     case:ifP => H; 
+      [ move => res resK;
+        rewrite /= -catA;
+        case:ifP;last by rewrite ltn_addln //
+      | case: ifP => H2 res resK; case: ifP; [
+                    | move/negP/negP : H; rewrite ltnNge; move/negPn => H; rewrite -(ltn_add2r s1) subnK // addnC in H2; by rewrite H2 
+                    | move/negP/negP : H2; move/negP/negP : H; rewrite -!leqNgt ltnNge => H; rewrite -(leq_add2r s1) subnK // addnC => H2; by rewrite H2
+                    | rewrite !subnDA ]; rewrite /= -catA
+      | move => res resK
+      | case:ifP => ? res resK ]; exists (Stay (Good Black res)); by rewrite /= resK.
    
+   (* d <> 0 *)
    rewrite deq /= in ddelete.
    move/leP: (ltnSn n) => ltnSn.
    case: ifP => Hl.
-    move: l r (leq_access_count l i Hl).
+    move: l r.
     case ceql : cl;last first.
-     case ceqr : cr.
+     case ceqr : cr;
+     move => l'; move: (leq_access_count l' i Hl) => ?;
+     case (ddelete _ ltnSn _ _ l' i);
+     set b := (daccess _ _);
+     rewrite ltn_addln // Hl => dl dK;
+     rewrite addsubnC // [_ + _ - b]addsubnC // -dK.
       (* black, red*)
-      rewrite -deq -ceqr => l' r gd {gd}.
-      destruct r as [| ? ? ? ? ? cl' cr' cr clok crok l r] => //; destruct cr,cl',cr' => //.
-      (* copy *)
-      move : deq l' l r => /= deq. rewrite deq => l r r'.
-      move: (sizeW' l) (sizeW' r) => {szwr} ? szwr.
-      case (ddelete _ ltnSn _ _ l i).
-      move: (leq_access_count l i Hl).
-      set b := (daccess _ _) => gd.
-      rewrite ltn_addln // Hl => dl dlK. rewrite -dlK => {dlK}.
-      rewrite addsubnC // [_ + _ - b]addsubnC //.
-      case (balanceLL dl r r') => res resK.
-      rewrite !addnA -resK.
-      by exists (Stay res).
-    (* copy *)
+      rewrite -deq -ceqr => r; destruct r as [| ? ? ? ? ? cl' cr' cr ? ? l r] => //; destruct cr,cl',cr' => //; rewrite /= in deq; subst d.
+      case (balanceLL dl l r) => res resK.
+      rewrite -resK !addnA. by exists (Stay res).
      (* black, black *)
-     move => l.
-     case (ddelete _ ltnSn _ _ l i).
-     set b := (daccess _ _).
-     rewrite ltn_addln // Hl => dl dlK.
-     rewrite -dlK => {dlK} r gd.
-     rewrite addsubnC // [_ + _ - b]addsubnC //.
-     refine (balanceL2 dl r).
+     move => r.
+     exact (balanceL2 dl r).
    (* *, red *)
-   rewrite -ceql -deq => l. destruct l as [|s1 ? ? ? ? cl' cr' c ? ? l r ] => //. destruct c,cl',cr' => // /= r'.
-   move : deq l r r' => /= deq. rewrite deq => l r r'.
-   move: (sizeW' l) (sizeW' r) => {szwr} ? szwr.
-   rewrite delete_cat dflatten_sizeK.
-   case: ifP => Hl'.
-    case (ddelete _ ltnSn _ _ l i).
-    move: (leq_access_count l i Hl').
-    set b := (daccess _ _) => gd.
-    rewrite ltn_addln // Hl' => dl dlK gd'. rewrite -dlK => {dlK gd'}.
-    rewrite -!addnA addsubnC // [_ + _ - b]addsubnC //.
-    case (balanceLL dl r r') => res resK.
-    rewrite !addnA -catA -resK.
+    rewrite -ceql -deq => l; destruct l as [|s1 ? ? ? ? cl' cr' c ? ? l r ] => //; destruct c,cl',cr' => //; move: deq l r => /= deq; rewrite deq => l r r'.
+    move: (sizeW' l) (sizeW' r) => ? ?. rewrite delete_cat dflatten_sizeK.
+    case: ifP => Hl'.
+     case (ddelete _ ltnSn _ _ l i).
+     move: (leq_access_count l i Hl').
+     set b := (daccess _ _).
+     rewrite ltn_addln // Hl' => ? dl dK. rewrite -dK.
+     rewrite -!addnA addsubnC // [_ + _ - b]addsubnC // !addnA.
+     case (balanceLL dl r r') => res resK.
+     rewrite -catA -resK.
+     by exists (Stay res).
+    case (ddelete _ ltnSn _ _ r (i - s1)).
+    move: (ltn_subln i _ _ Hl (sizeW' r)) => Hr.
+    move: (leq_access_count r (i - s1) Hr).
+    set b := (daccess _ _).
+    rewrite ltn_addln // Hr => ? dr dK. rewrite -dK.
+    rewrite addsubnC // [_ + _ - b]addsubnC //;last apply leq_addrn => //.
+    rewrite -!addnBA //.
+    case (balanceLR l dr r') => res resK.
+    rewrite -catA -resK.
     by exists (Stay res).
-   case (ddelete _ ltnSn _ _ r (i -s1)).
-   move: (ltn_subln i _ _ Hl szwr) => Hr.
-   move: (leq_access_count r (i - s1) Hr).
-   set b := (daccess _ _) => gd.
-   rewrite ltn_addln // Hr => dr dK gd'. rewrite -dK => {dK gd'}.
-   rewrite addsubnC // [_ + _ - b]addsubnC //;last apply leq_addrn => //.
-   rewrite -!addnBA //.
-   case (balanceLR l dr r') => res resK.
-   rewrite -catA -resK.
-   by exists (Stay res).
 
-  move: (ltn_subln i _ _ val szwr) => Hr.
+  move: (ltn_subln i _ _ val (sizeW' r)) => Hr.
   move: l r (leq_access_count r (i - s1) Hr).
   case ceqr : cr;last first.
    case ceql : cl.
@@ -1596,7 +1507,7 @@ Section delete.
     destruct l as [| s0 ? ? ? ? cl' cr' cl clok crok l r] => //; destruct cl,cl',cr' => //.
     move: l r r' gd => l' l r gd.
     move : deq l' l r gd => /= deq. rewrite deq => l' l r.
-    move: szwr (sizeW' l) (sizeW' r) => ? ? szwr.
+    move: (sizeW' l) (sizeW' r) => ? ?.
     case (ddelete _ ltnSn _ _ r (i - s0 - s1)).
     move: Hr. rewrite !subnDA => Hr.
     set b := (daccess _ _).
@@ -1615,7 +1526,7 @@ Section delete.
    (* *, red *)
    rewrite -ceqr -deq => l r. move: l. destruct r as [|s2 ? ? ? ? cl' cr' c ? ? l r ] => //. destruct c,cl',cr' => // /= l'.
    move : deq l' l r => /= deq. rewrite deq => l' l r.
-   move: szwr (sizeW' l) (sizeW' r) => ? ? szwr.
+   move: (sizeW' l) (sizeW' r) => ? ?.
    rewrite delete_cat dflatten_sizeK.
    case: ifP => Hl'.
     case (ddelete _ ltnSn _ _ l (i - s1)).
@@ -1627,7 +1538,7 @@ Section delete.
     rewrite -!addnBA //.
     case (balanceRL' l' dl r) => res resK. rewrite -resK. by exists (Stay res).
    case (ddelete _ ltnSn  _ _ r (i - s1 - s2)).
-   move: (ltn_subln (i - s1) _ _ Hr szwr) => Hr'.
+   move: (ltn_subln (i - s1) _ _ Hr (sizeW' r)) => Hr'.
    move: (leq_access_count r (i - s1 - s2) Hr').
    set b := (daccess _ _) => gd.
    rewrite val Hr' => dr dK gd'. rewrite -dK => {dK gd'}.
