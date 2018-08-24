@@ -1327,8 +1327,7 @@ Section delete.
    remember_eq n.+1 d' deq. remember_eq Black c' ceq.
    destruct dr as [? ? ? dr|? ? ? dr]; move: l' l dr; rewrite /= -ceq -deq => l' l dr;
     destruct dr as [|? ? ? drc ? dr] => //; move: l' l dr; rewrite /= ceq deq => l' l dr; destruct drc; rewrite -!addnA.
-     case (makeBadR l dr) => bad badK.
-     rewrite -badK.
+     case (makeBadR l dr) => bad badK. rewrite -badK.
      exact (balanceR Black l' bad erefl erefl).
     by exists (Good Black (bnode l' (rnode l dr))).
     case (black_of_red dr) => blacken bK. rewrite -bK.
@@ -1494,56 +1493,43 @@ Section delete.
     rewrite addsubnC // [_ + _ - b]addsubnC //;last apply leq_addrn => //.
     rewrite -!addnBA //.
     case (balanceLR l dr r') => res resK.
-    rewrite -catA -resK.
-    by exists (Stay res).
+    rewrite -catA -resK. by exists (Stay res).
 
-  move: (ltn_subln i _ _ val (sizeW' r)) => Hr.
-  move: l r (leq_access_count r (i - s1) Hr).
-  case ceqr : cr;last first.
-   case ceql : cl.
+   move: (ltn_subln i _ _ val (sizeW' r))  => Hr.
+   move: r l.
+   case ceqr : cr;last first.
+    case ceql : cl;
+    move => r'; move: (leq_access_count r' (i - s1) Hr) => ?;
+    case (ddelete _ ltnSn _ _ r' (i - s1));
+    set b := (daccess _ _);
+    rewrite val Hr => dr dK;
+    rewrite -dK -!addnBA //.
     (* red, black*)
-    rewrite -deq -ceql => l r' gd.
-    (* copy *)
-    destruct l as [| s0 ? ? ? ? cl' cr' cl clok crok l r] => //; destruct cl,cl',cr' => //.
-    move: l r r' gd => l' l r gd.
-    move : deq l' l r gd => /= deq. rewrite deq => l' l r.
-    move: (sizeW' l) (sizeW' r) => ? ?.
-    case (ddelete _ ltnSn _ _ r (i - s0 - s1)).
-    move: Hr. rewrite !subnDA => Hr.
-    set b := (daccess _ _).
-    rewrite val Hr => dr dK gd'.
-    rewrite -dK => {dK gd'}.
-    rewrite -!addnBA //;last first. subst b. rewrite leq_access_count //.
-    case (balanceRR' l' l dr) => res resK. rewrite -catA -resK. by exists (Stay res).
-   (* copy *)
+    rewrite -deq -ceql => l. destruct l as [| s0 ? ? ? ? cl' cr' cl ? ? l r] => //; destruct cl,cl',cr' => //. move: deq l r => /= deq. rewrite deq => l r.
+    case (balanceRR l r dr) => res resK. rewrite -catA -resK. by exists (Stay res).
    (* black, black *)
-    move => l r. move: l.
-    case (ddelete _ ltnSn _ _ r (i -s1)).
-    set b := (daccess _ _).
-    rewrite val Hr => dr dK l gd.
-    rewrite -dK -!addnBA // => {dK}.
-    refine (balanceR2 l dr).
+   move => l. exact (balanceR2 l dr).
    (* *, red *)
-   rewrite -ceqr -deq => l r. move: l. destruct r as [|s2 ? ? ? ? cl' cr' c ? ? l r ] => //. destruct c,cl',cr' => // /= l'.
+   rewrite -ceqr -deq => r l. move: l. destruct r as [|s3 ? ? ? ? cl' cr' c ? ? l r ] => //. destruct c,cl',cr' => // /= l'.
    move : deq l' l r => /= deq. rewrite deq => l' l r.
    move: (sizeW' l) (sizeW' r) => ? ?.
    rewrite delete_cat dflatten_sizeK.
    case: ifP => Hl'.
     case (ddelete _ ltnSn _ _ l (i - s1)).
     move: (leq_access_count l (i - s1) Hl').
-    set b := (daccess _ _) => gd.
-    rewrite val Hl' => dl dlK gd'. rewrite -dlK => {dlK gd'}.
-    rewrite !addnA addsubnC;last by rewrite leq_addrn //.
-    rewrite [_ + _ - b]addsubnC;last by apply leq_addrn => //.
+    set b := (daccess _ _) => ?.
+    rewrite val Hl' => dl dK. rewrite -dK => {dK}.
+    rewrite !addnA addsubnC;last by rewrite leq_addrn.
+    rewrite [_ + _ - b]addsubnC;last apply leq_addrn => //.
     rewrite -!addnBA //.
-    case (balanceRL' l' dl r) => res resK. rewrite -resK. by exists (Stay res).
-   case (ddelete _ ltnSn  _ _ r (i - s1 - s2)).
+    case (balanceRL l' dl r) => res resK. rewrite -resK. by exists (Stay res).
+   case (ddelete _ ltnSn  _ _ r (i - s1 - s3)).
    move: (ltn_subln (i - s1) _ _ Hr (sizeW' r)) => Hr'.
-   move: (leq_access_count r (i - s1 - s2) Hr').
-   set b := (daccess _ _) => gd.
-   rewrite val Hr' => dr dK gd'. rewrite -dK => {dK gd'}.
+   move: (leq_access_count r (i - s1 - s3) Hr').
+   set b := (daccess _ _) => ?.
+   rewrite val Hr' => dr dK. rewrite -dK => {dK}.
    rewrite -!addnBA //;last by apply leq_addrn => //.
-   case (balanceRR' l' l dr) => res resK. rewrite !addnA -resK. by exists (Stay res).
+   case (balanceRR l' l dr) => res resK. rewrite !addnA -resK. by exists (Stay res).
  Defined.
 
 End delete.
