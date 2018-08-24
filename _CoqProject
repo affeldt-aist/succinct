@@ -6,6 +6,6 @@ louds.v
 insert_delete.v
 set_clear.v
 dynamic_redblack.v
+dynamic_dependent.v
 -R . compact
 
-dynamic_dependent_rb_another.v

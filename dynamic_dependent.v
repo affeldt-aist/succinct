@@ -50,6 +50,12 @@ Qed.
 Section insert.
   Inductive color := Red | Black.
 
+  (* due to technical reason *)
+  Inductive tree_ml : Type :=
+  | LeafML : forall(arr : seq bool), tree_ml
+  | NodeML : forall(s1 s2 o1 o2 : nat) (c : color) (l r : tree_ml), tree_ml.
+  (*                         *)
+
   Definition color_ok parent child : bool :=
     match parent,child with
     | Red,Red => false
@@ -85,12 +91,6 @@ Section insert.
     | _, _ => d
     end.
 
-  (* Definition dec_black d c := *)
-  (*   match c, d with *)
-  (*   | Black, Param n => Param n.-1 *)
-  (*   | _, _ => d *)
-  (*   end. *)
-
   (* Axiom technical2 : forall(d : param nat), (inc_black d Black) <> Param 0. *)
   (* Axiom technical3 : forall(d0 d : param nat), inc_black d0 Black = inc_black d Black -> d0 = d. *)
 
@@ -109,21 +109,6 @@ Section insert.
       color_ok c cl -> color_ok c cr ->
       tree s1 o1 d cl -> tree s2 o2 d cr ->
       tree (s1 + s2) (o1 + o2) (inc_black d c) c.
-
-  (* another version *)
-  Inductive bnode' : nat -> nat -> nat -> Type :=
-  | Leaf' : forall (arr : seq bool),
-      (w ^ 2) %/ 2 <= size arr ->
-      2 * (w ^ 2) > size arr ->
-      bnode' (size arr) (count_one arr) 0
-  | BNode : forall {s1 o1 s2 o2 d},
-      brnode s1 o1 d -> brnode s2 o2 d -> bnode' (s1 + s2) (o1 + o2) d.+1
-  with rnode' : nat -> nat -> nat -> Type :=
-  | RNode : forall {s1 o1 s2 o2 d},
-      bnode' s1 o1 d -> bnode' s2 o2 d -> rnode' (s1 + s2) (o1 + o2) d
-  with brnode : nat -> nat -> nat -> Type :=
-  | B : forall {s o d}, bnode' s o d -> brnode s o d
-  | R : forall {s o d}, rnode' s o d -> brnode s o d.
 
   Fixpoint size_of_tree {s o d c} (t : tree s o d c) : nat :=
     match t with
@@ -1511,7 +1496,7 @@ Section delete.
    move => l. exact (balanceR2 l dr).
    (* *, red *)
    rewrite -ceqr -deq => r l. move: l. destruct r as [|s3 ? ? ? ? cl' cr' c ? ? l r ] => //. destruct c,cl',cr' => // /= l'.
-   move : deq l' l r => /= deq. rewrite deq => l' l r.
+   move: deq l' l r => /= deq. rewrite deq => l' l r.
    move: (sizeW' l) (sizeW' r) => ? ?.
    rewrite delete_cat dflatten_sizeK.
    case: ifP => Hl'.
@@ -1534,4 +1519,15 @@ Section delete.
 
 End delete.
 
-Extraction ddelete.  
+Require Import ExtrOcamlNatInt.
+Extract Constant w => "8".
+Extract Inductive tree => tree_ml [ "LeafML" "(function (s1,o1,s2,o2,d,c,cl,cr,l,r) -> NodeML (s1, o1, s2, o2, c, l, r))" ]
+"(fun fl fn ->
+  function
+  | LeafML arr -> fl arr
+  | NodeML (s1,o1,s2,o2,c,(NodeML (_,_,_,_,cl,_,_) as l),(NodeML (_,_,_,_,cr,_,_) as r)) -> fn s1 o1 s2 o2 0 cl cr c l r
+  | NodeML (s1,o1,s2,o2,c,(LeafML _ as l),(NodeML (_,_,_,_,cr,_,_) as r)) -> fn s1 o1 s2 o2 0 Black cr c l r
+  | NodeML (s1,o1,s2,o2,c,(LeafML _ as l),(LeafML _ as r)) -> fn s1 o1 s2 o2 0 Black Black c l r
+  | NodeML (s1,o1,s2,o2,c,(NodeML (_,_,_,_,cl,_,_) as l),(LeafML _ as r)) -> fn s1 o1 s2 o2 0 cl Black c l r)".
+Extraction TestCompile dinsert ddelete tree_ml.
+Extraction "dydep.ml" dinsert ddelete tree_ml.
