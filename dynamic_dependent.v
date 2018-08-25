@@ -990,370 +990,6 @@ Section delete.
     by rewrite /= catA.
   Qed.
 
-
-  Obligation Tactic := idtac.
-  About False_rec.
-
-  Program Definition delete_leaves3
-             (arrl arrrl arrrr : seq bool)
-             (leql : w ^ 2 %/ 2 <= size arrl)
-             (ueql : size arrl < 2 * w ^ 2)
-             (leqrl : w ^ 2 %/ 2 <= size arrrl)
-             (ueqrl : size arrrl < 2 * w ^ 2)
-             (leqrr : w ^ 2 %/ 2 <= size arrrr)
-             (ueqrr : size arrrr < 2 * w ^ 2)
-             (i : nat) :
-    {B' : tree (size arrl + (size arrrl + size arrrr) - (i < size arrl + size arrrl + size arrrr))
-               (count_one arrl + (count_one arrrl + count_one arrrr) - nth false (arrl ++ arrrl ++ arrrr) i) 1 Black | dflatten B' = delete (arrl ++ arrrl ++ arrrr) i} :=
-
-    match (i < size arrl), (i - size arrl < size arrrl), (i - size arrl - size arrrl < size arrrr) with 
-    | true,true,true => 
-      match (w ^ 2 %/ 2 == size arrl) with
-      | true =>
-        match (w ^ 2 %/ 2 == size arrrl) with
-        | true =>
-          match  (w ^ 2 %/ 2 == size arrrr) with
-          | true => (bnode (Leaf (rcons (delete arrl i) (access arrrl 0)) _ _) (Leaf ((delete arrrl 0) ++ arrrr) _ _))
-          | false => (bnode (Leaf ((delete arrl i) ++ (rcons arrrl (access arrrr 0))) _ _) (Leaf (delete arrrr 0) _ _))
-          end
-        | false => (bnode (Leaf (rcons (delete arrl i) (access arrrl 0)) _ _) (rnode (Leaf (delete arrrl 0) _ _) (Leaf arrrr leqrr ueqrr)))
-        end
-      | false => (bnode (Leaf (delete arrl i) leql (ltnW ueql)) (rnode (Leaf arrrl leqrl ueqrl) (Leaf arrrr leqrr ueqrr)))
-      end
-    | false,true,true => 
-      if (w ^ 2 %/ 2 == size arrrl)
-      then if (w ^ 2 %/ 2 == size arrrr)
-           then (bnode (Leaf arrl leql ueql) (Leaf ((delete arrrl (i - size arrl)) ++ arrrr) _ _))
-           else (bnode (Leaf arrl leql ueql) (rnode (Leaf (rcons (delete arrrl (i - size arrl)) (access arrrr 0)) _ _) (Leaf (delete arrrr 0) _ _)))
-      else (bnode (Leaf arrl leql ueql) (rnode (Leaf (delete arrrl (i - size arrl)) _ _) (Leaf arrrr leqrr ueqrr)))
-    | false,false,true =>
-      if (w ^ 2 %/ 2 == size arrrr)
-      then if (w ^ 2 %/ 2 == size arrrl)
-           then (bnode (Leaf arrl leql ueql) (Leaf (arrrl ++ (delete arrrr (i - size arrl - size arrrl))) _ _))
-           else (bnode (Leaf arrl leql ueql) (rnode (Leaf (delete arrrl (size arrrl).-1) _ _) (Leaf ((access arrrl (size arrrl).-1) :: (delete arrrr (i - size arrl - size arrrl))) _ _)))
-      else (bnode (Leaf arrl leql ueql) (rnode (Leaf arrrl leqrl ueqrl) (Leaf (delete arrrr (i - size arrl - size arrrl)) _ _)))
-    | false,false,false => (bnode (Leaf arrl leql ueql) (rnode (Leaf arrrl leqrl ueqrl) (Leaf arrrr leqrr ueqrr)))
-    | true,false,_ | true,true,false | false,true,false => False_rec _ _
-    end.
-
-  Next Obligation. intros; rewrite size_rcons_delete //. Qed.
-  Next Obligation. intros; rewrite size_rcons_delete //. Qed.
-  Next Obligation.
-    move => l rl rr ? ? ? ? ? ? ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    subst b b' b''. move/idP: b''eq; case: ifP => //; move/eqP => b''eq ?.
-    rewrite size_cat -b''eq leq_addrn //.
-  Qed.
-  Next Obligation.
-    move => l rl rr ? ? leqrl ? ? ? ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leqrl) => ?.
-    subst b b' b''. move/idP: b'eq; case: ifP => //; move/eqP => b'eq ?. move/idP: b''eq; case: ifP => //; move/eqP => b''eq ?.
-    rewrite size_cat size_delete //.
-    rewrite -(ltn_add2r 1) -subn1 -addsubnC // subnK;last apply ltn_addln => //.
-    by rewrite addn1 -b'eq -b''eq leqW // leq_divn2n_mul2 // wordsize_sqrn_gt0.
-  Qed.
-  Next Obligation.
-    move => l rl rr ? ? leqrl ? leqrr ? ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leqrl) (sizeW _ leqrr) => ? ?.
-    rewrite ltn_addln;last rewrite ltn_addln //.
-    rewrite size_rcons_delete // size_cat size_delete // !addnA addsubnC;last apply ltn_addrn => //.
-    by rewrite -addnBA // subn1.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite -!count_cat [rcons _ _ ++ _ ++ _]catA cons_delete //.
-    rewrite count_delete delete_cat.
-    subst b b' b''. move/idP: beq; case: ifP => //; move => beq ?.
-    by rewrite -catA.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b b' b''. rewrite /eq_rect; destruct delete_leaves3_obligation_6, delete_leaves3_obligation_5.
-    rewrite /= delete_cat.
-    move/idP: beq; case: ifP => //; move => beq ?.
-    rewrite -[RHS]cons_delete;last rewrite size_cat ltn_addrn //.
-    by rewrite /access nth_cat delete_cat (sizeW _ leqrl).
-  Qed.
-  Next Obligation.
-    move => l rl rr ? ? ? ? ? ? ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    subst b b' b''. move/idP: b'eq; case: ifP => //; move/eqP => b'eq ?.
-    rewrite size_cat size_rcons size_delete // -b'eq leq_addrn //.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b b' b''. move/idP: b'eq; case: ifP => //; move/eqP => b'eq ?. move/idP: beq; case: ifP => //; move/eqP => beq ?.
-    rewrite size_cat size_rcons size_delete //.
-    rewrite -subn1 -addsubnC // -beq -b'eq -addn1 subnK;last rewrite beq ltn_addln //.
-    by rewrite addnS leq_divn2n_mul2 // wordsize_sqrn_gt0.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b b' b''. rewrite size_delete // -(leq_add2r 1) -subn1 subnK // addn1 ltn_neqAle leqrr.
-    apply/andP; split => //. by apply/negPf.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ueqrr ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite size_delete // -addn1 -subn1 subnK //.
-    subst b b' b''. rewrite leq_eqVlt ueqrr. apply/orP. by apply: or_intror.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ueqrr ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite ltn_addln;last rewrite ltn_addln //.
-    rewrite size_cat size_rcons !size_delete // -!subn1 -[(size _).+1]addn1 addnBA // addnA addsubnC;last rewrite -addsubnC // subnK ltn_addrn //.
-    by rewrite addnK addsubnC // addnA.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite -count_cat -catA [rcons _ _ ++ _ ++ _]catA take0 drop1 cats0 cat_rcons cons_head_behead // -!count_cat count_delete delete_cat.
-    subst b b' b''. move/idP: beq; case: ifP => //; move => beq ?.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b b' b''. rewrite /eq_rect; destruct delete_leaves3_obligation_13, delete_leaves3_obligation_12.
-    rewrite /= delete_cat.
-    move/idP: beq; case: ifP => //; move => beq ?.
-    rewrite -[RHS]cons_delete;last rewrite size_cat ltn_addrn //.
-    rewrite /access nth_cat delete_cat (sizeW _ leqrl).
-    rewrite -catA cat_rcons -!/(access _ 0) [RHS]catA cons_delete // /delete drop1 take0 cat0s -!catA.
-    move: (sizeW _ leqrr). case rr => [|? ? ?]; by rewrite /=.
-  Qed.
-  Next Obligation. intros; rewrite size_rcons_delete //. Qed.
-  Next Obligation. intros; rewrite size_rcons_delete //. Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? ? ? ? ? ? ? ? ? b beq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b. move/negPf : beq; case: ifP => //; move => beq ?.
-    by rewrite size_delete // -(leq_add2r 1) -subn1 subnK // addn1 ltn_neqAle beq leqrl.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? ? ? ? ? ? ? ? ? b beq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite size_delete // -subn1 -addn1 subnK // ltnW //.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? ? ? ? ? ? ? ? ? b beq.
-    move : (sizeW _ leqrl) (sizeW _ leqrr) => ? ?.
-    rewrite ltn_addln;last rewrite ltn_addln //.
-    rewrite size_rcons_delete // size_delete // !addnA addsubnC;last apply leq_addrn => //.
-    by rewrite -addnBA // subn1.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite -!count_cat [rcons _ _ ++ _ ++ _]catA cons_delete //.
-    rewrite count_delete delete_cat.
-    subst b b' b''. move/idP: beq; case: ifP => //; move => beq ?.
-    by rewrite -catA.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b b' b''. rewrite /eq_rect; destruct delete_leaves3_obligation_20, delete_leaves3_obligation_19.
-    rewrite /= delete_cat.
-    move/idP: beq; case: ifP => //; move => beq ?.
-    rewrite -[RHS]cons_delete;last rewrite size_cat ltn_addrn //.
-    by rewrite /access nth_cat delete_cat (sizeW _ leqrl).
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq H eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst H. rewrite leql size_delete //. rewrite leq_eqVlt -eq /= in leql.
-    by rewrite -(leq_add2r 1) -subn1 subnK // addn1.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ueql leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq H eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst H. rewrite leq_eqVlt -eq /= in leql,ueql.
-    rewrite (ltnW ueql) ltnNge size_delete // -(leq_add2r 1) -subn1 subnK // addn1 //.
-    move/: leql => leql.
-    apply/idP.
-    case:ifP.
-
-    rewrite size_delete //. 
-    rewrite ltn_neqAle.
-    subst H. rewrite leql size_delete //. rewrite leq_eqVlt -eq /= in leql.
-    subst b b' b''. move/idP: b'eq; case: ifP => //; move/eqP => b'eq ?. move/idP: beq; case: ifP => //; move/eqP => beq ?.
-    rewrite size_cat size_rcons size_delete //.
-    rewrite -subn1 -addsubnC // -beq -b'eq -addn1 subnK;last rewrite beq ltn_addln //.
-    by rewrite addnS leq_divn2n_mul2 // wordsize_sqrn_gt0.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b b' b''. rewrite size_delete // -(leq_add2r 1) -subn1 subnK // addn1 ltn_neqAle leqrr.
-    apply/andP; split => //. by apply/negPf.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ueqrr ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite size_delete // -addn1 -subn1 subnK //.
-    subst b b' b''. rewrite leq_eqVlt ueqrr. apply/orP. by apply: or_intror.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ueqrr ? ? ? ? ? ? ? b beq b' b'eq b'' b''eq.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite ltn_addln;last rewrite ltn_addln //.
-    rewrite size_cat size_rcons !size_delete // -!subn1 -[(size _).+1]addn1 addnBA // addnA addsubnC;last rewrite -addsubnC // subnK ltn_addrn //.
-    by rewrite addnK addsubnC // addnA.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    rewrite -count_cat -catA [rcons _ _ ++ _ ++ _]catA take0 drop1 cats0 cat_rcons cons_head_behead // -!count_cat count_delete delete_cat.
-    subst b b' b''. move/idP: beq; case: ifP => //; move => beq ?.
-  Qed.
-  Next Obligation.
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ? ? ?.
-    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?.
-    subst b b' b''. rewrite /eq_rect; destruct delete_leaves3_obligation_13, delete_leaves3_obligation_12.
-    rewrite /= delete_cat.
-    move/idP: beq; case: ifP => //; move => beq ?.
-    rewrite -[RHS]cons_delete;last rewrite size_cat ltn_addrn //.
-    rewrite /access nth_cat delete_cat (sizeW _ leqrl).
-    rewrite -catA cat_rcons -!/(access _ 0) [RHS]catA cons_delete // /delete drop1 take0 cat0s -!catA.
-    move: (sizeW _ leqrr). case rr => [|? ? ?]; by rewrite /=.
-  Qed.
-  Next Obligation. 
-
-
-    rewrite -!/(access _ 0).
-. cons_head_behead.
-
-    rewrite /delete take0 drop1 cat0s.
-    rewrite catA. cat_cons.
-    catA.
-    rewrite [rl ++ _ 
-    catA. -!/(access _ 0). cons_delete /=.
-    rewrite !catA !take0 !drop1 !cats0 -catA !rcons_cat.
-
-    move => l rl rr leql ? leqrl ? leqrr ? ? b b' b'' beq b'eq b''eq ? ? ? ? ? ?.
-
-move/idP: b'eq; case: ifP => //; move/eqP => b'eq ?. move/idP: beq; case: ifP => //; move/eqP => beq ?.
-    rewrite size_cat size_rcons size_delete //.
-    rewrite -subn1 -addsubnC // -beq -b'eq -addn1 subnK;last rewrite beq ltn_addln //.
-    by rewrite addnS leq_divn2n_mul2 // wordsize_sqrn_gt0.
-
-    move: (ltn_addrn 0 (size arrrl) _ GUARDRR) => GUARDR.
-    rewrite nth_cat delete_cat.
-    case Hl : (i < size arrl).
-    rewrite -[size _ + size _ + size _]addnA (ltn_addln i (size arrl) ((size arrrl) + (size arrrr)) Hl).
-     case bcl : (w ^ 2 %/ 2 == size arrl).
-      rewrite -(size_rcons_delete i (access arrrl 0)) // in leql,ueql.
-      case bcrl : (w ^ 2 %/ 2 == size arrrl).
-       case bcrr : (w ^ 2 %/ 2 == size arrrr).
-        have ueqrr' : size ((delete arrrl 0) ++ arrrr) < 2 * w ^ 2.
-         move/eqP in bcrl. move/eqP in  bcrr.
-         rewrite size_cat size_delete // -bcrl -bcrr addnC -subn1 !addnBA;last by rewrite -bcrl in GUARDRL.
-         rewrite -(ltn_add2r 1) subnK;last by rewrite -bcrl -bcrr in GUARDR.
-         by rewrite addn1 (leqW (leq_divn2n_mul2 (w ^ 2) wordsize_sqrn_gt0)).
-        rewrite [size _ + _ - _]addsubnC //.
-        rewrite [count_one _ + _ - _]addsubnC;last exact: leq_nth_count.
-        rewrite count_delete /count_one -!count_cat catA
-                (size_delete1 i) Hl /= -addnBA // subnn addn0 -!size_cat catA
-                -(cat_head_behead (delete arrl i)) // -catA count_cat size_cat.
-        by exists (bnode (Leaf (rcons (delete arrl i) (access arrrl 0)) leql ueql) (Leaf ((delete arrrl 0) ++ arrrr) (leq_size_catr _ (delete arrrl 0) arrrr leqrr) ueqrr')).
-       rewrite leq_eqVlt bcrr (size_delete1 0) /= GUARDRR /= addn1 in leqrr.
-       rewrite (size_delete1 0) GUARDRR /= addn1 /= in ueqrr.
-       have leql' : w ^ 2 %/ 2 <= size ((delete arrl i) ++ (rcons arrrl (access arrrr 0))). rewrite size_cat size_rcons leq_addrn //;last exact: leqW.
-       have ueql' : 2 * w ^ 2  > size ((delete arrl i) ++ (rcons arrrl (access arrrr 0))).
-        move/eqP: bcrl => bcrl. move/eqP: bcl => bcl.
-        rewrite size_cat size_rcons size_delete // -bcrl -bcl addnC -subn1 // -2!addn1 -addnA subnK //;last by rewrite -bcrl in GUARDRL.
-        by rewrite addnC addnA addn1 (leq_divn2n_mul2 (w ^ 2) wordsize_sqrn_gt0).
-       rewrite [size _ + _ - _]addsubnC // [count_one _ + _ - _]addsubnC;last exact: leq_nth_count.
-       rewrite count_delete /count_one -!count_cat catA (size_delete1 i) Hl /= -addnBA // subnn addn0 -!size_cat -(cons_head_behead arrrr) //
-               -delete0_behead -cat_rcons catA size_cat -catA -cat_rcons catA count_cat.
-       exists (bnode (Leaf ((delete arrl i) ++ (rcons arrrl (access arrrr 0))) leql' ueql') (Leaf (delete arrrr 0) leqrr (ltnW ueqrr))).
-       by rewrite /= -/(nth false _ 0) -/(access _ _) catA take0 drop1 cats0 -catA.
-      rewrite leq_eqVlt bcrl (size_delete1 0) GUARDRL /= addn1 in leqrl.
-      rewrite (size_delete1 0) GUARDRL /= addn1 in ueqrl.
-      rewrite /count_one -!count_cat catA -(size_rcons_delete i (access arrrl 0)) // addnA addnC addnA -addnBA // subn1 -(size_delete GUARDRL) -addnA addnC -addnA
-              !count_cat [(count_mem _) _ + _]addnC addsubnC;last apply: leq_addrn leq_nth_count.
-      rewrite -addnBA -/(count_one arrl);last exact: leq_nth_count.
-      rewrite count_delete [(count_mem _) _ + _]addnC -count_cat catA -(cat_head_behead (delete arrl i)) //.
-      rewrite count_cat -addnA.
-      exists (bnode (Leaf (rcons (delete arrl i) (access arrrl 0)) leql ueql) (rnode (Leaf (delete arrrl 0) leqrl (ltnW ueqrl)) (Leaf arrrr leqrr ueqrr))).
-      by rewrite /= -/(nth false _ 0) -/(access _ _) catA cat_head_behead // -catA.
-     rewrite leq_eqVlt bcl (size_delete1 i) Hl /= addn1 in leql,ueql.
-     rewrite addnC -addnBA // subn1 -(size_delete Hl) addnC addsubnC;last exact: leq_nth_count.
-     rewrite count_delete.
-     by exists (bnode (Leaf (delete arrl i) leql (ltnW ueql)) (rnode (Leaf arrrl leqrl ueqrl) (Leaf arrrr leqrr ueqrr))).
-    rewrite nth_cat delete_cat.
-    case Hrl : (i - size arrl < size arrrl).
-    rewrite ltn_addr;last rewrite -(ltn_add2r (size arrl)) subnK in Hrl;last rewrite leqNgt Hl => //;last by rewrite addnC.
-     case bcrl : (w ^ 2 %/ 2 == size arrrl).
-      case bcrr : (w ^ 2 %/ 2 == size arrrr).
-       have ueqrr' : size ((delete arrrl (i - size arrl)) ++ arrrr) < 2 * w ^ 2.
-        move/eqP in bcrl. move/eqP in  bcrr.
-        rewrite size_cat size_delete // -bcrl -bcrr addnC -subn1 !addnBA;last by rewrite -bcrl in GUARDRL.
-        rewrite -(ltn_add2r 1) subnK;last by rewrite -bcrl -bcrr in GUARDR.
-        by rewrite addn1 (leqW (leq_divn2n_mul2 (w ^ 2) wordsize_sqrn_gt0)).
-       rewrite -addnBA // [size _ + _ - _]addsubnC //.
-       rewrite -addnBA;last rewrite leq_addln //;last exact: leq_nth_count.
-       rewrite [count_one _ + _ - _]addsubnC;last exact: leq_nth_count.
-       rewrite count_delete /count_one -!count_cat subn1 -(size_delete Hrl) /=.
-       rewrite -size_cat count_cat.
-       by exists (bnode (Leaf arrl leql ueql) (Leaf ((delete arrrl (i - size arrl)) ++ arrrr) (leq_size_catr _ (delete arrrl (i - size arrl)) arrrr leqrr) ueqrr')).
-      rewrite -(size_rcons_delete _ (access arrrr 0) Hrl) /= in leqrl,ueqrl.
-      rewrite leq_eqVlt bcrr (size_delete1 0) GUARDRR /= addn1 in leqrr,ueqrr.
-      rewrite addnA addsubnC;last by rewrite ltn_addrn //.
-      rewrite -addnBA // subn1 -(size_delete Hrl) /= -addnA.
-      rewrite [count_one _ + (_ + _)]addnA addsubnC;last rewrite leq_addrn //;last exact: leq_nth_count.
-      rewrite -addnBA;last exact: leq_nth_count.
-      rewrite count_delete -!size_cat -!count_cat -catA count_cat -(cat_head_behead (delete _ _)) // 2!size_cat count_cat.
-      by exists (bnode (Leaf arrl leql ueql) (rnode (Leaf (rcons (delete arrrl (i - size arrl)) (access arrrr 0)) leqrl ueqrl) (Leaf (delete arrrr 0) leqrr (ltnW ueqrr)))).
-     rewrite leq_eqVlt bcrl (size_delete1 (i - size arrl)) Hrl /= addn1 in leqrl,ueqrl.
-     rewrite -addnBA // [size _ + _ - _]addsubnC //.
-     rewrite -addnBA;last rewrite leq_addln //;last exact: leq_nth_count.
-     rewrite [count_one _ + _ - _]addsubnC;last exact: leq_nth_count.
-     rewrite count_delete /count_one -!count_cat subn1 -(size_delete Hrl) /= 2!count_cat.
-     by exists (bnode (Leaf arrl leql ueql) (rnode (Leaf (delete arrrl (i - size arrl)) leqrl (ltnW ueqrl)) (Leaf arrrr leqrr ueqrr))).
-    case Hrr : (i - size arrl - size arrrl < size arrrr).
-     move: (Hrr) => Hrr'.
-     rewrite -(ltn_add2r (size arrrl + size arrl)) addnA subnK in Hrr';last by rewrite leqNgt Hrl. 
-     rewrite subnK in Hrr';last by rewrite leqNgt Hl.
-     rewrite addnA addnC [size arrrr + _]addnC addnA in Hrr'.
-     rewrite Hrr' /=.
-     case bcrr : (w ^ 2 %/ 2 == size arrrr).
-      case bcrl : (w ^ 2 %/ 2 == size arrrl).
-       move: (leq_size_catr _ (delete arrrr (i - size arrl - size arrrl)) arrrl leqrl) => leqrr'.
-       rewrite size_cat addnC -size_cat in leqrr'.
-       have ueqrr' : size (arrrl ++ delete arrrr (i - size arrl - size arrrl)) < 2 * w ^ 2.
-        move/eqP in bcrl. move/eqP in  bcrr.
-        rewrite size_cat size_delete // -bcrl -bcrr addnC -subn1 -addsubnC;last by rewrite -bcrl in GUARDRL.
-        rewrite -(ltn_add2r 1) subnK;last by rewrite -bcrl -bcrr in GUARDR.
-        by rewrite addn1 (leqW (leq_divn2n_mul2 (w ^ 2) wordsize_sqrn_gt0)).
-       rewrite -!addnBA //;last rewrite leq_addrn //;last exact: leq_nth_count;last exact: leq_nth_count.
-       rewrite count_delete /count_one -!count_cat subn1 -(size_delete Hrr) /= -size_cat count_cat.
-       by exists (bnode (Leaf arrl leql ueql) (Leaf (arrrl ++ (delete arrrr (i - size arrl - size arrrl))) leqrr' ueqrr')).
-      rewrite leq_eqVlt bcrl (size_delete1 (size arrrl).-1) ltn_pred // addn1 /= in leqrl,ueqrl.
-      have leqrr' : w ^ 2 %/ 2 <= size ((access arrrl (size arrrl).-1) :: (delete arrrr (i - size arrl - size arrrl))). rewrite /= size_delete // prednK //.
-      have ueqrr' : size ((access arrrl (size arrrl).-1) :: (delete arrrr (i - size arrl - size arrrl))) < 2 * w ^ 2. rewrite /= size_delete // prednK //.
-      rewrite -!addnBA //;last exact: leq_addrn leq_nth_count => //;last exact: leq_nth_count.
-      rewrite count_delete -count_cat.
-      rewrite subn1 -(size_delete Hrr) -size_cat -cat_last_belast // size_cat count_cat.
-      by exists (bnode (Leaf arrl leql ueql) (rnode (Leaf (delete arrrl (size arrrl).-1) leqrl (ltnW ueqrl)) (Leaf ((access arrrl (size arrrl).-1) :: (delete arrrr (i - size arrl - size arrrl))) leqrr' ueqrr'))).
-      rewrite leq_eqVlt bcrr (size_delete1 (i - size arrl -size arrrl)) Hrr /= addn1 in leqrr,ueqrr.
-      rewrite -!addnBA //;last rewrite leq_addrn //;last exact: leq_nth_count;last exact: leq_nth_count.
-      rewrite count_delete /count_one -!count_cat subn1 -(size_delete Hrr) /= 2!count_cat.
-      by exists (bnode (Leaf arrl leql ueql) (rnode (Leaf arrrl leqrl ueqrl) (Leaf (delete arrrr (i - size arrl - size arrrl)) leqrr (ltnW ueqrr)))).
-     move: (Hrr) => Hrr'.
-     rewrite nth_default;last by rewrite leqNgt; move/negP/negP in Hrr.
-     rewrite -(ltn_add2r (size arrrl + size arrl)) addnA subnK in Hrr;last by rewrite leqNgt Hrl. 
-     rewrite subnK in Hrr;last by rewrite leqNgt Hl.
-     rewrite addnA addnC [size arrrr + _]addnC addnA in Hrr.
-     rewrite Hrr /= !subn0.
-     rewrite /delete drop_oversize //;last by apply: leqW; rewrite leqNgt Hrr'.
-     rewrite cats0 take_oversize //;last by rewrite leqNgt Hrr'.
-     by exists (bnode (Leaf arrl leql ueql) (rnode (Leaf arrrl leqrl ueqrl) (Leaf arrrr leqrr ueqrr))).
-  Defined.
-
   Definition delete_leaves2
              (arrl arrr : seq bool)
              (leql : w ^ 2 %/ 2 <= size arrl)
@@ -1433,6 +1069,113 @@ move/idP: b'eq; case: ifP => //; move/eqP => b'eq ?. move/idP: beq; case: ifP =>
    rewrite -(leq_add2r (size arrl)) subnK; last by rewrite leqNgt Hr.
    by rewrite leqNgt addnC Hrl.
   Defined.
+
+  Obligation Tactic := idtac.
+
+  Program Definition delete_leaves3
+             (arrl arrrl arrrr : seq bool)
+             (leql : w ^ 2 %/ 2 <= size arrl)
+             (ueql : size arrl < 2 * w ^ 2)
+             (leqrl : w ^ 2 %/ 2 <= size arrrl)
+             (ueqrl : size arrrl < 2 * w ^ 2)
+             (leqrr : w ^ 2 %/ 2 <= size arrrr)
+             (ueqrr : size arrrr < 2 * w ^ 2)
+             (i : nat) :
+    {B' : near_tree (size arrl + (size arrrl + size arrrr) - (i < size arrl + size arrrl + size arrrr))
+               (count_one arrl + (count_one arrrl + count_one arrrr) - nth false (arrl ++ arrrl ++ arrrr) i) 1 Black | dflattenn B' = delete (arrl ++ arrrl ++ arrrr) i} :=
+
+    match (i < size arrl), (i - size arrl - size arrrl < size arrrr) with 
+    | true,true => 
+      match (w ^ 2 %/ 2 == size arrl) with
+      | true => (balanceR Black (Leaf (rcons (delete arrl i) (access arrrl 0)) _ _) (delete_leaves2 arrrl arrrr leqrl ueqrl leqrr ueqrr 0) erefl erefl)
+      | false => (Good Black (bnode (Leaf (delete arrl i) leql (ltnW ueql)) (rnode (Leaf arrrl leqrl ueqrl) (Leaf arrrr leqrr ueqrr))))
+      end
+    | false,true =>
+      match (w ^ 2 %/ 2 == size arrrr) with
+      | true => (balanceL Black (delete_leaves2 arrl arrrl leql ueql leqrl ueqrl (size arrl + size arrrl).-1)
+                          (Leaf (access arrrl (size arrrl).-1 :: delete arrrr (i - size arrl - size arrrl)) _ _) erefl erefl)
+      | false => (Good Black (bnode (Leaf arrl leql ueql) (rnode (Leaf arrrl leqrl ueqrl) (Leaf (delete arrrr (i - size arrl - size arrrl)) _ _))))
+      end
+    | false,false => (Good Black (bnode (Leaf arrl leql ueql) (rnode (Leaf arrrl leqrl ueqrl) (Leaf arrrr leqrr ueqrr))))
+    | true,false => False_rec _ _
+    end.
+
+  Next Obligation. intros; rewrite size_rcons_delete //. Qed.
+  Next Obligation. intros; rewrite size_rcons_delete //. Qed.
+  Next Obligation.
+    move => l rl rr leql ? leqrl ? leqrr ? ? b beq b' b'eq b'' b''eq.
+    move : (sizeW _ leqrl) (sizeW _ leqrr) => ? ?.
+    rewrite !ltn_addln // size_rcons_delete // addnBA //.
+    by apply ltn_addrn.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ? leqrl ? leqrr ? i b b' beq b'eq ? ?.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    by rewrite -!count_cat !count_delete -!count_cat delete_cat (sizeW _ leqrl) [rcons _ _ ++ _ ++ _]catA cons_delete // -catA delete_cat -beq.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ? leqrl ? leqrr ? i b b' beq b'eq ? ?.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    rewrite /eq_rect; destruct delete_leaves3_obligation_4, delete_leaves3_obligation_3. 
+    set balR := (balanceR _ _ _ _ _).
+    set d2 := (delete_leaves2 _ _ _ _ _ _ _).
+    rewrite (proj2_sig balR) (proj2_sig d2) !delete_cat (sizeW _ leqrl) -beq -[RHS]cons_delete;last rewrite size_cat ltn_addrn //.
+    by rewrite !delete_cat /access nth_cat (sizeW _ leqrl).
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ? leqrl ? leqrr ? i ? ? ? ? b beq.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    move/idP: beq; case: ifP => //; move => beq ?.
+    by rewrite size_delete // leq_eqVlt beq -[RHS](leq_add2r 1) -subn1 subnK // addn1.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ueql leqrl ? leqrr ? i ? ? ? ? b beq.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    move/idP: beq; case: ifP => //; move => beq ?.
+    rewrite size_delete //.
+    rewrite -[RHS](ltn_add2r 1) -subn1 subnK // addn1 leq_eqVlt [RHS]leqW // ueql.
+    by apply/orP; apply or_intror.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ueql leqrl ? leqrr ? i ? ? ? ? b beq.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    by rewrite !ltn_addln // size_delete // addsubnC // subn1.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ueql leqrl ? leqrr ? i b ? beq ? ? ?.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    rewrite -count_delete !nth_cat -beq addsubnC //.
+    apply leq_nth_count.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ueql leqrl ? leqrr ? i b ? beq ? ? ?.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    rewrite /eq_rect; destruct delete_leaves3_obligation_9, delete_leaves3_obligation_8.
+    by rewrite delete_cat -beq.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ueql leqrl ? leqrr ? i ? b ? beq ? ?.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    rewrite /= size_delete // prednK //.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ueql leqrl ? leqrr ? i ? b ? beq ? ?.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    rewrite /= size_delete // prednK //.
+  Qed.
+  Next Obligation.
+    move => l rl rr leql ueql leqrl ? leqrr ? i ? b ? beq ? ?.
+    move : (sizeW _ leql) (sizeW _ leqrl) (sizeW _ leqrr) => ? ? ?. subst b.
+    rewrite ltn_pred;last apply ltn_addrn => //.
+    rewrite /= size_delete //.
+    rewrite leq_subLR in beq.
+    rewrite -subnDA -(ltn_add2r (size l + size rl)) in beq.
+    rewrite addnC in beq.
+    rewrite -beq prednK // -addsubnC //;last by rewrite ltn_addrn.
+    rewrite -!addnBA //;last by rewrite ltn_addrn.
+    by rewrite -addnA.
+    rewrite !ltn_addrn //.
+    by apply ltn_addrn.
 
   Lemma ltn_subln a b c : a < b + c -> c > 0 -> a - b < c.
   Proof.
