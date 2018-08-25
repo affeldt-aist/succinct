@@ -1348,17 +1348,19 @@ Section delete.
           set b := (if _ then _ else _) => del delK;
           rewrite /= -delK addsubnC // [_ + _ - b]addsubnC //;
           case (balanceL Black del r' erefl erefl) => res resK
-        | move: l (ltn_subln i s1 s2 val (sizeW' r)) => l' Hr; move: (leq_access_count r (i - s1) Hr) => ?;
+        | move: l val => l';
+          rewrite ltn_subln // => Hr;
+          move: (leq_access_count r (i - s1) Hr) => ?;
           destruct r as [| ? ? ? ? d' cl cr c ? ? l r] => //; destruct c,cl,cr,d' => //;
           case (delete_leaves2' l r (i - s1));
-          rewrite Hr val access_cat !dflatten_sizeK /= -!daccessK;
+          rewrite Hr access_cat !dflatten_sizeK /= -!daccessK;
           set b := (if _ then _ else _) => del delK;
           rewrite /= -delK -addnBA // -[(_ + _) - b]addnBA //;
           case (balanceR Black l' del erefl erefl) => res resK ]; rewrite -resK; by exists (Stay res)
       (* red,black or black,red *)
      | move: r => c; destruct l as [| ? ? ? ? d' cl cr c' ? ? a b] => //; destruct c',cl,cr,d' => // 
      | move: l => a; destruct r as [| ? ? ? ? d' cl cr c' ? ? b c] => //; destruct c',cl,cr,d' => //; rewrite !addnA ];
-     case (delete_leaves3' a b c i); rewrite /= !daccessK !delete_cat !access_cat !dflatten_sizeK;
+     case (delete_leaves3 a b c i); rewrite /= !daccessK !delete_cat !access_cat !dflatten_sizeK;
      case:ifP => H; 
       [ move => res resK;
         rewrite /= -catA;
@@ -1368,7 +1370,7 @@ Section delete.
                     | move/negP/negP : H2; move/negP/negP : H; rewrite -!leqNgt ltnNge => H; rewrite -(leq_add2r s1) subnK // addnC => H2; by rewrite H2
                     | rewrite !subnDA ]; rewrite /= -catA
       | move => res resK
-      | case:ifP => ? res resK ]; exists (Stay (Good Black res)); by rewrite /= resK.
+      | case:ifP => ? res resK ]; exists (Stay res); by rewrite /= resK.
    
    (* d <> 0 *)
    rewrite deq /= in ddelete.
@@ -1402,7 +1404,7 @@ Section delete.
      rewrite -catA -resK.
      by exists (Stay res).
     case (ddelete _ ltnSn _ _ r (i - s1)).
-    move: (ltn_subln i _ _ Hl (sizeW' r)) => Hr.
+    move: (Hl); rewrite ltn_subln // => Hr.
     move: (leq_access_count r (i - s1) Hr).
     set b := (daccess _ _).
     rewrite ltn_addln // Hr => ? dr dK. rewrite -dK.
@@ -1411,14 +1413,14 @@ Section delete.
     case (balanceLR l dr r') => res resK.
     rewrite -catA -resK. by exists (Stay res).
 
-   move: (ltn_subln i _ _ val (sizeW' r))  => Hr.
+   move: val; rewrite ltn_subln // => Hr.
    move: r l.
    case ceqr : cr;last first.
     case ceql : cl;
     move => r'; move: (leq_access_count r' (i - s1) Hr) => ?;
     case (ddelete _ ltnSn _ _ r' (i - s1));
     set b := (daccess _ _);
-    rewrite val Hr => dr dK;
+    rewrite Hr => dr dK;
     rewrite -dK -!addnBA //.
     (* red, black*)
     rewrite -deq -ceql => l. destruct l as [| s0 ? ? ? ? cl' cr' cl ? ? l r] => //; destruct cl,cl',cr' => //. move: deq l r => /= deq. rewrite deq => l r.
@@ -1434,16 +1436,16 @@ Section delete.
     case (ddelete _ ltnSn _ _ l (i - s1)).
     move: (leq_access_count l (i - s1) Hl').
     set b := (daccess _ _) => ?.
-    rewrite val Hl' => dl dK. rewrite -dK => {dK}.
+    rewrite Hr Hl' => dl dK. rewrite -dK => {dK}.
     rewrite !addnA addsubnC;last by rewrite leq_addrn.
     rewrite [_ + _ - b]addsubnC;last apply leq_addrn => //.
     rewrite -!addnBA //.
     case (balanceRL l' dl r) => res resK. rewrite -resK. by exists (Stay res).
    case (ddelete _ ltnSn  _ _ r (i - s1 - s3)).
-   move: (ltn_subln (i - s1) _ _ Hr (sizeW' r)) => Hr'.
+   move: Hr; rewrite addnA ltn_subln // => Hr'.
    move: (leq_access_count r (i - s1 - s3) Hr').
    set b := (daccess _ _) => ?.
-   rewrite val Hr' => dr dK. rewrite -dK => {dK}.
+   rewrite Hr' => dr dK. rewrite -dK => {dK}.
    rewrite -!addnBA //;last by apply leq_addrn => //.
    case (balanceRR l' l dr) => res resK. rewrite !addnA -resK. by exists (Stay res).
  Defined.
