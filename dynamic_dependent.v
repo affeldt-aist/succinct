@@ -537,7 +537,7 @@ Section set_clear.
 
   Next Obligation.
     intros; case Hi: (i < size s).
-      by rewrite /count_one /access (count_bit_set' false Hi) andbT.
+      by rewrite /count_one /access (count_bit_set false Hi) andbT addnC.
     by rewrite andbF addn0 bit_set_over //= leqNgt Hi.
   Qed.
 
