@@ -906,19 +906,20 @@ Section delete.
 
   Inductive near_tree' : nat -> nat -> nat -> color -> Type := 
   | Stay : forall {s o d c} p,
+      color_ok c (inv p) ->
       tree s o d c -> near_tree' s o d p
   | Down : forall {s o d},
       tree s o d Black -> near_tree' s o d.+1 Black.
 
   Definition dflattenn' {s o d c} (tr : near_tree' s o d c) :=
     match tr with
-    | Stay _ _ _ _ _ t => dflatten t
+    | Stay _ _ _ _ _ _ t => dflatten t
     | Down _ _ _ t =>  dflatten t
    end.
 
   Definition fix_color' {s o d c} (tr : near_tree' s o d c) :=
     match tr with
-    | Stay _ _ _ _ _ _ => Red
+    | Stay _ _ _ _ _ _ _ => Red
     | Down _ _ _ _ => Black
     end.
 
@@ -929,59 +930,6 @@ Section delete.
     destruct B as [|? ? ? ? ? cl cr c ? ? l r] => //.
     subst c. destruct cl,cr => //.
     by exists (bnode l r).
-  Defined.
-
-  Definition balanceR2 {s1 s2 o1 o2 d cr} (p : color)
-             (l : tree s1 o1 d.+1 Black)
-             (dr : near_tree' s2 o2 d.+1 cr) :
-    color_ok p (fix_color' dr) ->
-  {B' : near_tree' (s1 + s2) (o1 + o2) (inc_black d.+1 p) p |
-  dflattenn' B' = dflatten l ++ dflattenn' dr}.
-  Admitted.
-
-  (* TODO: refactor *)
-  Definition balanceL2 {s1 s2 o1 o2 d cl} (p : color)
-             (dl : near_tree' s1 o1 d.+1 cl)
-             (r : tree s2 o2 d.+1 Black) :
-    color_ok p (fix_color' dl) ->
-  {B' : near_tree' (s1 + s2) (o1 + o2) (inc_black d.+1 p) p |
-  dflattenn' B' = dflattenn' dl ++ dflatten r}.
-
-    destruct p.
-     move: dl r; remember_eq d.+1 d' deq; rewrite -deq => dl r.
-     destruct dl as [? ? d' c dl|? ? d' dl] => //;
-      move/eqP: deq dl r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => dl r {deq d'}.
-      move: dl r; remember_eq Black c' ceq; rewrite -ceq => dl r.
-      move: dl r; remember_eq d.+1 d' deq; rewrite -deq => dl r.
-      destruct r as [| ? ? ? ? ? crl ? c crlok ? rl rr] => //; subst c => ?.
-      destruct crl.
-       move: rl rr dl; remember_eq Red c' ceq; rewrite /= -ceq => rl rr dl.
-       destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //.
-       subst crl; destruct cl', cr' => //.
-       move/eqP: deq rll rlr rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rll rlr rr dl.
-       rewrite !addnA -![_ + _ + _ + _]addnA.
-       exists (Stay Red (rnode (bnode dl rll) (bnode rlr rr))).
-       by rewrite /= !catA.
-      move/eqP: deq rl rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rl rr dl.
-      rewrite !addnA /= !catA. 
-      by exists (Stay Red (bnode (rnode dl rl) rr)).
-    move => /= ?.
-    move: dl r; remember_eq d.+1 d' deq; rewrite -deq => dl r.
-    destruct dl as [? ? d' c ? dl|? ? d' dl];last first.
-     move/eqP: deq dl r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => dl r {deq d'}.
-     move: dl r; remember_eq Black c' ceq; remember_eq d.+1 d' deq; rewrite -ceq -deq => dl r.
-     destruct r as [| ? ? ? ? ? crl ? c crlok crrok rl rr] => //;subst c.
-      move/eqP: deq rl rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rl rr dl.
-      destruct crl.
-       move: rl rr dl; remember_eq Red c' ceq; rewrite -ceq => rl rr dl.
-       destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //;subst crl; destruct cl',cr' => //.
-       rewrite !addnA -![_ + _ + _ + _]addnA.
-       exists (Stay Black (bnode (bnode dl rll) (bnode rlr rr))).
-       by rewrite /= -!catA.
-      rewrite !addnA.
-      exists (Down (bnode (rnode dl rl) rr)).
-      by rewrite /= -!catA.
-      by exists (Stay Black (bnode dl r)).
   Defined.
 
   (* Definition balanceL2 {s1 s2 o1 o2 d} *)
@@ -1171,9 +1119,12 @@ Section delete.
   (*   About size_delete1. *)
   (*   exists (Leaf (delete a i) _ _). *)
 
+  Lemma xir_ok {c} : color_ok c (inv Red).
+  Proof. by rewrite /=;destruct c. Qed.
+
   Definition delete_leaves2 {s1 o1 s2 o2} p (l : tree s1 o1 0 Black) (r : tree s2 o2 0 Black) (i : nat) :
     {B' : near_tree' (s1 + s2 - (i < s1 + s2))
-                    (o1 + o2 - access (dflatten l ++ dflatten r) i) (is_black p) p | dflattenn' B' = delete (dflatten l ++ dflatten r) i}.
+                    (o1 + o2 - access (dflatten l ++ dflatten r) i) (inc_black 0 p) p | dflattenn' B' = delete (dflatten l ++ dflatten r) i}.
 
     move/eqP : wordsize_sqrn_div2_neq0 (sizeW' l) (sizeW' r); rewrite -lt0n => pos posl posr.
     remember_eq 0 d' deq; remember_eq Black c' ceq; move: l r; rewrite -ceq -deq => l; destruct l as [al leql ueql|]; last rewrite ceq /= // in deq.
@@ -1185,22 +1136,22 @@ Section delete.
       case bcr : (w ^ 2 %/ 2 == size ar).
        case (merge_arrays al ar i bcl bcr (ltn_addln _ _ _ Hl)).
        rewrite /access nth_cat Hl => res resK.
-       case: p;[ by exists (Stay Red res) | by exists (Down res)].
+       case: p;[ by exists (Stay Red xir_ok res) | by exists (Down res)].
       rewrite /=.
       rewrite leq_eqVlt bcr (size_delete1 0) posr /= addn1 in leqr,ueqr.
       rewrite -(size_rcons_delete i (access ar 0)) // in leql,ueql.
       rewrite addnC -addnBA // ltn_addrn // subn1 -(size_delete Hl) addnC -size_cat addsubnC;last exact: leq_nth_count.
       rewrite count_delete -count_cat -cat_head_behead // count_cat size_cat.
       case: p;
-        [ exists (Stay Red (rnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr))))
-        | exists (Stay Black (bnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr)))) ];
+        [ exists (Stay Red xir_ok (rnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr))))
+        | exists (Stay Black (bx_ok Red) (bnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr)))) ];
       by rewrite delete_cat Hl /= cat_head_behead.
      rewrite leq_eqVlt bcl (size_delete1 i) Hl /= addn1 in leql,ueql.
      rewrite addnC -addnBA // ltn_addrn // subn1 -(size_delete Hl) /= addnC addsubnC;last exact: leq_nth_count.
      rewrite count_delete.
       case: p;
-        [ exists (Stay Red (rnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr)))
-        | exists (Stay Black (bnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr))) ];
+        [ exists (Stay Red xir_ok (rnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr)))
+        | exists (Stay Black (bx_ok Red) (bnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr))) ];
      by rewrite delete_cat Hl.
     case Hrl : (i < size al + size ar).
      case bcr : (w ^ 2 %/ 2 == size ar).
@@ -1208,7 +1159,7 @@ Section delete.
        rewrite -Hrl.
        case (merge_arrays al ar i bcl bcr Hrl).
        rewrite /access nth_cat Hl => res resK.
-       case: p;[ by exists (Stay Red res) | by exists (Down res)].
+       case: p;[ by exists (Stay Red xir_ok res) | by exists (Down res)].
       rewrite leq_eqVlt bcl (size_delete1 (size al).-1) ltn_pred // addn1 /= in leql,ueql.
       move/eqP/eqP in bcl. move/eqP in bcr.
       have leqr' : w ^ 2 %/ 2 <= size ((access al (size al).-1) :: (delete ar (i - size al))).
@@ -1218,8 +1169,8 @@ Section delete.
      rewrite -!addnBA //;last by apply leq_nth_count.
      rewrite count_delete -count_cat /= subn1 [size ar](size_delete1 (i - size al)) -ltn_subln // Hrl -subn1 -addnBA // subnn addn0 -size_cat -cat_last_belast // size_cat count_cat.
       case: p;
-        [ exists (Stay Red (rnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr')))
-        | exists (Stay Black (bnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))) ];
+        [ exists (Stay Red xir_ok (rnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr')))
+        | exists (Stay Black (bx_ok Red) (bnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))) ];
      by rewrite delete_cat Hl /= cat_last_belast.
     rewrite /=.
     rewrite leq_eqVlt bcr (size_delete1 (i - size al)) -ltn_subln // Hrl addn1 /= in leqr,ueqr.
@@ -1227,16 +1178,87 @@ Section delete.
     rewrite count_delete subn1 [size ar](size_delete1 (i - size al)).
     rewrite -ltn_subln // Hrl -subn1 -addnBA // subnn addn0.
     case: p;
-      [ exists (Stay Red (rnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr))))
-      | exists (Stay Black (bnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr)))) ];
+      [ exists (Stay Red xir_ok (rnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr))))
+      | exists (Stay Black (bx_ok Red) (bnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr)))) ];
     by rewrite delete_cat Hl.
    rewrite /= nth_default;last rewrite ltn_subln // in Hrl;last by rewrite leqNgt Hrl.
    rewrite !subn0.
    case: p;
-     [ exists (Stay Red (rnode (Leaf al leql ueql) (Leaf ar leqr ueqr)))
-     | exists (Stay Black (bnode (Leaf al leql ueql) (Leaf ar leqr ueqr))) ];
+     [ exists (Stay Red xir_ok (rnode (Leaf al leql ueql) (Leaf ar leqr ueqr)))
+     | exists (Stay Black (bx_ok Red) (bnode (Leaf al leql ueql) (Leaf ar leqr ueqr))) ];
    by rewrite -delete_oversize // size_cat leqNgt Hrl.
   Defined.
+
+  Definition balanceR2 {s1 s2 o1 o2 d cl cr} (p : color)
+             (l : tree s1 o1 d cl)
+             (dr : near_tree' s2 o2 d cr) :
+    color_ok p cl ->
+    color_ok p cr ->
+  {B' : near_tree' (s1 + s2) (o1 + o2) (inc_black d p) p |
+  dflattenn' B' = dflatten l ++ dflattenn' dr}.
+  Admitted.
+
+  (* TODO: refactor *)
+  Definition balanceL2 {s1 s2 o1 o2 d cl cr} (p : color)
+             (dl : near_tree' s1 o1 d cl)
+             (r : tree s2 o2 d cr) :
+    color_ok p cl ->
+    color_ok p cr ->
+  {B' : near_tree' (s1 + s2) (o1 + o2) (inc_black d p) p |
+  dflattenn' B' = dflattenn' dl ++ dflatten r}.
+
+    destruct p.
+     destruct cl,cr => // ? ?.
+     move: dl r; remember_eq Black c' ceq; rewrite -ceq => dl r.
+     destruct dl as [? ? d' c p ? dl|? ? d' dl].
+      destruct p,c => //.
+      by exists (Stay Red xir_ok (rnode dl r)).
+     move: dl r => {ceq}; remember_eq Black c' ceq; remember_eq d'.+1 d'' deq; rewrite /= -deq -ceq => dl r.
+     destruct r as [| ? ? ? ? ? crl ? c crlok ? rl rr] => //; subst c.
+     destruct crl.
+      move: rl rr dl; remember_eq Red c' ceq; rewrite /= -ceq => rl rr dl.
+      destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //.
+      subst crl; destruct cl', cr' => //.
+      move/eqP: deq rll rlr rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rll rlr rr dl.
+      rewrite !addnA -![_ + _ + _ + _]addnA.
+      exists (Stay Red xir_ok (rnode (bnode dl rll) (bnode rlr rr))).
+      by rewrite /= !catA.
+     move/eqP: deq rl rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rl rr dl.
+     rewrite !addnA /= !catA. 
+     by exists (Stay Red xir_ok (bnode (rnode dl rl) rr)).
+    move => /= ? ?.
+    destruct dl as [? ? d' c ? ? dl|? ? d' dl];last first.
+     move: dl r; remember_eq Black c' ceq; remember_eq d'.+1 d'' deq; rewrite /= -ceq -deq => dl r.
+     destruct r as [| ? ? ? ? ? crl ? c crlok crrok rl rr] => //; subst c'.
+      destruct crl.
+       destruct c => //.
+       move/eqP: deq rl rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rl rr dl.
+       move: rl rr dl; remember_eq Red c' ceq; rewrite -ceq => rl rr dl.
+       destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //;subst crl; destruct cl',cr' => //.
+       rewrite !addnA -![_ + _ + _ + _]addnA.
+       exists (Stay Black (bx_ok Red) (bnode (bnode dl rll) (bnode rlr rr))).
+       by rewrite /= -!catA.
+      destruct c. 
+       destruct cr => //; rewrite /= in deq; subst d.
+       move: rl rr dl; remember_eq d'.+1 d deq; rewrite -deq => rl rr dl.
+       destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //; destruct crl => //.
+       rewrite !addnA -![_ + _ + _ + _]addnA.
+       move/eqP: deq rll rlr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rll rlr dl.
+       destruct cl';last first.
+        rewrite !addnA.
+        exists (Stay Black (bx_ok Red) (bnode (bnode (rnode dl rll) rlr) rr)).
+        by rewrite /= -!catA.
+       move: dl rll rlr rr ; remember_eq Red c' ceq; rewrite /= -ceq => dl rll rlr rr.
+       destruct rll as [| ? ? ? o3 ? crll crlr c ? ? rlll rllr] => //; destruct c,crll,crlr => //.
+       rewrite -!addnA ![_ + ( _ + (_ + (_ + _)))]addnA [X in _ + _ + X]addnA [o3 + (_ + _)]addnA.
+       exists (Stay Black (bx_ok Red) (bnode (bnode dl rlll) (rnode (bnode rllr rlr) rr))).
+       by rewrite /= -!catA.
+      move/eqP: deq dl rl rr; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => dl rl rr.
+      rewrite !addnA !catA.
+      by exists (Down (bnode (rnode dl rl) rr)).
+     by exists (Stay Black (bx_ok Red) (bnode dl r)).
+  Defined.
+
 
   Obligation Tactic := idtac.
 
@@ -1514,41 +1536,111 @@ Section delete.
 
 
   Definition rdel (d : nat) {num ones} (B : tree num ones d Red) i
-  (bdel : forall (d num ones : nat) (B : tree num ones d.+1 Black) (i : nat), {B' : near_tree' (num - (i < num)) (ones - daccess B i) d Black | dflattenn' B' = delete (dflatten B) i}) :
+  (bdel : forall (d num ones : nat) (c : color) (B : tree num ones d.+1 c) (i : nat), {B' : near_tree' (num - (i < num)) (ones - daccess B i) d.+1 c | dflattenn' B' = delete (dflatten B) i}) :
     { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) d Red | dflattenn' B' = delete (dflatten B) i}.
 
-  move: B; remember_eq Red c ceq; rewrite -ceq => B;
-  destruct B as [|? ? ? ? ? cl cr c ? ? l r] => //; destruct c,cl,cr => // {ceq}.
+    case val : (i < num);last first.
+     move/negP/negP : val. rewrite ltnNge. move/negPn => val.
+     rewrite daccess_default // !subn0 -delete_oversize;last by rewrite dflatten_sizeK.
+     by exists (Stay Red xir_ok B).
+    move: B; remember_eq Red c ceq; rewrite -ceq => B;
+    destruct B as [|? ? ? ? ? cl cr c ? ? l r] => //; destruct c,cl,cr => // {ceq}; move: (sizeW' l) (sizeW' r) => ? ?.
+    rewrite /=; case: ifP => H.
+     destruct l as [arrl leql ueql| ? ? ? ? ? ? ? cl' okll oklr ll lr].
+      case (delete_leaves2 Red (Leaf arrl leql ueql) r i); rewrite ltn_addln // access_cat daccessK /= H => res resK.
+      exists res; by rewrite -resK.
+     destruct cl' => //.
+     case (bdel _ _ _ _ (Node okll oklr ll lr) i); rewrite H; set b := (daccess _ _) => dl dK.
+     rewrite ![_ + _ + _ - _]addsubnC //;last rewrite leq_access_count //.
+     case (balanceL2 Red dl r erefl erefl) => res resK; exists res; by rewrite delete_cat resK dflatten_sizeK H dK.
+    destruct l as [arrl leql ueql| s1 ? s0 ? ? ? ? cl' okll oklr ll lr].
+     case (delete_leaves2 Red (Leaf arrl leql ueql) r i); rewrite val access_cat daccessK /= H => res resK.
+     exists res; by rewrite -resK.
+    destruct cl' => //.
+    case (bdel _ _ _ _ r (i - (s1 + s0))).
+    rewrite -ltn_subln // val; set b := (daccess _ _) => dr dK.
+    rewrite -!addnBA //; last rewrite leq_access_count // -ltn_subln //.
+    case (balanceR2 Red (Node okll oklr ll lr) dr erefl erefl) => res resK; exists res; by rewrite delete_cat resK dflatten_sizeK H dK.
+   Defined.
 
+  Lemma cic_ok {c} : color_ok c (inv c).
+  Proof. by destruct c. Qed.
 
-  Fixpoint ddelete (d : nat) {num ones c} (B : tree num ones d.+1 c) i : 
-    { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) d.+1 | dflattenn' B' = delete (dflatten B) i}.
-  Fixpoint bdel (d : nat) {num ones c} (B : tree num ones d.+1 c) i : 
-    { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) d.+1 | dflattenn' B' = delete (dflatten B) i}.
-
+  Fixpoint ddelete (d : nat) {num ones c} (B : tree num ones (inc_black d c) c) i : 
+    { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (inc_black d c) c | dflattenn' B' = delete (dflatten B) i}.
 
     (* move: num ones c B i; refine (Fix wf_nat (fun (d : nat) => forall (num ones : nat) (c : color) (B : tree num ones d.+1 c) (i : nat), _) _ _) => {d} d ddelete num ones c B i. *)
-    remember_eq d.+1 d' deq; move: B; rewrite -deq => B.
-    destruct B as [|s1 o1 s2 o2 d' cl cr c ? ? l r] => //.
-    move: (sizeW' l) (sizeW' r) => ? ?.
-    destruct c;last first.
-     rewrite /=; case: ifP => H.
-      destruct r as [arrr leqr ueqr | ? ? ? ? d' crl crr cr ? ? rl rr].
-      destruct cl;last first.
-       case (delete_leaves2 Black l (Leaf arrr leqr ueqr) i).
-       rewrite daccessK //; rewrite /= access_cat dflatten_sizeK H => res resK.
-       exists res; by rewrite -resK.
-      move: deq l; remember_eq Red c' ceq; remember_eq 0 z deq'; rewrite /= -ceq -deq' => deq l;
-      destruct l as [| ? ? ? ? d' cll clr c ? ? ll lr] => //;subst c; destruct cll,clr => //; rewrite /= in deq'; subst d'; move: (sizeW' ll) (sizeW' lr) => ? ?.
-      case (delete_leaves2 Red ll lr i); rewrite H ltn_addln // daccessK; set b := (access _ _ ) => dl dK.
-      rewrite ![_ + _ + _ - _]addsubnC //;last first.
-       subst b; rewrite access_cat -!daccessK dflatten_sizeK.
-       case: ifP => ?; [ rewrite leq_addln // leq_access_count // | rewrite leq_addrn // leq_access_count // ]; rewrite ltn_subln // in H.
-      move: deq lr ll b dl dK; remember_eq 0 z deq'; rewrite /= -deq' => deq lr ll b dl dK.
-      destruct dl as [? ? d'' ? dl|]=> //;subst d''.
-      exists (Stay (bnode dl (Leaf arrr leqr ueqr))).
-      by rewrite /= delete_cat size_cat !dflatten_sizeK H -dK.
-     rewrite leq_addln //.
+    case val : (i < num);last first.
+     move/negP/negP : val. rewrite ltnNge. move/negPn => val.
+     rewrite daccess_default // !subn0 -delete_oversize;last by rewrite dflatten_sizeK.
+     by exists (Stay c cic_ok B).
+    destruct c.
+     move: B; remember_eq Red c ceq; rewrite -ceq => B;
+     destruct B as [|? ? ? ? ? cl cr c ? ? l r]; [ done | subst c; destruct cr; [done|]; destruct cl; [done|] ]; move: (sizeW' l) (sizeW' r) => ? ? /=.
+     case: ifP => H.
+     destruct l as [arrl leql ueql| ? ? ? ? ? ? ? cl' okll oklr ll lr].
+      case (delete_leaves2 Red (Leaf arrl leql ueql) r i); rewrite ltn_addln // access_cat daccessK /= H => res resK.
+      exists res; by rewrite -resK.
+     destruct cl' => //.
+     case (ddelete _ _ _ _ (Node okll oklr ll lr) i); rewrite H; set b := (daccess _ _) => dl dK.
+     rewrite ![_ + _ + _ - _]addsubnC //; last subst b; last rewrite leq_access_count //.
+     case (balanceL2 Red dl r erefl erefl) => res resK; exists res; by rewrite delete_cat resK dflatten_sizeK H dK.
+    destruct l as [arrl leql ueql| s1 ? s0 ? ? ? ? cl' okll oklr ll lr].
+     case (delete_leaves2 Red (Leaf arrl leql ueql) r i); rewrite val access_cat daccessK /= H => res resK.
+     exists res; by rewrite -resK.
+    destruct cl' => //.
+    case (ddelete _ _ _ _ r (i - (s1 + s0))).
+    rewrite -ltn_subln // val; set b := (daccess _ _) => dr dK.
+    rewrite -!addnBA //; last rewrite leq_access_count // -ltn_subln //.
+    case (balanceR2 Red (Node okll oklr ll lr) dr erefl erefl) => res resK; exists res; by rewrite delete_cat resK dflatten_sizeK H dK.
+
+    remember_eq d.+1 d' deq; move: B; rewrite /= -deq => B; 
+    destruct B as [|s1 o1 s2 o2 d' cl cr c cclok ccrok l r] => //; move: (sizeW' l) (sizeW' r) => ? ? /=.
+    case: ifP => H.
+     destruct r as [arrr leqr ueqr | ? ? ? ? d' crl crr cr crlok crrok rl rr].
+     destruct cl;last first.
+      case (delete_leaves2 c l (Leaf arrr leqr ueqr) i).
+      rewrite daccessK //; rewrite /= access_cat dflatten_sizeK ltn_addln // H => res resK.
+      exists res; by rewrite -resK.
+     destruct c => //.
+     move: deq l; remember_eq Red c' ceq; remember_eq 0 z deq'; rewrite /= -ceq -deq' => deq l;
+     destruct l as [| ? ? ? ? d' cll clr c ? ? ll lr] => //;subst c; destruct cll,clr => //; rewrite /= in deq'; subst d'; move: (sizeW' ll) (sizeW' lr) => ? ?.
+     case (delete_leaves2 Red ll lr i); rewrite H  // daccessK; set b := (access _ _ ) => dl dK.
+     rewrite ![_ + _ + _ - _]addsubnC //;last first.
+      subst b; rewrite access_cat -!daccessK dflatten_sizeK.
+      case: ifP => ?; [ rewrite leq_addln // leq_access_count // | rewrite leq_addrn // leq_access_count // ]; rewrite ltn_subln // in H.
+     move: deq lr ll b dl dK; remember_eq 0 z deq'; rewrite /= -deq' => deq lr ll b dl dK.
+     destruct dl as [? ? d'' ? ? ? dl|]=> //;subst d''.
+     exists (Stay Black (bx_ok Red) (bnode dl (Leaf arrr leqr ueqr))).
+     by rewrite /= delete_cat size_cat !dflatten_sizeK H -dK.
+     destruct cr;last first.
+      destruct cl; [ move: l => /= l; case (ddelete _ _ _ Red l i) | case (ddelete _ _ _ _ l i) ];
+      rewrite H => dl dK;
+      case (balanceL2 c dl (Node crlok crrok rl rr) cclok ccrok) => res resK;
+      rewrite delete_cat dflatten_sizeK H -dK -resK !addsubnC //; [| rewrite leq_access_count // | | rewrite leq_access_count //];
+      by exists res.
+     destruct c,crl,crr => //.
+     destruct cl.
+      case (ddelete _ _ _ _ l i).
+      move: l; remember_eq Red c' ceq; rewrite /= -ceq H => l dl; subst c'.
+      case (balanceL2 Black dl (rnode rl rr) cclok ccrok).
+      rewrite -!addsubnC //; last rewrite leq_access_count //.
+      move => res resK dK.
+      exists res.
+      by rewrite resK dK delete_cat dflatten_sizeK H.
+     case (ddelete _ _ _ _ (rnode l rl) i).
+     rewrite ltn_addln // /= H => dl dK.
+     rewrite !addnA ![_ + _ + _ - _]addsubnC; last rewrite ltn_addln //; last rewrite leq_addln // leq_access_count //.
+     case (balanceL2 Black dl rr cclok cclok) => /= res resK.
+     exists res.
+     by rewrite resK dK !delete_cat !dflatten_sizeK H -!catA.
+      cclok
+      destruct dl as [? ? ? ? p ? dl|] => //; subst p.
+      Check (Stay Black _ (bnode dl 
+     => /= dl {deq}.
+      move: l dl => /= l dl.
+     dK.
+      case (balanceL2 Black dl (rnode rl rr)) => res resK.
      destruct cr. destruct crl,crr => //.
      move/eqP: deq l rl rr; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l rl rr;subst d.
     rewrite daccessK.
