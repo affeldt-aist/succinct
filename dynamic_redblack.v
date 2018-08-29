@@ -274,10 +274,7 @@ Section insert.
 
   Lemma dinsertE (B : dtree) b i w :
     wf_dtree B -> dflatten (dinsert B b i w) = insert1 (dflatten B) b i.
-  Proof.
-    move => wf. rewrite /dinsert. rewrite -(dinsE b i w wf).
-    by case: (dins B b i w).
-  Qed.
+  Proof. move => wf. rewrite /dinsert -(dinsE b i w wf). by case: dins. Qed.
 
   (* Well-foundedness lemmas
    * Show that dinsert always returns a well-founded tree
@@ -329,10 +326,9 @@ Section insert.
     wf_dtree B -> wf_dtree (dinsert B b i w).
   Proof.
     move => wf. rewrite /dinsert.
-    case Hins: (dins B b i w) => [c l [num ones] r | s].
-      apply: (@color_black_wf c (num, ones) l r).
-      by rewrite -Hins dins_wf.
-    by rewrite /wf_dtree.
+    case Hins: (dins B b i w) => [c l [num ones] r | s] //.
+    apply: (@color_black_wf c (num, ones) l r).
+    by rewrite -Hins dins_wf.
   Qed.
 
   Lemma dinsert_rank (B : dtree) b i w j :
