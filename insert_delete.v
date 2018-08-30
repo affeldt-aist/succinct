@@ -70,11 +70,10 @@ Section insert_delete.
                             else nth x0 s n.
   Proof.
     elim: s n i => [|h t IHt] //= n i.
-    by rewrite delete_nil nth_nil if_same.
-      rewrite /delete. rewrite /delete in IHt.
-      case: i => //=. by rewrite drop0.
-      move => i. case: n => // n.
-        by rewrite ltnS -IHt.
+      by rewrite delete_nil nth_nil if_same.
+    rewrite /delete in IHt *.
+    case: i => /= [|i]. by rewrite drop0.
+    case: n => // n. by rewrite ltnS -IHt.
   Qed.
   
   Lemma size_delete (s : seq T) i :
@@ -82,7 +81,7 @@ Section insert_delete.
   Proof.
     rewrite /delete size_cat size_take size_drop => Hi.
     rewrite Hi -addn1 -subn1 addnBA addnC //=.
-      by rewrite subnDA addnK.
+    by rewrite subnDA addnK.
   Qed.
     
   Lemma delete_insert1 (s : seq T) x i :
@@ -143,7 +142,7 @@ Section delete_with_return.
   Variable T : Type.
   
   Definition delete_ret x0 (s : seq T) i := (take i s ++ drop (i.+1) s,
-                                          nth x0 s i).
+                                             nth x0 s i).
 
   Lemma delete_delete_ret x0 (s : seq T) i :
     delete_ret x0 s i = (delete s i, nth x0 s i).
@@ -152,17 +151,17 @@ Section delete_with_return.
   Lemma delete_ret_oversize x0 (s : seq T) i :
     i >= size s -> delete_ret x0 s i = (s, x0).
   Proof.
-    move => H. rewrite /delete_ret take_oversize. rewrite drop_oversize.
-    by rewrite cats0 nth_default. apply: leq_trans. apply: H. exact: leqnSn.
-    exact: H.  
+    move => H.
+    rewrite /delete_ret take_oversize // drop_oversize.
+      by rewrite cats0 nth_default.
+    by apply (leq_trans H).
   Qed.
 
   Lemma delete_ret_insert1 x0 (s : seq T) x i :
     i <= size s -> delete_ret x0 (insert1 s x i) i = (s, x).
   Proof.
     move => His.
-    rewrite delete_delete_ret. rewrite delete_insert1. by rewrite nth_insert1.
-    exact: His.
+    by rewrite delete_delete_ret delete_insert1 ?nth_insert1.
   Qed.
     
 End delete_with_return.
