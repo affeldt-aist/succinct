@@ -95,9 +95,9 @@ Section insert.
 
   (* Xuanrui: I see no point to define fix_color in Ltac...
    * Gallina would be much more readable here
-   * Kazunari: I totally agree. sorry for being lazy. 
+   * Kazunari: I totally agree. sorry for being lazy.
    *)
-  
+
   Definition fix_color {nl ml d c} (l : near_tree nl ml d c) :=
     match l with
     | Bad _ _ _ _ _ _ _ _ _ _ => Red
@@ -117,7 +117,7 @@ Section insert.
     | Bad _ _ _ _ _ _ _ x y z => bnode (rnode x y) z
     | Good _ _ _ _ _ t' => t'
     end.
-  
+
   Fixpoint dflatten {n m d c} (B : tree n m d c) :=
     match B with
     | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
@@ -129,7 +129,7 @@ Section insert.
     elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
     by rewrite size_cat IHl IHr.
   Qed.
-  
+
   Definition dflattenn {n m d c} (B : near_tree n m d c) :=
     match B with
     | Bad _ _ _ _ _ _ _ x y z => dflatten x ++ dflatten y ++ dflatten z
@@ -208,7 +208,7 @@ Section insert.
       then proj1_sig (balanceL c (dinsert' l b i w) r _ okr)
       else proj1_sig (balanceR c l (dinsert' r b (i - s1) w) okl _)
     end.
-  
+
   Next Obligation. by rewrite -size_cat cat_take_drop. Qed.
 
   Next Obligation. by rewrite -count_cat cat_take_drop. Qed.
@@ -267,15 +267,15 @@ Section insert.
   Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
-  
+
   Lemma dinsertK n m d c (B : tree n m d c) b i w :
     dflatten (dinsert B b i w) = insert1 (dflatten B) b i.
   Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i w)). Qed.
-  
+
 End insert.
 
 Section query.
-  
+
   Fixpoint daccess {n m d c} (tr : tree n m d c) i :=
     match tr with
     | Leaf s => nth false s i
@@ -299,7 +299,7 @@ Section query.
     | Leaf s => select false i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
       let zeroes := s1 - o1
-      in if i <= zeroes 
+      in if i <= zeroes
       then dselect_0 l i
       else s1 + dselect_0 r (i - zeroes)
     end.
@@ -345,13 +345,13 @@ Section query.
       by rewrite count_mem_false_true.
     by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
   Qed.
-    
+
   Lemma dflatten_rank num ones d c (B : tree num ones d c) :
     ones = rank true num (dflatten B).
   Proof.
     by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
   Qed.
-    
+
   Lemma daccessK nums ones d c (B : tree nums ones d c) :
     daccess B =1 access (dflatten B).
   Proof.
@@ -377,7 +377,7 @@ Section query.
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size. 
+    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
   Qed.
 
   Lemma dselect0K nums ones d c (B : tree nums ones d c) i :
@@ -386,19 +386,19 @@ Section query.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite select_cat -dflatten_zeroes IHl IHr -dflatten_size.
   Qed.
-  
+
 End query.
 
 (* Section added by Xuanrui
  * because I wanted to experiment with this version as well...
- * 
+ *
  * Feel free to comment this out or remove this...
  *)
 Require Import Compare_dec.
 
 Section set_clear.
   Obligation Tactic := idtac.
-  
+
   Program Fixpoint bset num ones d c (B : tree num ones d c) i
     {measure (size_of_tree B)} :
     { B'b : (tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool)
@@ -415,12 +415,12 @@ Section set_clear.
         in (Node col cor l x.1, x.2)
       end
     end.
-  
+
   Next Obligation. intros; apply: size_bit_set. Qed.
 
   Next Obligation.
     intros; case Hi: (i < size s).
-      by rewrite /count_one /access (count_bit_set' false Hi) andbT.
+      by rewrite /count_one /access (count_bit_set false Hi) andbT addnC.
     by rewrite andbF addn0 bit_set_over //= leqNgt Hi.
   Qed.
 
@@ -485,10 +485,10 @@ Section set_clear.
   Qed.
 
   Next Obligation. intuition. Qed.
-                   
+
 End set_clear.
 
-(* 
+(*
 Extraction dinsert'_func.
-Extraction bset_func. 
+Extraction bset_func.
 *)

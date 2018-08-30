@@ -148,9 +148,9 @@ Section insert.
 
   (* Xuanrui: I see no point to define fix_color in Ltac...
    * Gallina would be much more readable here
-   * Kazunari: I totally agree. sorry for being lazy. 
+   * Kazunari: I totally agree. sorry for being lazy.
    *)
-  
+
   Definition fix_color {nl ml d c} (l : near_tree nl ml d c) :=
     match l with
     | Bad _ _ _ _ _ _ _ _ _ _ => Red
@@ -170,7 +170,7 @@ Section insert.
     | Bad _ _ _ _ _ _ _ x y z => bnode (rnode x y) z
     | Good _ _ _ _ _ t' => t'
     end.
-  
+
   Fixpoint dflatten {n m d c} (B : tree n m d c) :=
     match B with
     | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
@@ -189,7 +189,7 @@ Section insert.
     rewrite /count_one in IHl,IHr.
     by rewrite /count_one count_cat IHl IHr.
   Qed.
-  
+
   Definition dflattenn {n m d c} (B : near_tree n m d c) :=
     match B with
     | Bad _ _ _ _ _ _ _ x y z => dflatten x ++ dflatten y ++ dflatten z
@@ -198,7 +198,7 @@ Section insert.
 
   Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree nl ml d cl) (r : tree nr mr d cr) :
     color_ok p (fix_color l) (* important claim! *) ->
-    color_ok p cr -> 
+    color_ok p cr ->
     {tr : near_tree (nl + nr) (ml + mr) (inc_black d p) p | dflattenn tr = dflattenn l ++ dflatten r}.
 
     destruct l as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc l'].
@@ -269,7 +269,7 @@ Section insert.
       then proj1_sig (balanceL c (dinsert' l b i) r _ okr)
       else proj1_sig (balanceR c l (dinsert' r b (i - s1)) okl _)
     end.
-  
+
   Next Obligation.
     move/eqP/eqnP : Heq_anonymous => /=.
     rewrite size_take size_insert1.
@@ -293,14 +293,14 @@ Section insert.
     by rewrite H3.
   Qed.
 
-  Next Obligation. 
+  Next Obligation.
     move/eqP/eqnP : Heq_anonymous => /=.
     rewrite size_drop size_insert1.
     move => H.
     by rewrite H mulKn // mulSn mul1n -addnBA // subnKC // leq_div.
   Qed.
 
-  Next Obligation. 
+  Next Obligation.
     move/eqP/eqnP : Heq_anonymous => /=.
     rewrite size_drop size_insert1.
     move => H.
@@ -380,15 +380,15 @@ Section insert.
   Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
-  
+
   Lemma dinsertK n m d c (B : tree n m d c) b i :
     dflatten (dinsert B b i) = insert1 (dflatten B) b i.
   Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i)). Qed.
-  
+
 End insert.
 
 Section query.
-  
+
   Fixpoint daccess {n m d c} (tr : tree n m d c) i :=
     match tr with
     | Leaf s _ _ => nth false s i
@@ -412,7 +412,7 @@ Section query.
     | Leaf s _ _ => select false i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
       let zeroes := s1 - o1
-      in if i <= zeroes 
+      in if i <= zeroes
       then dselect_0 l i
       else s1 + dselect_0 r (i - zeroes)
     end.
@@ -458,13 +458,13 @@ Section query.
       by rewrite count_mem_false_true.
     by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
   Qed.
-    
+
   Lemma dflatten_rank num ones d c (B : tree num ones d c) :
     ones = rank true num (dflatten B).
   Proof.
     by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
   Qed.
-    
+
   Lemma daccessK nums ones d c (B : tree nums ones d c) :
     daccess B =1 access (dflatten B).
   Proof.
@@ -490,7 +490,7 @@ Section query.
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size. 
+    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
   Qed.
 
   Lemma dselect0K nums ones d c (B : tree nums ones d c) i :
@@ -499,19 +499,19 @@ Section query.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite select_cat -dflatten_zeroes IHl IHr -dflatten_size.
   Qed.
-  
+
 End query.
 
 (* Section added by Xuanrui
  * because I wanted to experiment with this version as well...
- * 
+ *
  * Feel free to comment this out or remove this...
  *)
 Require Import Compare_dec.
 
 Section set_clear.
   Obligation Tactic := idtac.
-  
+
   Program Fixpoint bset {num ones d c} (B : tree num ones d c) i
     {measure (size_of_tree B)} :
     { B'b : (tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool)
@@ -532,12 +532,12 @@ Section set_clear.
   Next Obligation. intros. by rewrite size_bit_set. Qed.
 
   Next Obligation. intros. by rewrite size_bit_set. Qed.
-  
+
   Next Obligation. intros; apply: size_bit_set. Qed.
 
   Next Obligation.
     intros; case Hi: (i < size s).
-      by rewrite /count_one /access (count_bit_set' false Hi) andbT.
+      by rewrite /count_one /access (count_bit_set false Hi) andbT addnC.
     by rewrite andbF addn0 bit_set_over //= leqNgt Hi.
   Qed.
 
@@ -600,24 +600,24 @@ Section set_clear.
   Qed.
 
   Next Obligation. intuition. Qed.
-                   
+
 End set_clear.
 
 Section delete.
 
-  Definition wordsize_ok {num ones d c} (B : tree num ones d c) : bool := 
+  Definition wordsize_ok {num ones d c} (B : tree num ones d c) : bool :=
     match B with
     | Leaf s _ _ => ((w ^ 2) %/ 2 < (size s)) && (2 * (w ^ 2) >= (size s))
     | Node s1 o1 s2 o2 _ _ _ _ okl okr l r => true
     end.
 
-  Definition is_node {num ones d c} (B : tree num ones d c) : bool := 
+  Definition is_node {num ones d c} (B : tree num ones d c) : bool :=
     match B with
     | Leaf s _ _ => false
     | Node s1 o1 s2 o2 _ _ _ _ okl okr l r => true
     end.
 
-  Definition is_leaf {num ones d c} (B : tree num ones d c) : bool := 
+  Definition is_leaf {num ones d c} (B : tree num ones d c) : bool :=
     match B with
     | Leaf s _ _ => true
     | Node s1 o1 s2 o2 _ _ _ _ okl okr l r => false
@@ -762,7 +762,7 @@ Section delete.
     case arr'' => //.
   Qed.
 
-  Lemma cons_delete {i} (arr arr' : seq bool) : 0 < size arr' -> 
+  Lemma cons_delete {i} (arr arr' : seq bool) : 0 < size arr' ->
                                                 (rcons (delete arr i) (access arr' 0)) ++ (delete arr' 0) = (delete arr i) ++ arr'.
   Proof. move => H. rewrite !cat_rcons -!catA -cat_cons take0 drop1 /= cons_head_behead //. Qed.
 
@@ -904,7 +904,7 @@ Section delete.
     exact: (ltn_trans ltn2 H).
   Qed.
 
-  Inductive near_tree' : nat -> nat -> nat -> color -> Type := 
+  Inductive near_tree' : nat -> nat -> nat -> color -> Type :=
   | Stay : forall {s o d},
       near_tree s o d.+1 Black -> near_tree' s o d Black
   | Down : forall {s o d},
@@ -1078,7 +1078,7 @@ Section delete.
      exists (Good Black (rnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))).
      by rewrite delete_cat Hl /= cat_last_belast.
     rewrite /=.
-    rewrite leq_eqVlt bcr (size_delete1 (i - size al)) -ltn_subln // Hrl addn1 /= in leqr,ueqr. 
+    rewrite leq_eqVlt bcr (size_delete1 (i - size al)) -ltn_subln // Hrl addn1 /= in leqr,ueqr.
     rewrite -!addnBA //;last exact: leq_nth_count.
     rewrite count_delete subn1 [size ar](size_delete1 (i - size al)).
     rewrite -ltn_subln // Hrl -subn1 -addnBA // subnn addn0.
@@ -1095,8 +1095,8 @@ Section delete.
   Program Definition delete_leaves3 {s1 o1 s2 o2 s3 o3} (t1 : tree s1 o1 0 Black) (t2 : tree s2 o2 0 Black) (t3 : tree s3 o3 0 Black) (i : nat) :
     {B' : near_tree (s1 + s2 + s3 - (i < s1 + s2 + s3)) (o1 + o2 + o3 - access (dflatten t1 ++ dflatten t2 ++ dflatten t3) i) 1 Black | dflattenn B' = delete (dflatten t1 ++ dflatten t2 ++ dflatten t3) i} :=
 
-    match (i < s1), (i - s1 - s2 < s3) with 
-    | true,true => 
+    match (i < s1), (i - s1 - s2 < s3) with
+    | true,true =>
       (balanceL Black (delete_leaves2 t1 t2 i) t3 erefl erefl)
     | false,true =>
       (balanceR Black t1 (delete_leaves2 t2 t3 (i - s1)) erefl erefl)
@@ -1136,7 +1136,7 @@ Section delete.
     rewrite /eq_rect; destruct delete_leaves3_obligation_5,delete_leaves3_obligation_4.
     set balR := (balanceR _ _ _ _ _).
     set d2 := (delete_leaves2 _ _ _).
-    by rewrite (proj2_sig balR) (proj2_sig d2) !delete_cat !dflatten_sizeK -!H1. 
+    by rewrite (proj2_sig balR) (proj2_sig d2) !delete_cat !dflatten_sizeK -!H1.
   Qed.
   Next Obligation.
     move => s1 o1 s2 o2 s3 o3 t1 t2 t3 i H1' H2' H1 H2; subst H1' H2'; move : (sizeW' t1) (sizeW' t2) (sizeW' t3) => ? ? ?.
@@ -1170,7 +1170,7 @@ Section delete.
   Definition balanceLR {n s1 s2 s3 o1 o2 o3} {cr}
              (l : tree s1 o1 n.+1 Black)
              (dr : near_tree' s2 o2 n Black)
-             (r' : tree s3 o3 n.+1 cr) : 
+             (r' : tree s3 o3 n.+1 cr) :
   {B' : near_tree (s1 + s2 + s3) (o1 + o2 + o3) n.+2 Black
   | dflattenn B' = dflatten l ++ dflattenn' dr ++ dflatten r'}.
 
@@ -1183,13 +1183,13 @@ Section delete.
     (* dr = Stay, drc = Black *)
     by exists (Good Black (bnode (rnode l dr) r')).
     (* dr = Down, drc = Red *)
-    case (black_of_red dr) => blacken bK. exists (Good Black (bnode (rnode l blacken) r')). by rewrite -bK. 
+    case (black_of_red dr) => blacken bK. exists (Good Black (bnode (rnode l blacken) r')). by rewrite -bK.
    (* dr = Down, drc = Black *)
    move: l dr r'. rewrite -deq -ceq => l; destruct l as [|? ? ? ? ? cl' cr' c ? ? l r] => //; destruct c => //;
    destruct cr'; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r dr r'; rewrite /= -!catA [dflatten r ++ _ ++ _]catA catA -[s1 + _ + _]addnA -[o1 + _ + _]addnA.
     case (makeBadL r dr) => bad badK. case (balanceR Black l bad erefl erefl) => fst fstK. rewrite -badK -fstK.
     exact (balanceL Black fst r' erefl erefl).
-   by exists (Good Black (bnode (bnode l (rnode r dr)) r')). 
+   by exists (Good Black (bnode (bnode l (rnode r dr)) r')).
   Defined.
 
   Definition balanceLL {n s1 s2 s3 o1 o2 o3} {cr}
@@ -1208,7 +1208,7 @@ Section delete.
      case (black_of_red dl) => blacken bK. rewrite -bK. by exists (Good Black (bnode (rnode blacken r) r')).
     move: r dl r'. rewrite -deq -ceq => r. destruct r as [|? ? ? ? ? cl' cr' c ? ? l r] => //. destruct c => //.
     destruct cl'; move/eqP: deq l r; rewrite /= eqSS; move/eqP => /= deq; rewrite deq => l r dl r'; rewrite !addnA !catA.
-     case (makeBadR dl l) => bad badK. case (balanceL Black bad r erefl erefl) => fst fstK. rewrite -badK -fstK. 
+     case (makeBadR dl l) => bad badK. case (balanceL Black bad r erefl erefl) => fst fstK. rewrite -badK -fstK.
      exact (balanceL Black fst r' erefl erefl).
     by exists (Good Black (bnode (bnode (rnode dl l) r) r')).
   Defined.
@@ -1224,7 +1224,7 @@ Section delete.
     destruct dl as [? ? ? dl|? ? ? dl]; move: l' dl r; rewrite /= -ceq -deq => l' dl r;
      destruct dl as [|? ? ? dlc ? dl] => //; move: l' dl r; rewrite /= ceq deq => l' dl r; destruct dlc; rewrite -!addnA.
       case (makeBadL dl r) => bad badK. rewrite -badK.
-      exact (balanceR Black l' bad erefl erefl). 
+      exact (balanceR Black l' bad erefl erefl).
      by exists (Good Black (bnode l' (rnode dl r))).
      case (black_of_red dl) => blacken bK. rewrite -bK.
      by exists (Good Black (bnode l' (rnode blacken r))).
@@ -1259,7 +1259,7 @@ Section delete.
 
   Definition balanceL2 {s1 s2 o1 o2 d}
              (dl : near_tree' s1 o1 d Black)
-             (r : tree s2 o2 d.+1 Black) : 
+             (r : tree s2 o2 d.+1 Black) :
   {B' : near_tree' (s1 + s2) (o1 + o2) d.+1 Black |
   dflattenn' B' = dflattenn' dl ++ dflatten r}.
 
@@ -1279,7 +1279,7 @@ Section delete.
 
   Definition balanceR2 {s1 s2 o1 o2 d}
              (l : tree s1 o1 d.+1 Black)
-             (dr : near_tree' s2 o2 d Black) : 
+             (dr : near_tree' s2 o2 d Black) :
   {B' : near_tree' (s1 + s2) (o1 + o2) d.+1 Black |
   dflattenn' B' = dflatten l ++ dflattenn' dr}.
 
@@ -1287,7 +1287,7 @@ Section delete.
    destruct dr as [? ? ? dr|? ? ? dr].
     case (balanceR Black l dr erefl erefl) => res resK. by exists (Stay res).
    move: dr l. rewrite /= -ceq -deq => dr l. destruct dr as [|? ? ? drc ? dr] => //. destruct drc.
-    move: l. rewrite /= ceq deq /= => l. 
+    move: l. rewrite /= ceq deq /= => l.
     case (black_of_red dr) => blacken bK. rewrite -bK.
     by exists (Down (Good Black (rnode l blacken))).
    destruct l as [| ? ? ? ? ? ? clr c ? ? ll lr] => //. subst c. move/eqP: deq dr. rewrite /= eqSS. move/eqP => /= deq. rewrite -deq => dr.
@@ -1317,7 +1317,7 @@ Section delete.
     apply Acc_intro => m. move/leP. move: m. apply wf_nat'.
   Qed.
 
-  Definition ddelete (d : nat) {num ones} (B : tree num ones d.+1 Black) i : 
+  Definition ddelete (d : nat) {num ones} (B : tree num ones d.+1 Black) i :
     { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) d Black | dflattenn' B' = delete (dflatten B) i}.
 
     move: num ones B i.
@@ -1360,20 +1360,20 @@ Section delete.
           rewrite /= -delK -addnBA // -[(_ + _) - b]addnBA //;
           case (balanceR Black l' del erefl erefl) => res resK ]; rewrite -resK; by exists (Stay res)
       (* red,black or black,red *)
-     | move: r => c; destruct l as [| ? ? ? ? d' cl cr c' ? ? a b] => //; destruct c',cl,cr,d' => // 
+     | move: r => c; destruct l as [| ? ? ? ? d' cl cr c' ? ? a b] => //; destruct c',cl,cr,d' => //
      | move: l => a; destruct r as [| ? ? ? ? d' cl cr c' ? ? b c] => //; destruct c',cl,cr,d' => //; rewrite !addnA ];
      case (delete_leaves3 a b c i); rewrite /= !daccessK !delete_cat !access_cat !dflatten_sizeK;
-     case:ifP => H; 
+     case:ifP => H;
       [ move => res resK;
         rewrite /= -catA;
         case:ifP;last by rewrite ltn_addln //
       | case: ifP => H2 res resK; case: ifP; [
-                    | move/negP/negP : H; rewrite ltnNge; move/negPn => H; rewrite -(ltn_add2r s1) subnK // addnC in H2; by rewrite H2 
+                    | move/negP/negP : H; rewrite ltnNge; move/negPn => H; rewrite -(ltn_add2r s1) subnK // addnC in H2; by rewrite H2
                     | move/negP/negP : H2; move/negP/negP : H; rewrite -!leqNgt ltnNge => H; rewrite -(leq_add2r s1) subnK // addnC => H2; by rewrite H2
                     | rewrite !subnDA ]; rewrite /= -catA
       | move => res resK
       | case:ifP => ? res resK ]; exists (Stay res); by rewrite /= resK.
-   
+
    (* d <> 0 *)
    rewrite deq /= in ddelete.
    move/leP: (ltnSn n) => ltnSn.
