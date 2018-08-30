@@ -124,7 +124,7 @@ Section insert.
     | Leaf s => s
     end.
 
-  Lemma dflatten_sizeK {n m d c} (B : tree n m d c) : size (dflatten B) = n.
+  Lemma dflatten_sizeE {n m d c} (B : tree n m d c) : size (dflatten B) = n.
   Proof.
     elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
     by rewrite size_cat IHl IHr.
@@ -264,13 +264,13 @@ Section insert.
   Definition dinsert n m d c (B : tree n m d c) (b : bool) (i : nat) (w : nat):=
     real_tree (proj1_sig (dinsert' B b i w)).
 
-  Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
+  Lemma real_treeE nl ol d c (t : near_tree nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
 
-  Lemma dinsertK n m d c (B : tree n m d c) b i w :
+  Lemma dinsertE n m d c (B : tree n m d c) b i w :
     dflatten (dinsert B b i w) = insert1 (dflatten B) b i.
-  Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i w)). Qed.
+  Proof. by rewrite /dinsert real_treeE (proj2_sig (dinsert' B b i w)). Qed.
 
 End insert.
 
@@ -352,7 +352,7 @@ Section query.
     by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
   Qed.
 
-  Lemma daccessK nums ones d c (B : tree nums ones d c) :
+  Lemma daccessE nums ones d c (B : tree nums ones d c) :
     daccess B =1 access (dflatten B).
   Proof.
     rewrite /access.
@@ -360,7 +360,7 @@ Section query.
     by rewrite nth_cat -dflatten_size -IHl -IHr.
   Qed.
 
-  Lemma drankK nums ones d c (B : tree nums ones d c) i :
+  Lemma drankE nums ones d c (B : tree nums ones d c) i :
     drank B i = rank true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
@@ -370,17 +370,17 @@ Section query.
   Lemma drank_ones num ones d c (B : tree num ones d c) :
     drank B num = ones.
   Proof.
-    by rewrite [in RHS](dflatten_rank B) drankK.
+    by rewrite [in RHS](dflatten_rank B) drankE.
   Qed.
 
-  Lemma dselect1K nums ones d c (B : tree nums ones d c) i :
+  Lemma dselect1E nums ones d c (B : tree nums ones d c) i :
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
   Qed.
 
-  Lemma dselect0K nums ones d c (B : tree nums ones d c) i :
+  Lemma dselect0E nums ones d c (B : tree nums ones d c) i :
     dselect_0 B i = select false i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
