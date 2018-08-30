@@ -25,6 +25,9 @@ Ltac decompose_rewrite :=
 
 Section dtree.
 
+Variable w : nat.
+Hypothesis Hw : w >= 2.
+
 Definition dtree := btree (nat * nat) (seq bool).
 
 Definition empty_tree : dtree := Bleaf _ [::].
@@ -86,8 +89,8 @@ Fixpoint wf_dtree (B : dtree) :=
     [&& num == size (dflatten l),
         ones == count_mem true (dflatten l),
         wf_dtree l & wf_dtree r]
-  | Bleaf _ =>
-    true
+  | Bleaf arr =>
+    (w ^ 2)./2 <= size arr < (w ^ 2).*2
   end.
 
 Lemma dtree_ind (P : dtree -> Prop) :
@@ -95,11 +98,13 @@ Lemma dtree_ind (P : dtree -> Prop) :
       num = size (dflatten l) -> ones = count_mem true (dflatten l) ->
       wf_dtree l /\ wf_dtree r ->
       P l -> P r -> P (Bnode c l (num, ones) r)) ->
-  (forall s, P (Bleaf _ s)) -> forall B, wf_dtree B -> P B.
+  (forall s, (w ^ 2)./2 <= size s < (w ^ 2).*2 -> P (Bleaf _ s)) ->
+  forall B, wf_dtree B -> P B.
 Proof.
   move=> HN HL; elim => [c l IHl [num ones] r IHr | s] //=.
-  move/andP => [/eqP Hones] /andP [/eqP Hnum] /andP [wfl wfr].
-  apply: HN; auto.
+    move/andP => [/eqP Hones] /andP [/eqP Hnum] /andP [wfl wfr].
+    apply: HN; auto.
+  by apply: HL.
 Qed.
 
 Lemma daccessE (B : dtree) : wf_dtree B -> daccess B =1 access (dflatten B).
@@ -161,8 +166,6 @@ Corollary drank_all (B : dtree) :
   wf_dtree B -> drank B (dsize B) = (count_mem true) (dflatten B).
 Proof. move => wf. by rewrite drankE // /rank dsizeE // take_size. Qed.
 
-End dtree.
-
 Section insert.
 
   Definition drank_size B := drank B (dsize B).
@@ -208,7 +211,7 @@ Section insert.
                end
     end.
 
-  Fixpoint dins (B : dtree) b i w : dtree :=
+  Fixpoint dins (B : dtree) b i : dtree :=
     match B with
     | Bleaf s =>
       let s' := insert1 s b i in
@@ -221,12 +224,12 @@ Section insert.
       else Bleaf _ s'
     | Bnode c l (num, ones) r =>
       if i < num
-      then balanceL c (dins l b i w) r
-      else balanceR c l (dins r b (i - num) w)
+      then balanceL c (dins l b i) r
+      else balanceR c l (dins r b (i - num))
     end.
 
-  Definition dinsert (B : dtree) b i w : dtree :=
-    match dins B b i w with
+  Definition dinsert (B : dtree) b i : dtree :=
+    match dins B b i with
     | Bleaf s => Bleaf _ s
     | Bnode _ l d r => Bnode Black l d r
     end.
@@ -259,22 +262,22 @@ Section insert.
       by rewrite !catA.
   Qed.
 
-  Lemma dinsE (B : dtree) b i w :
-    wf_dtree B -> dflatten (dins B b i w) = insert1 (dflatten B) b i.
+  Lemma dinsE (B : dtree) b i :
+    wf_dtree B -> dflatten (dins B b i) = insert1 (dflatten B) b i.
   Proof.
-    move => wf; move: B wf b i w. apply: dtree_ind => //.
-    + move => c l r num ones Hnum Hones _ IHl IHr /= b i w.
+    move => wf; move: B wf b i. apply: dtree_ind => //.
+    + move => c l r num ones Hnum Hones _ IHl IHr /= b i.
       case: ifPn => ?.
       - by rewrite balanceLE IHl /insert1 insert_catL -?Hnum.
       - by rewrite balanceRE IHr /insert1 insert_catR -?Hnum // leqNgt.
-    + move => s b i w.
+    + move => s Hs b i.
       rewrite /dins. case: ifP => Hi //.
       by rewrite dflatten_node /dflatten cat_take_drop.
   Qed.
 
-  Lemma dinsertE (B : dtree) b i w :
-    wf_dtree B -> dflatten (dinsert B b i w) = insert1 (dflatten B) b i.
-  Proof. move => wf. rewrite /dinsert -(dinsE b i w wf). by case: dins. Qed.
+  Lemma dinsertE (B : dtree) b i :
+    wf_dtree B -> dflatten (dinsert B b i) = insert1 (dflatten B) b i.
+  Proof. move => wf. rewrite /dinsert -(dinsE b i wf). by case: dins. Qed.
 
   (* Well-foundedness lemmas
    * Show that dinsert always returns a well-founded tree
@@ -303,15 +306,29 @@ Section insert.
       by rewrite ?(dsizeE,donesE,size_cat,count_cat,eqxx).
   Qed.
 
-  Lemma dins_wf (B : dtree) b i w :
-    wf_dtree B -> wf_dtree (dins B b i w).
+  Lemma leq_half n : n./2 <= n.
+  Proof. by rewrite -{2}(odd_double_half n) -addnn addnA leq_addl. Qed.
+  Lemma double_gt n : n > 0 -> n.*2 > n.
+  Proof. move=> Hn. by rewrite -addnn -[X in X < _]addn0 ltn_add2l. Qed.
+
+  Lemma dins_wf (B : dtree) b i :
+    wf_dtree B -> wf_dtree (dins B b i).
   Proof.
-    move => wf;  move: B wf b i w.
-    apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr b i w] /=.
+    move => wf;  move: B wf b i.
+    apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr b i] /=.
       case: ifP => Hi. by apply: balanceL_wf.
       by apply: balanceR_wf.
-    move => s b i w //=. case: ifP => Hsize //=.
-    by rewrite !eqxx.
+    move => s Hs b i //=.
+    rewrite addn1 divn2 mul2n.
+    case: ifP => Hsize /=.
+      rewrite ?(eqxx,size_insert1,(eqP Hsize),size_drop,size_takel).
+        rewrite doubleK -[in X in X - _]addnn addnK leq_half double_gt //.
+        by rewrite sqrn_gt0 (leq_trans _ Hw).
+      by rewrite leq_half.
+    rewrite size_insert1.
+    move/andP: Hs => [Hs1].
+    rewrite leq_eqVlt Hsize /= => ->.
+    by rewrite (leq_trans Hs1).
   Qed.
 
   Lemma color_black_wf c d (l r : dtree) :
@@ -322,30 +339,31 @@ Section insert.
     wf_dtree (Bnode c l d r) -> wf_dtree (Bnode Red l d r).
   Proof. by []. Qed.
 
-  Lemma dinsert_wf (B : dtree) b i w :
-    wf_dtree B -> wf_dtree (dinsert B b i w).
+  Lemma dinsert_wf (B : dtree) b i :
+    wf_dtree B -> wf_dtree (dinsert B b i).
   Proof.
     move => wf. rewrite /dinsert.
-    case Hins: (dins B b i w) => [c l [num ones] r | s] //.
-    apply: (@color_black_wf c (num, ones) l r).
+    case Hins: (dins B b i) => [c l [num ones] r | s] //.
+      apply: (@color_black_wf c (num, ones) l r).
+      by rewrite -Hins dins_wf.
     by rewrite -Hins dins_wf.
   Qed.
 
-  Lemma dinsert_rank (B : dtree) b i w j :
-    wf_dtree B -> drank (dinsert B b i w) j =
+  Lemma dinsert_rank (B : dtree) b i j :
+    wf_dtree B -> drank (dinsert B b i) j =
                   rank true j (insert1 (dflatten B) b i).
-  Proof. move => wf. by rewrite -(dinsertE b i w) // drankE // dinsert_wf. Qed.
+  Proof. move => wf. by rewrite -dinsertE // drankE // dinsert_wf. Qed.
 
-  Lemma dinsert_select1 (B : dtree) b i w j : wf_dtree B ->
-    dselect_1 (dinsert B b i w) j = select true j (insert1 (dflatten B) b i).
+  Lemma dinsert_select1 (B : dtree) b i j : wf_dtree B ->
+    dselect_1 (dinsert B b i) j = select true j (insert1 (dflatten B) b i).
   Proof.
-    move => wf. by rewrite -(dinsertE b i w) // dselect_1E // dinsert_wf.
+    move => wf. by rewrite -dinsertE // dselect_1E // dinsert_wf.
   Qed.
 
-  Lemma dinsert_select0 (B : dtree) b i w j : wf_dtree B ->
-    dselect_0 (dinsert B b i w) j = select false j (insert1 (dflatten B) b i).
+  Lemma dinsert_select0 (B : dtree) b i j : wf_dtree B ->
+    dselect_0 (dinsert B b i) j = select false j (insert1 (dflatten B) b i).
   Proof.
-    move => wf. by rewrite -(dinsertE b i w) // dselect_0E // dinsert_wf.
+    move => wf. by rewrite -dinsertE // dselect_0E // dinsert_wf.
   Qed.
 
   (*
@@ -405,16 +423,16 @@ Section insert.
     by rewrite !is_redblack_Red_Black.
   Qed.
 
-  Lemma dins_is_redblack (B : dtree) b i w n :
-    (is_redblack B Black n -> nearly_redblack (dins B b i w) n) /\
-    (is_redblack B Red n -> is_redblack (dins B b i w) Black n).
+  Lemma dins_is_redblack (B : dtree) b i n :
+    (is_redblack B Black n -> nearly_redblack (dins B b i) n) /\
+    (is_redblack B Red n -> is_redblack (dins B b i) Black n).
   Proof.
-    elim: B i w n.
-    + move=> c l IHl [num ones] r IHr i w n.
+    elim: B i n.
+    + move=> c l IHl [num ones] r IHr i n.
       split=> /=.
         case: c => /andP [Hl Hr].
           case: ifP => Hi /=; [move: IHl | move: IHr];
-            move=> /(_ _ w n)/proj2 -> //=;
+            move=> /(_ _ n)/proj2 -> //=;
             by rewrite is_redblack_Red_Black.
         move/andP: Hl => [Hn Hl].
         case: ifP => Hi; apply is_redblack_nearly_redblack with Black.
@@ -426,15 +444,15 @@ Section insert.
       case: ifP => Hi; rewrite -(prednK Hn).
         rewrite balanceL_Black_nearly_is_redblack //; by apply IHl.
       rewrite balanceR_Black_nearly_is_redblack //; by apply IHr.
-    + move=> a i w n.
+    + move=> a i n.
       split=> /=; by case: ifP => //= _ ->.
   Qed.
 
-  Lemma dinsert_is_redblack (B : dtree) b i w n :
-    is_redblack B Red n -> exists n', is_redblack (dinsert B b i w) Red n'.
+  Lemma dinsert_is_redblack (B : dtree) b i n :
+    is_redblack B Red n -> exists n', is_redblack (dinsert B b i) Red n'.
   Proof.
-    exists (if (dins B b i w) is Bnode Red _ _ _ then n + 1 else n).
-    move/(proj2 (dins_is_redblack _ b i w _)): H.
+    exists (if (dins B b i) is Bnode Red _ _ _ then n + 1 else n).
+    move/(proj2 (dins_is_redblack _ b i _)): H.
     rewrite /dinsert addnC.
     destruct dins => //=.
     case: c => //= /andP [Hd1 Hd2].
@@ -444,11 +462,11 @@ Section insert.
   Definition is_red D A (B : btree D A) :=
     if B is Bnode Red _ _ _ then true else false.
 
-  Lemma dinsert_is_redblack' (B : dtree) b i w n :
+  Lemma dinsert_is_redblack' (B : dtree) b i n :
     is_redblack B Red n ->
-    is_redblack (dinsert B b i w) Red (n + is_red (dins B b i w)).
+    is_redblack (dinsert B b i) Red (n + is_red (dins B b i)).
   Proof.
-    move/(proj2 (dins_is_redblack _ b i w _)).
+    move/(proj2 (dins_is_redblack _ b i _)).
     rewrite /dinsert addnC.
     destruct dins => //=.
     case: c => //= /andP [Hd1 Hd2].
@@ -532,7 +550,7 @@ Section set_clear.
   Proof.
     move=> wf; move: B wf i.
     apply: dtree_ind; last first.
-      move=> s i Hi; congr negb; by apply set_nth_default.
+      move=> s Hs i Hi; congr negb; by apply set_nth_default.
     move=> c l r num ones Hnum Hones [wfl wfr] IHl IHr i /= IHsize.
     rewrite Hnum -dsizeE //.
     case: ifP => Hi.
@@ -546,7 +564,7 @@ Section set_clear.
   Proof.
     move=> wf; move: B wf i.
     apply: dtree_ind; last first.
-      move => s i Hi; by apply set_nth_default.
+      move => s Hs i Hi; by apply set_nth_default.
     move => c l r num ones Hnum Hones [wfl wfr] IHl IHr i /= IHsize.
     rewrite Hnum -dsizeE //.
     case: ifP => Hi.
@@ -569,7 +587,7 @@ Section set_clear.
       case_eq (bset r (i - dsize l)) => r' b Hbset /=.
       rewrite -addnA -IHr ?Hbset //.
       by rewrite -(ltn_add2l (dsize l)) subnKC // leqNgt Hil.
-    move => s i Hi; by rewrite addnC -count_bit_set.
+    move => s Hs i Hi; by rewrite addnC -count_bit_set.
   Qed.
 
   Lemma flipped_count_pos (B : dtree) i :
@@ -586,7 +604,7 @@ Section set_clear.
     rewrite /dbitclear.
     move=> wf Hsize; move: B wf i Hsize.
     apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi].
-      rewrite -dsizeE //.
+      rewrite -(dsizeE wfl) //.
       case: ifP => Hil.
         case_eq (bclear l i) => l' b Hbclear /=.
         rewrite [in RHS]addnC -addnBA. by rewrite -IHl // Hbclear addnC.
@@ -600,14 +618,15 @@ Section set_clear.
       rewrite -flip_bit_bclear // Hbclear /=.
       destruct b => //.
       by rewrite (@flipped_count_pos _ (i - dsize l)) // Hbclear.
-    move => s i Hi; by rewrite -count_bit_clear.
+    move => s Hs i Hi; by rewrite -count_bit_clear.
   Qed.
 
   Lemma wf_dbitset (B : dtree) i :
     wf_dtree B -> wf_dtree (dbitset B i).
   Proof.
     move => wf; move: B wf i.
-    apply: dtree_ind => //= c l r num ones -> -> [wfl wfr] IHl IHr i.
+    apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr|s Hs] i;
+      last by rewrite size_bit_set.
     rewrite /dbitset //=.
     case: ifP => Hi.
       case_eq (bset l i) => l' b Hbset /=; rewrite wfr andbT.
@@ -623,7 +642,8 @@ Section set_clear.
     wf_dtree B -> wf_dtree (dbitclear B i).
   Proof.
     move => wf; move: B wf i.
-    apply: dtree_ind => //= c l r num ones -> -> [wfl wfr] IHl IHr i.
+    apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s Hs] i /=;
+      last by rewrite size_bit_clear.
     rewrite /dbitclear //=.
     case: ifP => Hi.
       case_eq (bclear l i) => l' b Hbclear /=; rewrite wfr andbT.
@@ -641,7 +661,7 @@ End set_clear.
 (* Deletion: work in progress *)
 Section delete.
 
-  Definition delete_leaf s i w uf :=
+  Definition delete_leaf s i uf :=
     if (size s == (w^2) %/ 2) && ~~uf
     then (s, None)
     else (delete s i, Some (nth true s i)).
@@ -806,7 +826,7 @@ Section delete.
 
   Fixpoint bdel B i w uf : (dtree * option bool) :=
     match B with
-    | Bleaf s => let (s, b) := delete_leaf s i w uf
+    | Bleaf s => let (s, b) := delete_leaf s i uf
                  in (Bleaf _ s, b)
     | Bnode c l (num, ones) r as v =>
       if i <= num
@@ -820,7 +840,7 @@ Section delete.
                                     (insw r' 0 (dflatten l') (w ^ 2 - 1)
                                           (ones - b), opt_b)
                                   | Some b' =>
-                                    let l'_i := dinsert l' b' ((w^2) %/ 2) w
+                                    let l'_i := dinsert l' b' ((w^2) %/ 2)
                                     in match l'_i with
                                        | Bnode Black _ _ _ =>
                                       (bal_left l'_i r', opt_b)
@@ -841,7 +861,7 @@ Section delete.
                                          ((w ^ 2) - 1) (o - b - ones),
                                      opt_b)
                                   | Some b' =>
-                                    (balanceL c (dinsert r' b' 1 w)
+                                    (balanceL c (dinsert r' b' 1)
                                               r', opt_b)
                                   end
                           else (Bnode c l (num, ones) r', opt_b)
@@ -864,3 +884,5 @@ Section delete.
 *)
 
 End delete.
+
+End dtree.
