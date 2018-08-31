@@ -1,14 +1,16 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 
-Require Import compact_data_structures rank_select insert_delete Program JMeq set_clear Wf_nat.
+Require Import compact_data_structures rank_select insert_delete Program JMeq set_clear Wf_nat Compare_dec ExtrOcamlNatInt.
 
 Set Implicit Arguments.
 
 Tactic Notation "remember_eq" constr(expr) ident(vname) ident(eqname) := case (exist (fun x => x = expr) expr erefl) => vname eqname.
 
+Section dynamic_dependent.
+
 Variable w : nat.
-Axiom wordsize_gt1: w > 1.
+Hypothesis wordsize_gt1: w > 1.
 
 Lemma wordsize_gt0 : w > 0.
 Proof. apply ltnW. exact wordsize_gt1. Qed.
@@ -504,7 +506,6 @@ End query.
  * 
  * Feel free to comment this out or remove this...
  *)
-Require Import Compare_dec.
 
 Section set_clear.
   Obligation Tactic := idtac.
@@ -979,36 +980,35 @@ Section delete.
      rewrite -!addnA -catA.
      by exists (Stay Red xir_ok (bnode ll (rnode lr dr))).
     move => /= ? ?.
-    move: dr l => [? ? d' c ? ? dr|? ? d' dr] l;last first.
-     move: dr l => /=; move deq : (d'.+1) => d'' dr l.
-     move: l deq dr => [//| ? oo ? ? ? cll clr c cllok clrok ll lr] /=.
-     move: clr clrok lr => [] clrok lr.
-      move: c cllok clrok => [] //= ? ? [] -> dr.
-      move: lr; move ceq : (Red) => c' lr.
-      move: lr ceq dr ll => /= [//|? ? ? ? ? cl' cr' ? okl okr lrl lrr] ceq dr ll.
-      move: ceq cl' cr' ll lrl lrr okl okr dr => <- [] [] //= ll lrl lrr ? ? dr.
-      rewrite !addnA -![_ + _ + _ + _]addnA.
-      exists (Stay Black (bx_ok Red) (bnode (bnode ll lrl) (bnode lrr dr))).
+    move: dr l => [? ? d' c ? ? dr|? ? d' dr] l; first by exists (Stay Black (bx_ok Red) (bnode l dr)).
+    move: dr l => /=; move deq : (d'.+1) => d'' dr l.
+    move: l deq dr => [//| ? oo ? ? ? cll clr c cllok clrok ll lr] /=.
+    move: clr clrok lr => [] clrok lr.
+     move: c cllok clrok => [] //= ? ? [] -> dr.
+     move: lr; move ceq : (Red) => c' lr.
+     move: lr ceq dr ll => /= [//|? ? ? ? ? cl' cr' ? okl okr lrl lrr] ceq dr ll.
+     move: ceq cl' cr' ll lrl lrr okl okr dr => <- [] [] //= ll lrl lrr ? ? dr.
+     rewrite !addnA -![_ + _ + _ + _]addnA.
+     exists (Stay Black (bx_ok Red) (bnode (bnode ll lrl) (bnode lrr dr))).
+     by rewrite /= -!catA.
+    move: c cllok clrok => [] /= cllok clrok.
+     move: cll cllok ll => [] // ? ll deq.
+     move: lr ll ; move ceq : (Black) => c' lr ll dr.
+     move: lr ceq deq ll dr => [//| ? ? ? ? ? cl' cr' crl okl okr lrl lrr] ceq deq ll dr.
+     move: ceq deq lrl lrr ll dr okl okr => /= <- [] <- lrl lrr ll dr /= ? ?.
+     move: cr' lrr  => [] lrr;last first.
+      rewrite -!addnA.
+      exists (Stay Black (bx_ok Red) (bnode ll (bnode lrl (rnode lrr dr)))).
       by rewrite /= -!catA.
-     move: c cllok clrok => [] /= cllok clrok.
-      move: cll cllok ll => [] // ? ll deq.
-      move: lr ll ; move ceq : (Black) => c' lr ll dr.
-      move: lr ceq deq ll dr => [//| ? ? ? ? ? cl' cr' crl okl okr lrl lrr] ceq deq ll dr.
-      move: ceq deq lrl lrr ll dr okl okr => /= <- [] <- lrl lrr ll dr /= ? ?.
-      move: cr' lrr  => [] lrr;last first.
-       rewrite -!addnA.
-       exists (Stay Black (bx_ok Red) (bnode ll (bnode lrl (rnode lrr dr)))).
-       by rewrite /= -!catA.
-      move: lrr => /=; move ceq : (Red) => c lrr {c'}.
-      move: lrr ceq lrl ll dr => [//| ? ? ? ? ? clrrl clrr c' okl okr lrrl lrrr] ceq lrl ll dr.
-      move: ceq clrrl clrr lrrl lrrr lrl ll dr okl okr => <- [] [] // lrrl lrrr lrl ll dr ? ?.
-      rewrite -!addnA [X in (_ + X)]addnA [X in (oo + X)]addnA.
-      exists (Stay Black (bx_ok Red) (bnode ll (rnode (bnode lrl lrrl) (bnode lrrr dr)))).
-      by rewrite /= -!catA.
-     move => [] -> dr.
-     rewrite -!addnA -!catA.
-     by exists (Down (bnode ll (rnode lr dr))).
-    by exists (Stay Black (bx_ok Red) (bnode l dr)).
+     move: lrr => /=; move ceq : (Red) => c lrr {c'}.
+     move: lrr ceq lrl ll dr => [//| ? ? ? ? ? clrrl clrr c' okl okr lrrl lrrr] ceq lrl ll dr.
+     move: ceq clrrl clrr lrrl lrrr lrl ll dr okl okr => <- [] [] // lrrl lrrr lrl ll dr ? ?.
+     rewrite -!addnA [X in (_ + X)]addnA [X in (oo + X)]addnA.
+     exists (Stay Black (bx_ok Red) (bnode ll (rnode (bnode lrl lrrl) (bnode lrrr dr)))).
+     by rewrite /= -!catA.
+    move => [] -> dr.
+    rewrite -!addnA -!catA.
+    by exists (Down (bnode ll (rnode lr dr))).
   Defined.
 
   Definition balanceL2 {s1 s2 o1 o2 d cl cr} (p : color)
@@ -1038,36 +1038,35 @@ Section delete.
      rewrite !addnA /= !catA. 
      by exists (Stay Red xir_ok (bnode (rnode dl rl) rr)).
     move => /= ? ?.
-    move: dl r => [? ? d' c ? ? dl|? ? d' dl] r;last first.
-     move: dl r => /=; move deq : (d'.+1) => d'' dl r.
-     move: r deq dl => [//| ? ? ? ? ? crl crr c crlok crrok rl rr] /=.
-     move: crl crlok rl => [] crlok rl.
-      move: c crlok crrok => [] //= ? ? [] -> dl.
-      move: rl; move ceq : (Red) => c' rl.
-      move: rl ceq dl rr => /= [//|? ? ? ? ? cl' cr' crl okl okr rll rlr] ceq dl rr.
-      move: ceq cl' cr' rr rll rlr okl okr dl => <- [] [] //= rr rll rlr ? ? dl.
-      rewrite !addnA -![_ + _ + _ + _]addnA.
-      exists (Stay Black (bx_ok Red) (bnode (bnode dl rll) (bnode rlr rr))).
+    move: dl r => [? ? d' c ? ? dl|? ? d' dl] r; first by exists (Stay Black (bx_ok Red) (bnode dl r)).
+    move: dl r => /=; move deq : (d'.+1) => d'' dl r.
+    move: r deq dl => [//| ? ? ? ? ? crl crr c crlok crrok rl rr] /=.
+    move: crl crlok rl => [] crlok rl.
+     move: c crlok crrok => [] //= ? ? [] -> dl.
+     move: rl; move ceq : (Red) => c' rl.
+     move: rl ceq dl rr => /= [//|? ? ? ? ? cl' cr' crl okl okr rll rlr] ceq dl rr.
+     move: ceq cl' cr' rr rll rlr okl okr dl => <- [] [] //= rr rll rlr ? ? dl.
+     rewrite !addnA -![_ + _ + _ + _]addnA.
+     exists (Stay Black (bx_ok Red) (bnode (bnode dl rll) (bnode rlr rr))).
+     by rewrite /= -!catA.
+    move: c crrok crlok => [] /= crrok crlok.
+     move: crr crrok rr => [] // ? rr deq.
+     move: rl rr; move ceq : (Black) => c' rl rr dl.
+     move: rl ceq deq rr dl => [//| ? ? ? ? ? cl' cr' crl okl okr rll rlr] ceq deq rr dl.
+     move: ceq deq rll rlr rr dl okl okr => /= <- [] <- rll rlr rr dl /= ? ?.
+     move: cl' rll  => [] rll;last first.
+      rewrite !addnA.
+      exists (Stay Black (bx_ok Red) (bnode (bnode (rnode dl rll) rlr) rr)).
       by rewrite /= -!catA.
-     move: c crrok crlok => [] /= crrok crlok.
-      move: crr crrok rr => [] // ? rr deq.
-      move: rl rr; move ceq : (Black) => c' rl rr dl.
-      move: rl ceq deq rr dl => [//| ? ? ? ? ? cl' cr' crl okl okr rll rlr] ceq deq rr dl.
-      move: ceq deq rll rlr rr dl okl okr => /= <- [] <- rll rlr rr dl /= ? ?.
-      move: cl' rll  => [] rll;last first.
-       rewrite !addnA.
-       exists (Stay Black (bx_ok Red) (bnode (bnode (rnode dl rll) rlr) rr)).
-       by rewrite /= -!catA.
-      move: rll; move ceq : (Red) => c rll {c'}.
-      move: rll ceq rlr rr dl=> [//| ? ? ? o3 ? crll crlr c' okl okr rlll rllr] ceq rlr rr dl.
-      move: ceq crll crlr rlll rllr rlr rr dl okl okr => <- [] [] // rlll rllr rlr rr dl ? ?.
-      rewrite -!addnA ![_ + ( _ + (_ + (_ + _)))]addnA [X in _ + _ + X]addnA [o3 + (_ + _)]addnA.
-      exists (Stay Black (bx_ok Red) (bnode (bnode dl rlll) (rnode (bnode rllr rlr) rr))).
-      by rewrite /= -!catA.
-     move => [] -> dl.
-     rewrite !addnA !catA.
-     by exists (Down (bnode (rnode dl rl) rr)).
-    by exists (Stay Black (bx_ok Red) (bnode dl r)).
+     move: rll; move ceq : (Red) => c rll {c'}.
+     move: rll ceq rlr rr dl=> [//| ? ? ? o3 ? crll crlr c' okl okr rlll rllr] ceq rlr rr dl.
+     move: ceq crll crlr rlll rllr rlr rr dl okl okr => <- [] [] // rlll rllr rlr rr dl ? ?.
+     rewrite -!addnA ![_ + ( _ + (_ + (_ + _)))]addnA [X in _ + _ + X]addnA [o3 + (_ + _)]addnA.
+     exists (Stay Black (bx_ok Red) (bnode (bnode dl rlll) (rnode (bnode rllr rlr) rr))).
+     by rewrite /= -!catA.
+    move => [] -> dl.
+    rewrite !addnA !catA.
+    by exists (Down (bnode (rnode dl rl) rr)).
   Defined.
 
   Lemma access_cat s t i : access (s ++ t) i = (if i < size s then access s i else access t (i - size s)).
@@ -1247,8 +1246,7 @@ Section delete.
  Defined.
 End delete.
 
-Require Import ExtrOcamlNatInt.
-Extract Constant w => "8".
+End dynamic_dependent.
 Extract Inductive tree => tree_ml [ "LeafML" "(function (s1,o1,s2,o2,d,c,cl,cr,l,r) -> NodeML (s1, o1, s2, o2, c, l, r))" ]
 "(fun fl fn ->
   function
