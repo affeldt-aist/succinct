@@ -89,25 +89,13 @@ Section bit_set_clear.
     i < size s -> nth b0 (bit_clear s i) i = false.
   Proof. move => H. by rewrite /bit_clear update_ith. Qed.
 
-  Lemma count_bit_set (s : seq bool) b0 i : 
-    i < size s -> count_mem true (bit_set s i) =
-                  if nth b0 s i
-                  then count_mem true s
-                  else count_mem true s + 1.
+  Lemma count_bit_set (s : seq bool) b0 i : i < size s ->
+    count_mem true (bit_set s i) = ~~ (nth b0 s i) + count_mem true s.
   Proof.
-    rewrite /bit_set /update /= => H; rewrite H.
-    elim: s i H => [|b s IHs] [|j] //=.
-      case: b => //=. by rewrite add0n addnC.
-    rewrite ltnS => Hi.
-    by rewrite IHs // (fun_if (addn _)) addnA.
-  Qed.
-
-  Lemma count_bit_set' (s : seq bool) b0 i :
-    i < size s -> count_mem true (bit_set s i) = count_mem true s  +
-    ~~ (nth b0 s i).
-  Proof.
-    move => Hsize. rewrite (count_bit_set b0). by case (nth b0 s i).
-    done.
+    elim: s i => [|b s IHs] [|j] //=.
+      by case: b.
+    rewrite ltnS => /= Hi.
+    by rewrite addnCA -IHs // /bit_set update_cons.
   Qed.
     
   Lemma true_count_pos (s : seq bool) b0 i :
@@ -118,17 +106,16 @@ Section bit_set_clear.
     by rewrite addn_gt0 (IHs i) // orbT.
   Qed.
   
-  Lemma count_bit_clear (s : seq bool) b0 i : 
-    i < size s -> count_mem true (bit_clear s i) =
-                  if nth b0 s i
-                  then count_mem true s - 1
-                  else count_mem true s.
+  Lemma count_bit_clear (s : seq bool) b0 i : i < size s ->
+    count_mem true (bit_clear s i) = count_mem true s - nth b0 s i.
   Proof.
-    rewrite /bit_set /update /bit_clear /=.
     elim: s i => [|b s IHs] [|j] //=.
-      case: b => //=. by rewrite add0n add1n subn1 succnK.
-    rewrite ltnS update_cons /= => Hsz.
-    rewrite IHs //; by case: ifP => // /(true_count_pos Hsz) /addnBA ->.
+      case: b => /=; by rewrite ?addKn ?subn0.
+    rewrite ltnS => /= Hj.
+    rewrite -addnBA; last first.
+      case Hnth: (nth b0 s j) => //.
+      exact: (true_count_pos Hj Hnth).
+    by rewrite -IHs // /bit_clear update_cons.
   Qed.
 
   Lemma count_bit_toggle (s : seq bool) b0 i :

@@ -758,6 +758,16 @@ rewrite LOUDS_subtree_rcons /LOUDS_child -IH // LOUDS_rank_true_child //.
 by apply LOUDS_select_false.
 Qed.
 
+Theorem LOUDS_childE (t : tree A) (p : seq nat) x :
+  let B := LOUDS t in
+  valid_position t (rcons p x) ->
+  LOUDS_child B (LOUDS_position t p) x = LOUDS_position t (rcons p x).
+Proof.
+move=> B HV.
+rewrite !LOUDS_positionE // ?(valid_position_rcons HV) //.
+by rewrite /LOUDS_subtree -cats1 foldl_cat.
+Qed.
+
 End child.
 
 Module LOUDS_position_test.
