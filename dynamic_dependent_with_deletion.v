@@ -997,56 +997,55 @@ Section delete.
   {B' : near_tree' (s1 + s2) (o1 + o2) (inc_black d p) p |
   dflattenn' B' = dflattenn' dl ++ dflatten r}.
 
-    destruct p.
-     destruct cl,cr => // ? ?.
-     move: dl r; remember_eq Black c' ceq; rewrite -ceq => dl r.
-     destruct dl as [? ? d' c p ? dl|? ? d' dl].
-      destruct p,c => //.
+    move: p => [].
+     move: cl cr dl r => [] [] // dl r ? ?.
+     move: dl r; move ceq : (Black) => c' dl r.
+     move: dl ceq r => /= [? ? d' c p ok dl|? ? d' dl] ceq r.
+      move: ceq c ok r dl => <- [] // ? r dl.
       by exists (Stay Red xir_ok (rnode dl r)).
-     move: dl r => {ceq}; remember_eq Black c' ceq; remember_eq d'.+1 d'' deq; rewrite /= -deq -ceq => dl r.
-     destruct r as [| ? ? ? ? ? crl ? c crlok ? rl rr] => //; subst c.
-     destruct crl.
-      move: rl rr dl; remember_eq Red c' ceq; rewrite /= -ceq => rl rr dl.
-      destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //.
-      subst crl; destruct cl', cr' => //.
-      move/eqP: deq rll rlr rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rll rlr rr dl.
+     move: dl r => {ceq c'} /=; move ceq : (Black) => c'; move deq : (d'.+1) => d'' dl r.
+     move: r deq ceq dl => [//| ? ? ? ? ? crl ? c crlok crrok rl rr] deq ceq dl.
+     move: ceq deq rl rr dl crlok crrok => <- /= [] <- rl rr dl crlok ?.
+     move: crl rl crlok => [] rl ? {c'}.
+      move: rl rr dl; move ceq : (Red) => c' rl rr dl.
+      move: rl rr dl ceq => [//| ? ? ? ? ? cl' cr' crl okl okr rll rlr] rr dl ceq.
+      move: ceq cl' cr' okl okr rr rll rlr dl => /= <- [] [] //= ? ? rr rll rlr dl.
       rewrite !addnA -![_ + _ + _ + _]addnA.
       exists (Stay Red xir_ok (rnode (bnode dl rll) (bnode rlr rr))).
       by rewrite /= !catA.
-     move/eqP: deq rl rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rl rr dl.
      rewrite !addnA /= !catA. 
      by exists (Stay Red xir_ok (bnode (rnode dl rl) rr)).
     move => /= ? ?.
-    destruct dl as [? ? d' c ? ? dl|? ? d' dl];last first.
-     move: dl r; remember_eq Black c' ceq; remember_eq d'.+1 d'' deq; rewrite /= -ceq -deq => dl r.
-     destruct r as [| ? ? ? ? ? crl ? c crlok crrok rl rr] => //; subst c'.
-      destruct crl.
-       destruct c => //.
-       move/eqP: deq rl rr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rl rr dl.
-       move: rl rr dl; remember_eq Red c' ceq; rewrite -ceq => rl rr dl.
-       destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //;subst crl; destruct cl',cr' => //.
-       rewrite !addnA -![_ + _ + _ + _]addnA.
-       exists (Stay Black (bx_ok Red) (bnode (bnode dl rll) (bnode rlr rr))).
+    move: dl r => [? ? d' c ? ? dl|? ? d' dl] r;last first.
+     move: dl r => /=; move deq : (d'.+1) => d'' dl r.
+     move: r deq dl => [//| ? ? ? ? ? crl crr c crlok crrok rl rr] /=.
+     move: crl crlok rl => [] crlok rl.
+      move: c crlok crrok => [] //= ? ? [] -> dl.
+      move: rl; move ceq : (Red) => c' rl.
+      move: rl ceq dl rr => /= [//|? ? ? ? ? cl' cr' crl okl okr rll rlr] ceq dl rr.
+      move: ceq cl' cr' rr rll rlr okl okr dl => <- [] [] //= rr rll rlr ? ? dl.
+      rewrite !addnA -![_ + _ + _ + _]addnA.
+      exists (Stay Black (bx_ok Red) (bnode (bnode dl rll) (bnode rlr rr))).
+      by rewrite /= -!catA.
+     move: c crrok crlok => [] /= crrok crlok.
+      move: crr crrok rr => [] // ? rr deq.
+      move: rl rr; move ceq : (Black) => c' rl rr dl.
+      move: rl ceq deq rr dl => [//| ? ? ? ? ? cl' cr' crl okl okr rll rlr] ceq deq rr dl.
+      move: ceq deq rll rlr rr dl okl okr => /= <- [] <- rll rlr rr dl /= ? ?.
+      move: cl' rll  => [] rll;last first.
+       rewrite !addnA.
+       exists (Stay Black (bx_ok Red) (bnode (bnode (rnode dl rll) rlr) rr)).
        by rewrite /= -!catA.
-      destruct c. 
-       destruct cr => //; rewrite /= in deq; subst d.
-       move: rl rr dl; remember_eq d'.+1 d deq; rewrite -deq => rl rr dl.
-       destruct rl as [| ? ? ? ? ? cl' cr' crl ? ? rll rlr] => //; destruct crl => //.
-       rewrite !addnA -![_ + _ + _ + _]addnA.
-       move/eqP: deq rll rlr dl; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => rll rlr dl.
-       destruct cl';last first.
-        rewrite !addnA.
-        exists (Stay Black (bx_ok Red) (bnode (bnode (rnode dl rll) rlr) rr)).
-        by rewrite /= -!catA.
-       move: dl rll rlr rr ; remember_eq Red c' ceq; rewrite /= -ceq => dl rll rlr rr.
-       destruct rll as [| ? ? ? o3 ? crll crlr c ? ? rlll rllr] => //; destruct c,crll,crlr => //.
-       rewrite -!addnA ![_ + ( _ + (_ + (_ + _)))]addnA [X in _ + _ + X]addnA [o3 + (_ + _)]addnA.
-       exists (Stay Black (bx_ok Red) (bnode (bnode dl rlll) (rnode (bnode rllr rlr) rr))).
-       by rewrite /= -!catA.
-      move/eqP: deq dl rl rr; rewrite /= eqSS; move/eqP => /= deq; rewrite -deq => dl rl rr.
-      rewrite !addnA !catA.
-      by exists (Down (bnode (rnode dl rl) rr)).
-     by exists (Stay Black (bx_ok Red) (bnode dl r)).
+      move: rll; move ceq : (Red) => c rll {c'}.
+      move: rll ceq rlr rr dl=> [//| ? ? ? o3 ? crll crlr c' okl okr rlll rllr] ceq rlr rr dl.
+      move: ceq crll crlr rlll rllr rlr rr dl okl okr => <- [] [] // rlll rllr rlr rr dl ? ?.
+      rewrite -!addnA ![_ + ( _ + (_ + (_ + _)))]addnA [X in _ + _ + X]addnA [o3 + (_ + _)]addnA.
+      exists (Stay Black (bx_ok Red) (bnode (bnode dl rlll) (rnode (bnode rllr rlr) rr))).
+      by rewrite /= -!catA.
+     move => [] -> dl.
+     rewrite !addnA !catA.
+     by exists (Down (bnode (rnode dl rl) rr)).
+    by exists (Stay Black (bx_ok Red) (bnode dl r)).
   Defined.
 
   Obligation Tactic := idtac.
@@ -1119,9 +1118,6 @@ Section delete.
 
   Lemma ltcnBR {d} : (if d == d then ltc Red Black else d < d).
   Proof. rewrite eq_refl //. Qed.
-
-(* forall (num ones : nat) (i : nat) (B : tree num ones (inc_black d c) c), *)
-(*       { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (inc_black d c) c | dflattenn' B' = delete (dflatten B) i } *)
 
   Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree num ones (inc_black d c) c) :
       { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (inc_black d c) c | dflattenn' B' = delete (dflatten B) i }.
