@@ -1120,12 +1120,13 @@ Section delete.
   Lemma ltcnBR {d} : (if d == d then ltc Red Black else d < d).
   Proof. rewrite eq_refl //. Qed.
 
-  Definition delTyUtil (d : nat) (c : color) :=
-    forall (num ones : nat) (i : nat) (B : tree num ones (inc_black d c) c),
+(* forall (num ones : nat) (i : nat) (B : tree num ones (inc_black d c) c), *)
+(*       { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (inc_black d c) c | dflattenn' B' = delete (dflatten B) i } *)
+
+  Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree num ones (inc_black d c) c) :
       { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (inc_black d c) c | dflattenn' B' = delete (dflatten B) i }.
 
-  Definition ddelete (d: nat) (c: color) : (delTyUtil d c). 
-    refine (Fix_F_2 delTyUtil _ (wf_nc _)) => {d c} d c ddelete num ones i B.
+    move: num ones i B ; refine (Fix_F_2 (fun (d: nat) (c: color) => _) _ (wf_nc (d,c))) => {d c} d c ddelete num ones i B.
     case val : (i < num);last first.
      move/negP/negP : val; rewrite ltnNge; move/negPn => val; rewrite daccess_default // !subn0 -delete_oversize; last by rewrite dflatten_sizeK.
      by exists (Stay c cic_ok B).
@@ -1168,7 +1169,6 @@ Section delete.
      destruct dl as [? ? d'' ? ? ? dl|] => //;subst d''.
      exists (Stay Black (bx_ok Red) (bnode dl (Leaf arrr leqr ueqr))).
      by rewrite /= delete_cat size_cat !dflatten_sizeK H -dK.
-     move: ddelete l; rewrite /delTyUtil /= => ddelete l.
      destruct cr';last first.
       destruct cl; [ case (ddelete _ Red ltcnBR _ _ i l) | case (ddelete _ Black ltcnS _ _ i l) ]; rewrite H => dl dK;
       case (balanceL2 Black dl (Node crlok crrok rl rr) erefl erefl) => res resK;
@@ -1205,7 +1205,7 @@ Section delete.
     destruct dr as [? ? d'' ? ? ? dr|] => //;subst d''.
     exists (Stay Black (bx_ok Red) (bnode (Leaf arrl leql ueql) dr)).
     by rewrite /= delete_cat H -dK.
-    move: ddelete r; rewrite /delTyUtil /= => ddelete r val.
+    move => val.
     destruct cl';last first.
      destruct cr; [ case (ddelete _ Red ltcnBR _ _ (i - (s3 + s4)) r) | case (ddelete _ Black ltcnS _ _ (i - (s3 + s4)) r) ]; rewrite -ltn_subln // val => dr dK;
      case (balanceR2 Black (Node cllok clrok ll lr) dr erefl erefl) => res resK;
