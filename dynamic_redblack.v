@@ -308,8 +308,6 @@ Section insert.
 
   Lemma leq_half n : n./2 <= n.
   Proof. by rewrite -{2}(odd_double_half n) -addnn addnA leq_addl. Qed.
-  Lemma double_gt n : n > 0 -> n.*2 > n.
-  Proof. move=> Hn. by rewrite -addnn -[X in X < _]addn0 ltn_add2l. Qed.
 
   Lemma dins_wf (B : dtree) b i :
     wf_dtree B -> wf_dtree (dins B b i).
@@ -322,7 +320,7 @@ Section insert.
     rewrite addn1 divn2 mul2n.
     case: ifP => Hsize /=.
       rewrite ?(eqxx,size_insert1,(eqP Hsize),size_drop,size_takel).
-        rewrite doubleK -[in X in X - _]addnn addnK leq_half double_gt //.
+        rewrite doubleK -[X in X - _]addnn addnK leq_half -muln2 ltn_Pmulr //.
         by rewrite sqrn_gt0 (leq_trans _ Hw).
       by rewrite leq_half.
     rewrite size_insert1.
@@ -331,12 +329,8 @@ Section insert.
     by rewrite (leq_trans Hs1).
   Qed.
 
-  Lemma color_black_wf c d (l r : dtree) :
-    wf_dtree (Bnode c l d r) -> wf_dtree (Bnode Black l d r).
-  Proof. by []. Qed.
-
-  Lemma color_red_wf c d (l r : dtree) :
-    wf_dtree (Bnode c l d r) -> wf_dtree (Bnode Red l d r).
+  Lemma recolor_node_wf c c' d (l r : dtree) :
+    wf_dtree (Bnode c l d r) -> wf_dtree (Bnode c' l d r).
   Proof. by []. Qed.
 
   Lemma dinsert_wf (B : dtree) b i :
@@ -344,7 +338,7 @@ Section insert.
   Proof.
     move => wf. rewrite /dinsert.
     case Hins: (dins B b i) => [c l [num ones] r | s] //.
-      apply: (@color_black_wf c (num, ones) l r).
+      apply: (@recolor_node_wf c).
       by rewrite -Hins dins_wf.
     by rewrite -Hins dins_wf.
   Qed.
