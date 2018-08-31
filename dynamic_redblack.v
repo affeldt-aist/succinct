@@ -396,7 +396,7 @@ Section insert.
     nearly_redblack l n -> is_redblack r Black n ->
     is_redblack (balanceL Black l r) Black n.+1.
   Proof.
-    case: l => [[[[] lll llD llr|llA] lD [[] lrl lrD lrr|lrA]|ll lD lr]|lA] /=;
+    case: l => [[[[] lll ? llr|?] ? [[] lrl ? lrr|?]|ll ? lr]|?] /=;
       repeat decompose_rewrite => //;
       by rewrite !is_redblack_Red_Black -?(eqP H1).
   Qed.
@@ -405,7 +405,7 @@ Section insert.
     nearly_redblack r n -> is_redblack l Black n ->
     is_redblack (balanceR Black l r) Black n.+1.
   Proof.
-    case: r => [[[[] rll rlD rlr|rlA] rD [[] rrl rrD rrr|rrA]|rl rD rr]|rA] /=;
+    case: r => [[[[] rll ? rlr|?] ? [[] rrl ? rrr|?]|rl ? rr]|?] /=;
       repeat decompose_rewrite => //;
       by rewrite !is_redblack_Red_Black -?(eqP H1).
   Qed.
@@ -421,25 +421,19 @@ Section insert.
     (is_redblack B Black n -> nearly_redblack (dins B b i) n) /\
     (is_redblack B Red n -> is_redblack (dins B b i) Black n).
   Proof.
-    elim: B i n.
-    + move=> c l IHl [num ones] r IHr i n.
-      split=> /=.
-        case: c => /andP [Hl Hr].
-          case: ifP => Hi /=; [move: IHl | move: IHr];
-            move=> /(_ _ n)/proj2 -> //=;
-            by rewrite is_redblack_Red_Black.
-        move/andP: Hl => [Hn Hl].
-        case: ifP => Hi; apply is_redblack_nearly_redblack with Black.
-          rewrite -(prednK Hn) balanceL_Black_nearly_is_redblack //.
-          by apply IHl.
-        rewrite -(prednK Hn) balanceR_Black_nearly_is_redblack //.
-        by apply IHr.
-      case: c => // /andP [/andP [Hn Hl] Hr].
-      case: ifP => Hi; rewrite -(prednK Hn).
+    elim: B i n => [c l IHl [num ones] r IHr | a] i n;
+      last by split => /=; case: ifP => //= _ ->.
+    have Hbk : is_redblack (Bnode Black l (num, ones) r) Black n ->
+               is_redblack (dins (Bnode Black l (num, ones) r) b i) Black n.
+      rewrite {3}[Black]lock /= -lock => /andP [/andP [/prednK <- Hl] Hr].
+      case: ifP => Hi.
         rewrite balanceL_Black_nearly_is_redblack //; by apply IHl.
       rewrite balanceR_Black_nearly_is_redblack //; by apply IHr.
-    + move=> a i n.
-      split=> /=; by case: ifP => //= _ ->.
+    split; case: c => //.
+    + move=> /= /andP [Hl Hr].
+      case: ifP => Hi /=; [move: Hr | move: Hl] => /is_redblack_Red_Black ->;
+        rewrite /= ?andbT; by [apply IHl | apply IHr].
+    + move/Hbk; by apply is_redblack_nearly_redblack.
   Qed.
 
   Lemma dinsert_is_redblack (B : dtree) b i n :
