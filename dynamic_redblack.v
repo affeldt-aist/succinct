@@ -81,6 +81,52 @@ Fixpoint dones (B : dtree) :=
   | Bleaf s => count_mem true s
   end.
 
+Definition rbnode c l r := Bnode c l (dsize l, dones l) r.
+Definition bnode l r := Bnode Black l (dsize l, dones l) r.
+Definition rnode l r := Bnode Red l (dsize l, dones l) r.
+Definition leaf a : dtree := Bleaf _ a.
+
+Definition eq_color c1 c2 :=
+  match c1,c2 with
+  | Black,Black | Red,Red => true
+  | _,_ => false
+  end.
+
+Lemma color_eqP : Equality.axiom eq_color.
+Proof. move; case; case => /=; try apply ReflectT => //; try apply ReflectF => //. Qed.
+
+Canonical color_eqMixin := EqMixin color_eqP.
+Canonical color_eqType := Eval hnf in EqType color color_eqMixin.
+
+Fixpoint eq_dtree (t1 t2 : dtree) := 
+  match t1,t2 with
+  | Bleaf a,Bleaf b => a == b
+  | Bnode c1 l1 d1 r1,Bnode c2 l2 d2 r2 => (d1 == d2) && (c1 == c2) && (eq_dtree l1 l2) && (eq_dtree r1 r2)
+  | Bnode _ _ _ _,Bleaf _ 
+  | Bleaf _,Bnode _ _ _ _ => false
+  end.
+
+Lemma eq_dtree_ref (t : dtree) : eq_dtree t t.
+Proof. elim t => [? l H1 ? r H2 /=|a //=]; by rewrite H1 H2 !eq_refl. Qed.
+
+Lemma eq_dtree_iff t1 t2 : t1 = t2 <-> eq_dtree t1 t2.
+Proof.
+  split => [->|]; first by rewrite eq_dtree_ref.
+  move: t1 t2; elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;last by move/eqP => /= ->.
+  move/andP: H; case; move/andP; case; move/andP; case; move/eqP => ->; move/eqP => -> H1 H2.
+  by rewrite (lH1 _ H1) (rH1 _ H2).
+Qed.
+
+Lemma dtree_eqP : Equality.axiom eq_dtree.
+Proof.
+  move; case => [? l1 ? r1 |?]; case => [? l2 ? r2|?] //; set b:= (eq_dtree _ _); case Hb : b; subst b; try (apply ReflectT; apply eq_dtree_iff => //); try apply ReflectF => //.
+   by case => H1 H2 H3 H4; move: Hb; rewrite H1 H2 H3 H4 eq_dtree_ref.
+  by case => H1; move: Hb; rewrite H1 eq_dtree_ref.
+Qed.
+
+Canonical dtree_eqMixin := EqMixin dtree_eqP.
+Canonical dtree_eqType := Eval hnf in EqType dtree dtree_eqMixin.
+
 Definition access (s : seq bool) i := nth false s i.
 
 Fixpoint wf_dtree (B : dtree) :=
@@ -308,8 +354,6 @@ Section insert.
 
   Lemma leq_half n : n./2 <= n.
   Proof. by rewrite -{2}(odd_double_half n) -addnn addnA leq_addl. Qed.
-  Lemma double_gt n : n > 0 -> n.*2 > n.
-  Proof. move=> Hn. by rewrite -addnn -[X in X < _]addn0 ltn_add2l. Qed.
 
   Lemma dins_wf (B : dtree) b i :
     wf_dtree B -> wf_dtree (dins B b i).
@@ -322,7 +366,7 @@ Section insert.
     rewrite addn1 divn2 mul2n.
     case: ifP => Hsize /=.
       rewrite ?(eqxx,size_insert1,(eqP Hsize),size_drop,size_takel).
-        rewrite doubleK -[in X in X - _]addnn addnK leq_half double_gt //.
+        rewrite doubleK -[X in X - _]addnn addnK leq_half -muln2 ltn_Pmulr //.
         by rewrite sqrn_gt0 (leq_trans _ Hw).
       by rewrite leq_half.
     rewrite size_insert1.
@@ -331,12 +375,8 @@ Section insert.
     by rewrite (leq_trans Hs1).
   Qed.
 
-  Lemma color_black_wf c d (l r : dtree) :
-    wf_dtree (Bnode c l d r) -> wf_dtree (Bnode Black l d r).
-  Proof. by []. Qed.
-
-  Lemma color_red_wf c d (l r : dtree) :
-    wf_dtree (Bnode c l d r) -> wf_dtree (Bnode Red l d r).
+  Lemma recolor_node_wf c c' d (l r : dtree) :
+    wf_dtree (Bnode c l d r) -> wf_dtree (Bnode c' l d r).
   Proof. by []. Qed.
 
   Lemma dinsert_wf (B : dtree) b i :
@@ -344,7 +384,7 @@ Section insert.
   Proof.
     move => wf. rewrite /dinsert.
     case Hins: (dins B b i) => [c l [num ones] r | s] //.
-      apply: (@color_black_wf c (num, ones) l r).
+      apply: (@recolor_node_wf c).
       by rewrite -Hins dins_wf.
     by rewrite -Hins dins_wf.
   Qed.
@@ -402,7 +442,7 @@ Section insert.
     nearly_redblack l n -> is_redblack r Black n ->
     is_redblack (balanceL Black l r) Black n.+1.
   Proof.
-    case: l => [[[[] lll llD llr|llA] lD [[] lrl lrD lrr|lrA]|ll lD lr]|lA] /=;
+    case: l => [[[[] lll ? llr|?] ? [[] lrl ? lrr|?]|ll ? lr]|?] /=;
       repeat decompose_rewrite => //;
       by rewrite !is_redblack_Red_Black -?(eqP H1).
   Qed.
@@ -411,7 +451,7 @@ Section insert.
     nearly_redblack r n -> is_redblack l Black n ->
     is_redblack (balanceR Black l r) Black n.+1.
   Proof.
-    case: r => [[[[] rll rlD rlr|rlA] rD [[] rrl rrD rrr|rrA]|rl rD rr]|rA] /=;
+    case: r => [[[[] rll ? rlr|?] ? [[] rrl ? rrr|?]|rl ? rr]|?] /=;
       repeat decompose_rewrite => //;
       by rewrite !is_redblack_Red_Black -?(eqP H1).
   Qed.
@@ -427,25 +467,19 @@ Section insert.
     (is_redblack B Black n -> nearly_redblack (dins B b i) n) /\
     (is_redblack B Red n -> is_redblack (dins B b i) Black n).
   Proof.
-    elim: B i n.
-    + move=> c l IHl [num ones] r IHr i n.
-      split=> /=.
-        case: c => /andP [Hl Hr].
-          case: ifP => Hi /=; [move: IHl | move: IHr];
-            move=> /(_ _ n)/proj2 -> //=;
-            by rewrite is_redblack_Red_Black.
-        move/andP: Hl => [Hn Hl].
-        case: ifP => Hi; apply is_redblack_nearly_redblack with Black.
-          rewrite -(prednK Hn) balanceL_Black_nearly_is_redblack //.
-          by apply IHl.
-        rewrite -(prednK Hn) balanceR_Black_nearly_is_redblack //.
-        by apply IHr.
-      case: c => // /andP [/andP [Hn Hl] Hr].
-      case: ifP => Hi; rewrite -(prednK Hn).
+    elim: B i n => [c l IHl [num ones] r IHr | a] i n;
+      last by split => /=; case: ifP => //= _ ->.
+    have Hbk : is_redblack (Bnode Black l (num, ones) r) Black n ->
+               is_redblack (dins (Bnode Black l (num, ones) r) b i) Black n.
+      rewrite {3}[Black]lock /= -lock => /andP [/andP [/prednK <- Hl] Hr].
+      case: ifP => Hi.
         rewrite balanceL_Black_nearly_is_redblack //; by apply IHl.
       rewrite balanceR_Black_nearly_is_redblack //; by apply IHr.
-    + move=> a i n.
-      split=> /=; by case: ifP => //= _ ->.
+    split; case: c => //.
+    + move=> /= /andP [Hl Hr].
+      case: ifP => Hi /=; [move: Hr | move: Hl] => /is_redblack_Red_Black ->;
+        rewrite /= ?andbT; by [apply IHl | apply IHr].
+    + move/Hbk; by apply is_redblack_nearly_redblack.
   Qed.
 
   Lemma dinsert_is_redblack (B : dtree) b i n :
@@ -660,6 +694,134 @@ End set_clear.
 
 (* Deletion: work in progress *)
 Section delete.
+
+  Inductive near_dtree: Type :=
+  | Stay : dtree -> near_dtree
+  | Down : dtree -> near_dtree.
+
+  Definition balanceL2 col (l : near_dtree) (r : dtree) : near_dtree :=
+    match l with
+    | Stay l => Stay (rbnode col l r)
+    | Down l =>
+      match col,r with
+      | _, Bnode _ (Bnode Red rll _ rlr) _ rr => Stay (rbnode col (bnode l rll) (bnode rlr rr))
+      | Black,Bnode Red (Bnode Black (Bnode Black _ _ _ as rll) _ rlr) _ rr
+      | Black,Bnode Red (Bnode Black (Bleaf _ as rll) _ rlr) _ rr =>
+        Stay (bnode (bnode (rnode l rll) rlr) rr)
+      | Black,Bnode Red (Bnode Black (Bnode Red rlll _ rllr) _ rlr) _ rr =>
+        Stay (bnode (bnode l rlll) (rnode (bnode rllr rlr) rr))
+      | Black,Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
+        Down (bnode (rnode l rl) rr)
+        (* absurd case *)
+      | _,_ => Stay l
+      end
+    end.
+
+  Definition balanceR2 col (l : dtree) (r : near_dtree) : near_dtree :=
+    match r with
+    | Stay r => Stay (rbnode col l r)
+    | Down r =>
+      match col,l with
+      | _, Bnode _ ll _ (Bnode Red lrl _ lrr) => Stay (rbnode col (bnode ll lrl) (bnode lrr r))
+      | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Black _ _ _ as lrr))
+      | Black,Bnode Red ll _ (Bnode Black lrl _ (Bleaf _ as lrr)) =>
+        Stay (bnode ll (bnode lrl (rnode lrr r)))
+      | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Red lrrl _ lrrr)) =>
+        Stay (bnode (rnode ll (bnode lrl lrrl)) (bnode lrrr r))
+      | Black,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
+        Down (bnode ll (rnode lr r))
+        (* absurd case *)
+      | _,_ => Stay l
+      end
+    end.
+
+  Definition delete_leaves2 p l r (i : nat) : dtree :=
+    if i < size l
+    then match p,w ^ 2 %/ 2 == size l,w ^ 2 %/2 == size r with
+         | _,true,true =>
+           leaf ((rcons (delete l i) (access r 0)) ++ (delete r 0))
+         | c,true,false => 
+           rbnode c (leaf (rcons (delete l i) (access r 0))) (leaf (delete r 0))
+         | c,false,_ => 
+           rbnode c (leaf (delete l i)) (leaf r)
+         end
+    else match p,w ^ 2 %/ 2 == size l,w ^ 2 %/2 == size r with
+         | _,true,true =>
+           leaf (l ++ (delete r (i - (size l))))
+         | c,false,true => 
+           rbnode c (leaf (delete l (size l).-1)) (leaf ((access l (size l).-1) :: (delete r (i - size l))))
+         | c,_,false => 
+           rbnode c (leaf l) (leaf (delete r (i - (size l))))
+         end.
+
+  Fixpoint height_of_dtree (B : dtree) :=
+    match B with
+    | Bnode Black l _ r => (maxn (height_of_dtree l) (height_of_dtree r)).+2
+    | Bnode Red l _ r => (maxn (height_of_dtree l) (height_of_dtree r)).+1
+    | Bleaf _ => 0
+    end.
+
+  Lemma pigeonhole_principle a b : a < b -> b < a.+1 -> false.
+  Proof. rewrite leq_eqVlt; move/orP; case; [ move/eqP => <- | move => H1 H2; move: (ltn_trans H1 H2) ]; by rewrite ltnn. Qed.
+
+  Lemma ltn_trans1 (l m n : nat) : l < m -> m < n.+1 -> l < n.
+  Proof. move => H1; case: leqP => // H2 ?; exact (leq_trans H1 H2). Qed.
+
+  Lemma hc_pcl {l r c s n} : height_of_dtree l < height_of_dtree (Bnode c l (s, n) r).
+  Proof. case c; rewrite /= -!maxnSS leq_max ltnS; [ rewrite leqnn // | rewrite ltnW // ]. Qed.
+
+  Lemma hc_pcr {l r c s n} : height_of_dtree r < height_of_dtree (Bnode c l (s, n) r).
+  Proof. case c; rewrite /= -!maxnSS leq_max ltnS; [ rewrite leqnn orbT // | apply/orP; apply or_intror; rewrite ltnW // ]. Qed.
+
+  Lemma hc_pcl' {lr ll r s p n} : height_of_dtree (rnode lr r) < height_of_dtree (Bnode Black (Bnode Red ll p lr) (s, n) r).
+  Proof. rewrite /= -!maxnSS -maxnA !leq_max !/maxn; case: ifP => H; [ rewrite ltnSn !orbT // | rewrite [ _.+1 < (_ lr).+3]ltnW // orbT // ]. Qed.
+
+  Lemma hc_pcr' {l rl rr s n p} : height_of_dtree (rnode l rl) < height_of_dtree (Bnode Black l (s, n) (Bnode Red rl p rr)).
+  Proof. rewrite /= -!maxnSS maxnA !leq_max !/maxn; case: ifP => H; [ rewrite [ _.+1 < (_ rl).+3]ltnW // orbT // | rewrite ltnSn // ]. Qed.
+
+  Lemma wf_hc' : forall B, (forall B', height_of_dtree B' < height_of_dtree B -> Acc (fun B B' => height_of_dtree B < height_of_dtree B') B').
+  Proof.
+    elim => [[] l IH1 d r IH2|?] B' /=; last (by rewrite ltn0); move: B' => [/= [] x1 ? ? H1 |? ? /=]; apply Acc_intro => x2; try (by rewrite ltn0);
+    try (move => H2; move:(ltn_trans1 H2 H1); rewrite /maxn; case: ifP => ? H3; [ apply (IH2 _ H3) | apply (IH1 _ H3) ]);
+    try (move => H2; apply Acc_intro => x3 H3; move:(ltn_trans1 H3 (ltn_trans1 H2 H1)); rewrite /maxn; case: ifP => ? H4; [ apply (IH2 _ H4) | apply (IH1 _ H4) ]).
+  Qed.
+
+  Lemma wf_hc : well_founded (fun B B' => height_of_dtree B < height_of_dtree B').
+  Proof. move => ?; apply Acc_intro; apply wf_hc'. Qed.
+
+  Definition ddelete (B : dtree) (i : nat) : near_dtree.
+
+    move: B i.
+    refine (Fix wf_hc (fun _ => _) _) => B ddelete i.
+    refine (
+        match B as tr return B = tr -> near_dtree with
+        | Bnode Black (Bleaf l) _ (Bleaf r) => fun _ => Down (delete_leaves2 Black l r i)
+        | Bnode Red (Bleaf l) _ (Bleaf r) => fun _ => Stay (delete_leaves2 Red l r i)
+        | Bnode Black (Bnode Red (Bleaf ll) _ (Bleaf lr)) (s,_) (Bleaf r) =>
+          if i < s
+          then fun _ => Stay (bnode (delete_leaves2 Red ll lr i) (leaf r))
+          else fun _ => Stay (bnode (leaf ll) (delete_leaves2 Red lr r (i - (size ll))))
+        | Bnode Black (Bleaf l) (s,_) (Bnode Red (Bleaf rl) _ (Bleaf rr)) =>
+          if i < s
+          then fun _ => Stay (bnode (delete_leaves2 Red l rl i) (leaf rr))
+          else fun _ => Stay (bnode (leaf l) (delete_leaves2 Red rl rr (i - s)))
+        | Bnode Black (Bnode Black _ _ _ as l) (s,_) (Bnode Red rl _ rr as r) =>
+          if i < s
+          then fun (_ : B = (Bnode Black l _ (Bnode Red rl _ rr))) => balanceL2 Black (ddelete (rnode l rl) _ i) rr
+          else fun (_ : B = (Bnode Black l _ r)) => balanceR2 Black l (ddelete r _ (i - s))
+        | Bnode Black (Bnode Red ll _ lr as l) (s,_) (Bnode Black _ _ _ as r) =>
+          if i < s
+          then fun (_ : B = (Bnode Black l _ r)) => balanceL2 Black (ddelete l _ i) r
+          else fun (_ : B = (Bnode Black (Bnode Red ll _ lr) _ r)) => balanceR2 Black ll (ddelete (rnode lr r) _ i)
+        | Bnode c l (s,_) r => 
+          if i < s
+          then fun (_ : B = (Bnode c l _ r)) => balanceL2 c (ddelete l _ i) r
+          else fun (_ : B = (Bnode c l _ r)) => balanceR2 c l (ddelete r _ (i - s))
+        (* absurd case *)
+        | Bleaf _ => fun _ => Stay B
+        end erefl
+      ); subst B; try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr); last (apply hc_pcr'); apply hc_pcl'. 
+  Defined.
 
   Definition delete_leaf s i uf :=
     if (size s == (w^2) %/ 2) && ~~uf
