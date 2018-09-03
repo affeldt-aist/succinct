@@ -801,13 +801,17 @@ Section delete.
       if i < s
       then Stay (bnode (delete_leaves2 Red l rl i) (leaf rr))
       else Stay (bnode (leaf l) (delete_leaves2 Red rl rr (i - s)))
-    | Bnode Black (Bnode Black _ _ _ as l) (s,_) (Bnode Red rl _ rr as r) =>
+    | Bnode Black (Bnode Black ll lt lr) (s,_) (Bnode Red rl rt rr) =>
+      let l := Bnode Black ll lt lr in
+      let r := Bnode Red rl rt rr in
       if i < s
       then balanceL2 Black (ddelete (rnode l rl) i) rr
       else balanceR2 Black l (ddelete r (i - s))
-    | Bnode Black (Bnode Red ll _ lr as l) (s,_) (Bnode Black _ _ _ as r) =>
+    | Bnode Black (Bnode Red ll lt lr) (s,_) (Bnode Black rl rt rr) =>
+      let l := Bnode Red ll lt lr in
+      let r := Bnode Black rl rt rr in
       if i < s
-      then  balanceL2 Black (ddelete l i) r
+      then balanceL2 Black (ddelete l i) r
       else balanceR2 Black ll (ddelete (rnode lr r) i)
     | Bnode c l (s,_) r => 
       if i < s
@@ -823,6 +827,7 @@ Section delete.
   apply hc_pcr'.
   Defined.
 
+  (*
   Definition ddelete (B : dtree) (i : nat) : near_dtree.
 
     move: B i.
@@ -856,6 +861,7 @@ Section delete.
         end erefl
       ); subst B; try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr); last (apply hc_pcr'); apply hc_pcl'. 
   Defined.
+*)
 
   Fixpoint dflattenn tr :=
     match tr with
@@ -877,6 +883,8 @@ Section delete.
   Lemma ddeleteE (B : dtree) i :
     wf_dtree B -> dflattenn (ddelete B i) = delete (dflatten B) i.
   Proof.
+
+    rewrite /ddelete.
     move => wf. rewrite /ddelete. move: B wf i. apply: dtree_ind.
     move => c l r ? ? ? ? [] wfl wfr IHl IHr i.
     rewrite /ddelete /dflattenn /=.
