@@ -713,7 +713,7 @@ Section delete.
       | Black,Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
         Down (bnode (rnode l rl) rr)
         (* absurd case *)
-      | _,_ => Stay l
+      | _,_ => Stay (rbnode col l r)
       end
     end.
 
@@ -731,7 +731,7 @@ Section delete.
       | Black,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
         Down (bnode ll (rnode lr r))
         (* absurd case *)
-      | _,_ => Stay l
+      | _,_ => Stay (rbnode col l r)
       end
     end.
 
@@ -789,6 +789,37 @@ Section delete.
   Lemma wf_hc : well_founded (fun B B' => height_of_dtree B < height_of_dtree B').
   Proof. move => ?; apply Acc_intro; apply wf_hc'. Qed.
 
+  Function ddelete (B : dtree) (i : nat) { measure height_of_dtree B } : near_dtree :=
+    match B  with
+    | Bnode Black (Bleaf l) _ (Bleaf r) => Down (delete_leaves2 Black l r i)
+    | Bnode Red (Bleaf l) _ (Bleaf r) => Stay (delete_leaves2 Red l r i)
+    | Bnode Black (Bnode Red (Bleaf ll) _ (Bleaf lr)) (s,_) (Bleaf r) =>
+      if i < s
+      then Stay (bnode (delete_leaves2 Red ll lr i) (leaf r))
+      else Stay (bnode (leaf ll) (delete_leaves2 Red lr r (i - (size ll))))
+    | Bnode Black (Bleaf l) (s,_) (Bnode Red (Bleaf rl) _ (Bleaf rr)) =>
+      if i < s
+      then Stay (bnode (delete_leaves2 Red l rl i) (leaf rr))
+      else Stay (bnode (leaf l) (delete_leaves2 Red rl rr (i - s)))
+    | Bnode Black (Bnode Black _ _ _ as l) (s,_) (Bnode Red rl _ rr as r) =>
+      if i < s
+      then balanceL2 Black (ddelete (rnode l rl) i) rr
+      else balanceR2 Black l (ddelete r (i - s))
+    | Bnode Black (Bnode Red ll _ lr as l) (s,_) (Bnode Black _ _ _ as r) =>
+      if i < s
+      then  balanceL2 Black (ddelete l i) r
+      else balanceR2 Black ll (ddelete (rnode lr r) i)
+    | Bnode c l (s,_) r => 
+      if i < s
+      then balanceL2 c (ddelete l i) r
+      else  balanceR2 c l (ddelete r (i - s))
+    (* absurd case *)
+    | Bleaf _ =>  Stay B
+    end.
+
+  subst B. try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr); last (apply hc_pcr'); apply hc_pcl'. 
+
+
   Definition ddelete (B : dtree) (i : nat) : near_dtree.
 
     move: B i.
@@ -822,6 +853,52 @@ Section delete.
         end erefl
       ); subst B; try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr); last (apply hc_pcr'); apply hc_pcl'. 
   Defined.
+
+  Fixpoint dflattenn tr :=
+    match tr with
+    | Stay t => dflatten t
+    | Down t => dflatten t
+    end.
+
+  Lemma balanceL2E c l r : dflattenn (balanceL2 c l r) = dflattenn l ++ dflatten r.
+  Proof.
+    move: l => [] ?; case c; case r => [] [] // [] //= [] [] [] /=; intros; rewrite //= -!catA //= -!catA //.
+  Qed.
+
+  Lemma balanceR2E c l r : dflattenn (balanceR2 c l r) = dflatten l ++ dflattenn r.
+  Proof.
+    move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; try case c'; try case c''; try (intros; rewrite //= -!catA //= -!catA //=);
+    move => ? ? [] x; first case x; intros; rewrite //= -!catA //= -!catA //=.
+  Qed.
+
+  Lemma ddeleteE (B : dtree) i :
+    wf_dtree B -> dflattenn (ddelete B i) = delete (dflatten B) i.
+  Proof.
+    move => wf. rewrite /ddelete. move: B wf i. apply: dtree_ind.
+    move => c l r ? ? ? ? [] wfl wfr IHl IHr i.
+    rewrite /ddelete /dflattenn /=.
+    move: IHl IHr; case c; case l; case r.
+
+    rewrite /Fix /Fix_F /dflattenn.
+    
+    destruct wf_hc.
+    destruct Acc.
+    compute.
+    rewrite /=.
+    rewrite /=.
+    destruct Fix.
+    rewrite /=.
+
+    compute.
+    + move => c l r num ones Hnum Hones _ IHl IHr /= b i.
+      case: ifPn => ?.
+      - by rewrite balanceLE IHl /insert1 insert_catL -?Hnum.
+      - by rewrite balanceRE IHr /insert1 insert_catR -?Hnum // leqNgt.
+    + move => s Hs b i.
+      rewrite /dins. case: ifP => Hi //.
+      by rewrite dflatten_node /dflatten cat_take_drop.
+  Qed.
+  Proof. move => wf. rewrite /dinsert -(dinsE b i wf). by case: dins. Qed.
 
   Definition delete_leaf s i uf :=
     if (size s == (w^2) %/ 2) && ~~uf
