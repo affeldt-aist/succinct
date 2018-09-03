@@ -817,8 +817,11 @@ Section delete.
     | Bleaf _ =>  Stay B
     end.
 
-  subst B. try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr); last (apply hc_pcr'); apply hc_pcl'. 
-
+  all: intros; subst B; apply/leP; try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr).
+  apply hc_pcl'.
+  apply hc_pcl'.
+  apply hc_pcr'.
+  Defined.
 
   Definition ddelete (B : dtree) (i : nat) : near_dtree.
 
