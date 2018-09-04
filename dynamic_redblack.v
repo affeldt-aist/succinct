@@ -865,41 +865,40 @@ Section delete.
     wf_dtree B -> dflattenn (ddelete B i) = delete (dflatten B) i.
   Proof.
     have Hp : (w ^ 2)./2 > 0; first (move: (Hw); case w; first rewrite ltn0 //; case => //).
-    functional induction (ddelete B i); try (case/andP => ?; case/andP => ?; case/andP => ? ?; by rewrite /= /ddelete delete_leaves2E).
+    functional induction (ddelete B i) => //; case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP; case/andP => ?; case/andP => ?; case/andP => ? ? ?; rewrite delete_cat -Hs e0 delete_leaves2E //.
+    by rewrite /= /ddelete delete_leaves2E.
+    by rewrite /= /ddelete delete_leaves2E.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP; case/andP => ?; case/andP => ?; case/andP => ? Hlr ?; move: y; case: ifP => // e0 ?;
-    rewrite delete_leaves2E // !delete_cat -subnDA; case/andP: Hlr => Hlr ?; move: (leq_trans Hp Hlr) => ?; by rewrite ltn_subLR // -size_cat -Hs e0 -!catA.
+    case/andP: wfl => ?; case/andP => ?; case/andP => ? ?.
+    rewrite delete_cat -Hs e0 delete_leaves2E //.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => Hrl ?;
-    rewrite delete_leaves2E // !delete_cat -subnDA; case/andP: Hrl => Hrl ?; move: (leq_trans Hp Hrl) => ?; by rewrite ltn_subLR // -size_cat -Hs e0 -!catA.
+    case/andP: wfl => ?; case/andP => ?; case/andP => ? wflr; move: y; case: ifP => // e0 ?.
+    rewrite delete_leaves2E // !delete_cat -subnDA; case/andP: wflr => Hlr ?; move: (leq_trans Hp Hlr) => ?; by rewrite ltn_subLR // -size_cat -Hs e0 -!catA.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => ? ?; move: y; case: ifP => // e0 ?.
+    case/andP: wfr => ?; case/andP => ?; case/andP => wfrl ?;
+    rewrite delete_leaves2E // !delete_cat -subnDA; case/andP: wfrl => Hrl ?; move: (leq_trans Hp Hrl) => ?; by rewrite ltn_subLR // -size_cat -Hs e0 -!catA.
+
+    case/andP: wfr => ?; case/andP => ?; case/andP => ? ?; move: y; case: ifP => // e0 ?.
     by rewrite delete_leaves2E // !delete_cat -Hs e0.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl; case/andP => ?; case/andP => ?; case/andP => wfrl ?.
+    case/andP: wfr => ?; case/andP => ?; case/andP => wfrl ?;
     move: IHn; rewrite /= /wf_dtree wfl wfrl size_cat count_cat; case/andP: wfl => ?; case/andP => ?; case/andP => wfll wflr; rewrite !dsizeE // !donesE // !eq_refl; move => IH.
     rewrite balanceL2E IH // !catA [RHS]delete_cat size_cat -Hs ltn_addr //.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ? wfr; move: IHn; rewrite /= /wf_dtree wfr; move => IH; move: y; case: ifP => // e0 ?;
+    move: IHn; rewrite /= /wf_dtree wfr; move => IH; move: y; case: ifP => // e0 ?;
     by rewrite balanceR2E IH // [RHS]delete_cat -Hs e0.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ? ?.
     rewrite balanceL2E delete_cat -Hs e0 IHn //.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr.
     rewrite balanceR2E IHn //;last (case/andP: wfl => ?; case/andP => ?; case/andP => wfll wflr; by rewrite /= /wf_dtree wfr donesE // dsizeE // wflr !eq_refl).
     move: y; case: ifP => //; rewrite Hs size_cat => e0 ?; rewrite -!catA // delete_cat; case: ifP => H; first by rewrite ltn_addr in e0.
     case/andP: wfl; move/eqP => Hll ?; by rewrite /= Hll.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr.
     rewrite balanceL2E delete_cat -Hs e0 IHn //.
 
-    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr; move: y0; case: ifP => // e0.
+    move: y0; case: ifP => // e0.
     rewrite balanceR2E delete_cat -Hs e0 IHn //.
-
-    done.
   Qed.
 End delete.
 
