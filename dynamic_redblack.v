@@ -692,7 +692,6 @@ Section set_clear.
 
 End set_clear.
 
-(* Deletion: work in progress *)
 Section delete.
 
   Definition balanceL2 col (l : dtree) (r : dtree) : dtree :=
@@ -804,9 +803,10 @@ Section delete.
 
   Lemma balanceR2E c l r : dflatten (balanceR2 c l r) = dflatten l ++ dflatten r.
   Proof.
-    move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; try case c'; try case c''; try (intros; rewrite //= -!catA //= -!catA //=).
-    move => ? ? [] x; first case x; intros; rewrite //= -!catA //=.
-    move => ? ? [c'''|]; first case c''';intros; rewrite //= -!catA //=.
+    move: r => [] ?; case c; case l => //= [] [] ? // ? [] [] //= [] ? ? [] [];
+    try (intros; rewrite //= -!catA //= -!catA //=);
+    try (move => ? ? ? [] []; intros; rewrite //= -!catA //= -!catA //=);
+    try (move => ? ? ? ? [] []; intros; rewrite //= -!catA //= -!catA //=).
   Qed.
 
   Lemma delete_cat {arr arr' : seq bool} {i} : delete (arr ++ arr') i = (if i < size arr then delete arr i ++ arr' else arr ++ delete arr' (i - (size arr))).
@@ -873,11 +873,10 @@ Section delete.
 
     by rewrite balanceL2E delete_cat -Hs e0 IHd.
 
-    rewrite balanceR2E IHd.
-    move: y; case: ifP => //; rewrite Hs => /= e0 ?.
-    case/andP: wfl; move/eqP => Hls ?; rewrite Hls -catA [RHS]delete_cat.
-    by case: ifP => H; first by rewrite size_cat ltn_addr in e0.
-    case/andP: wfl => ?; case/andP => ?; case/andP => wfll wflr; by rewrite /= /wf_dtree wfr donesE // dsizeE // wflr !eq_refl.
+    case/andP: wfl; move/eqP => Hls; case/andP => ?; case/andP => wfll wflr.
+    move: y; case: ifP => // e0 ?; rewrite Hs /= in e0.
+    rewrite balanceR2E IHd; last by rewrite /= /wf_dtree wfr donesE // dsizeE // wflr !eq_refl.
+    rewrite Hls /= -catA [RHS]delete_cat; by case: ifP => H; first by rewrite size_cat ltn_addr in e0.
 
     rewrite balanceL2E delete_cat -Hs e0 IHd //.
 
