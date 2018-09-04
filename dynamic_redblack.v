@@ -1,7 +1,7 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 
-Require Import compact_data_structures rank_select insert_delete set_clear.
+Require Import compact_data_structures rank_select insert_delete set_clear Recdef.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -80,6 +80,52 @@ Fixpoint dones (B : dtree) :=
   | Bnode _ l _ r => dones l + dones r
   | Bleaf s => count_mem true s
   end.
+
+Definition rbnode c l r := Bnode c l (dsize l, dones l) r.
+Definition bnode l r := Bnode Black l (dsize l, dones l) r.
+Definition rnode l r := Bnode Red l (dsize l, dones l) r.
+Definition leaf a : dtree := Bleaf _ a.
+
+Definition eq_color c1 c2 :=
+  match c1,c2 with
+  | Black,Black | Red,Red => true
+  | _,_ => false
+  end.
+
+Lemma color_eqP : Equality.axiom eq_color.
+Proof. move; case; case => /=; try apply ReflectT => //; try apply ReflectF => //. Qed.
+
+Canonical color_eqMixin := EqMixin color_eqP.
+Canonical color_eqType := Eval hnf in EqType color color_eqMixin.
+
+Fixpoint eq_dtree (t1 t2 : dtree) := 
+  match t1,t2 with
+  | Bleaf a,Bleaf b => a == b
+  | Bnode c1 l1 d1 r1,Bnode c2 l2 d2 r2 => (d1 == d2) && (c1 == c2) && (eq_dtree l1 l2) && (eq_dtree r1 r2)
+  | Bnode _ _ _ _,Bleaf _ 
+  | Bleaf _,Bnode _ _ _ _ => false
+  end.
+
+Lemma eq_dtree_ref (t : dtree) : eq_dtree t t.
+Proof. elim t => [? l H1 ? r H2 /=|a //=]; by rewrite H1 H2 !eq_refl. Qed.
+
+Lemma eq_dtree_iff t1 t2 : t1 = t2 <-> eq_dtree t1 t2.
+Proof.
+  split => [->|]; first by rewrite eq_dtree_ref.
+  move: t1 t2; elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;last by move/eqP => /= ->.
+  move/andP: H; case; move/andP; case; move/andP; case; move/eqP => ->; move/eqP => -> H1 H2.
+  by rewrite (lH1 _ H1) (rH1 _ H2).
+Qed.
+
+Lemma dtree_eqP : Equality.axiom eq_dtree.
+Proof.
+  move; case => [? l1 ? r1 |?]; case => [? l2 ? r2|?] //; set b:= (eq_dtree _ _); case Hb : b; subst b; try (apply ReflectT; apply eq_dtree_iff => //); try apply ReflectF => //.
+   by case => H1 H2 H3 H4; move: Hb; rewrite H1 H2 H3 H4 eq_dtree_ref.
+  by case => H1; move: Hb; rewrite H1 eq_dtree_ref.
+Qed.
+
+Canonical dtree_eqMixin := EqMixin dtree_eqP.
+Canonical dtree_eqType := Eval hnf in EqType dtree dtree_eqMixin.
 
 Definition access (s : seq bool) i := nth false s i.
 
@@ -649,228 +695,212 @@ End set_clear.
 (* Deletion: work in progress *)
 Section delete.
 
-  Definition delete_leaf s i uf :=
-    if (size s == (w^2) %/ 2) && ~~uf
-    then (s, None)
-    else (delete s i, Some (nth true s i)).
+  Inductive near_dtree: Type :=
+  | Stay : dtree -> near_dtree
+  | Down : dtree -> near_dtree.
 
-  (* s = size C, o = rank C *)
-  Fixpoint insw B i (C : seq bool) s o :=
+  Definition balanceL2 col (l : near_dtree) (r : dtree) : near_dtree :=
+    match l with
+    | Stay l => Stay (rbnode col l r)
+    | Down l =>
+      match col,r with
+      | _, Bnode _ (Bnode Red rll _ rlr) _ rr => Stay (rbnode col (bnode l rll) (bnode rlr rr))
+      | Black,Bnode Red (Bnode Black (Bnode Black _ _ _ as rll) _ rlr) _ rr
+      | Black,Bnode Red (Bnode Black (Bleaf _ as rll) _ rlr) _ rr =>
+        Stay (bnode (bnode (rnode l rll) rlr) rr)
+      | Black,Bnode Red (Bnode Black (Bnode Red rlll _ rllr) _ rlr) _ rr =>
+        Stay (bnode (bnode l rlll) (rnode (bnode rllr rlr) rr))
+      | Black,Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
+        Down (bnode (rnode l rl) rr)
+        (* absurd case *)
+      | _,_ => Stay (rbnode col l r)
+      end
+    end.
+
+  Definition balanceR2 col (l : dtree) (r : near_dtree) : near_dtree :=
+    match r with
+    | Stay r => Stay (rbnode col l r)
+    | Down r =>
+      match col,l with
+      | _, Bnode _ ll _ (Bnode Red lrl _ lrr) => Stay (rbnode col (bnode ll lrl) (bnode lrr r))
+      | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Black _ _ _ as lrr))
+      | Black,Bnode Red ll _ (Bnode Black lrl _ (Bleaf _ as lrr)) =>
+        Stay (bnode ll (bnode lrl (rnode lrr r)))
+      | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Red lrrl _ lrrr)) =>
+        Stay (bnode (rnode ll (bnode lrl lrrl)) (bnode lrrr r))
+      | Black,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
+        Down (bnode ll (rnode lr r))
+        (* absurd case *)
+      | _,_ => Stay (rbnode col l r)
+      end
+    end.
+
+  Definition delete_leaves2 p l r (i : nat) : dtree :=
+    if i < size l
+    then match p,(w ^ 2)./2 == size l,(w ^ 2)./2 == size r with
+         | _,true,true =>
+           leaf ((rcons (delete l i) (access r 0)) ++ (delete r 0))
+         | c,true,false => 
+           rbnode c (leaf (rcons (delete l i) (access r 0))) (leaf (delete r 0))
+         | c,false,_ => 
+           rbnode c (leaf (delete l i)) (leaf r)
+         end
+    else match p,(w ^ 2)./2 == size l,(w ^ 2)./2 == size r with
+         | _,true,true =>
+           leaf (l ++ (delete r (i - (size l))))
+         | c,false,true => 
+           rbnode c (leaf (delete l (size l).-1)) (leaf ((access l (size l).-1) :: (delete r (i - size l))))
+         | c,_,false => 
+           rbnode c (leaf l) (leaf (delete r (i - (size l))))
+         end.
+
+  Fixpoint height_of_dtree (B : dtree) :=
     match B with
-    | Bnode c l (num, ones) r =>
-      if i <= num
-      then Bnode c (insw l i C s o) (num + s, ones + o) r
-      else Bnode c l (num, ones) (insw r (i - num) C s o)
-    | Bleaf s => (Bleaf _ (insert s C i))
+    | Bnode Black l _ r => (maxn (height_of_dtree l) (height_of_dtree r)).+2
+    | Bnode Red l _ r => (maxn (height_of_dtree l) (height_of_dtree r)).+1
+    | Bleaf _ => 0
     end.
 
-  Lemma inswE B i (C : seq bool) s o :
-    wf_dtree B -> dflatten (insw B i C s o) = insert (dflatten B) C i.
-  Proof.
-    move=> wf; move: B wf i C s o.
-    apply: dtree_ind => // c l r num ones -> -> _ IHl IHr i C s o /=.
-    case: ifP => Hi //=; try rewrite IHl; try rewrite IHr;
-      rewrite /insert; rewrite take_cat drop_cat; rewrite ltn_neqAle;
-      rewrite Hi ?andbT ?andbF -!catA //.
-    case Heq: (i == size (dflatten l)) => //=.
-    by rewrite (eqP Heq) subnn take0 drop0 take_size drop_size !cats0.
-  Qed.
+  Lemma hc_pcl {l r c s n} : height_of_dtree l < height_of_dtree (Bnode c l (s, n) r).
+  Proof. case c; rewrite /= -!maxnSS leq_max ltnS; [ rewrite leqnn // | rewrite ltnW // ]. Qed.
 
-  Fixpoint del_head B : (dtree * option bool) :=
-    match B with
-    | Bleaf s => match s with
-                 | [::] => (B, None)
-                 | h :: t => (Bleaf _ t, Some h)
-                 end
-    | Bnode c l (num, ones) r =>
-      let (l', opt_b) := del_head l in
-      if opt_b is Some b' then (Bnode c l' (num - 1, ones - b') r, opt_b) else
-      let (r', opt_b') := del_head r in (Bnode c l (num, ones) r', opt_b')
+  Lemma hc_pcr {l r c s n} : height_of_dtree r < height_of_dtree (Bnode c l (s, n) r).
+  Proof. case c; rewrite /= -!maxnSS leq_max ltnS; [ rewrite leqnn orbT // | apply/orP; apply or_intror; rewrite ltnW // ]. Qed.
+
+  Lemma hc_pcl' {lr ll r s p n} : height_of_dtree (rnode lr r) < height_of_dtree (Bnode Black (Bnode Red ll p lr) (s, n) r).
+  Proof. rewrite /= -!maxnSS -maxnA !leq_max !/maxn; case: ifP => H; [ rewrite ltnSn !orbT // | rewrite [ _.+1 < (_ lr).+3]ltnW // orbT // ]. Qed.
+
+  Lemma hc_pcr' {l rl rr s n p} : height_of_dtree (rnode l rl) < height_of_dtree (Bnode Black l (s, n) (Bnode Red rl p rr)).
+  Proof. rewrite /= -!maxnSS maxnA !leq_max !/maxn; case: ifP => H; [ rewrite [ _.+1 < (_ rl).+3]ltnW // orbT // | rewrite ltnSn // ]. Qed.
+
+  Function ddelete (B : dtree) (i : nat) { measure height_of_dtree B } : near_dtree :=
+    match B  with
+    | Bnode Black (Bleaf l) (s,o) (Bleaf r) => Down (delete_leaves2 Black l r i)
+    | Bnode Red (Bleaf l) (s,o) (Bleaf r) => Stay (delete_leaves2 Red l r i)
+    | Bnode Black (Bnode Red (Bleaf ll) (_,o) (Bleaf lr)) (s,_) (Bleaf r) =>
+      if i < s
+      then Stay (bnode (delete_leaves2 Red ll lr i) (leaf r))
+      else Stay (bnode (leaf ll) (delete_leaves2 Red lr r (i - (size ll))))
+    | Bnode Black (Bleaf l) (s,_) (Bnode Red (Bleaf rl) (_,_) (Bleaf rr)) =>
+      if i < s
+      then Stay (bnode (delete_leaves2 Red l rl i) (leaf rr))
+      else Stay (bnode (leaf l) (delete_leaves2 Red rl rr (i - s)))
+    | Bnode Black (Bnode Black ll (ls,lo) lr) (s,_) (Bnode Red rl (rs,ro) rr) =>
+      let l := Bnode Black ll (ls,lo) lr in
+      let r := Bnode Red rl (rs,ro) rr in
+      if i < s
+      then balanceL2 Black (ddelete (rnode l rl) i) rr
+      else balanceR2 Black l (ddelete r (i - s))
+    | Bnode Black (Bnode Red ll (ls,lo) lr) (s,_) (Bnode Black rl (rs,ro) rr) =>
+      let l := Bnode Red ll (ls,lo) lr in
+      let r := Bnode Black rl (rs,ro) rr in
+      if i < s
+      then balanceL2 Black (ddelete l i) r
+      else balanceR2 Black ll (ddelete (rnode lr r) (i - ls))
+    | Bnode c l (s,_) r => 
+      if i < s
+      then balanceL2 c (ddelete l i) r
+      else  balanceR2 c l (ddelete r (i - s))
+    (* absurd case *)
+    | Bleaf x =>  Stay (leaf (delete x i))
     end.
 
-  Lemma behead_cat T (s t : seq T) : size s != 0 ->
-    behead (s ++ t) = (behead s) ++ t.
-  Proof. by elim: s. Qed.
+  all: intros; subst B; apply/leP; try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr).
+  apply hc_pcl'.
+  apply hc_pcl'.
+  apply hc_pcr'.
+  Defined.
 
-  Lemma dsizeP B : wf_dtree B -> reflect (dsize B = 0) (nilp (dflatten B)).
-  Proof.
-    move=> wf; rewrite dsizeE //; apply /eqP.
-  Qed.
-
-  Lemma del_head_nonempty B x : (del_head B).2 = Some x ->
-    size (dflatten B) != 0.
-  Proof.
-    elim: B => [c l IHl [num ones] r IHr | []] //=.
-    case: (del_head l) IHl => l' /= [b Hb /Hb | _].
-      by rewrite size_cat addn_eq0 negb_and => ->.
-    case: (del_head r) IHr => r' [b Hb /Hb|] //=.
-    by rewrite size_cat addn_eq0 negb_and orbC => ->.
-  Qed.
-
-  Lemma del_head_none_isempty B : (del_head B).2 = None -> dflatten B = [::].
-  Proof.
-    elim: B => [c l IHl [num ones] r IHr | []] //=.
-    case: (del_head l) IHl => l' [b Hb | ->] //=.
-    by case: (del_head r) IHr => r' [b Hb | ->].
-  Qed.
-
-  Lemma del_headE B : wf_dtree B ->
-    dflatten (del_head B).1 = behead (dflatten B).
-  Proof.
-    move: B; apply: dtree_ind => [c l r num ones -> -> _ IHl IHr | []] //=.
-    rewrite (surjective_pairing (del_head l)).
-    case Hb: (del_head l).2 => /=.
-      by rewrite IHl behead_cat // (del_head_nonempty Hb).
-    rewrite (surjective_pairing (del_head r)) /=.
-    by rewrite IHr (del_head_none_isempty Hb).
-  Qed.
-
-  Fixpoint del_last B : (dtree * option bool) :=
-    match B with
-    | Bleaf s => match s with
-                 | [::] => (B, None)
-                 | h :: t => (Bleaf _ (belast h t), Some (last h t))
-                 end
-    | Bnode c l (num, ones) r =>
-      let (r', opt_b) := del_last r in
-      if opt_b is Some b then (Bnode c l (num, ones) r', Some b) else
-      let (l', opt_b') := del_last l in
-      if opt_b' is Some b' then (Bnode c l' (num - 1, ones - b') r, Some b')
-                           else (Bnode c l (0, 0) r, None)
+  Fixpoint dflattenn tr :=
+    match tr with
+    | Stay t => dflatten t
+    | Down t => dflatten t
     end.
 
-  Definition belast' T (s : seq T) := if s is x :: s' then belast x s' else [::].
-  Lemma belast'_belast T x (s : seq T) : size s != 0 ->
-    belast x s = x :: (belast' s).
-  Proof. by elim: s. Qed.
+  Lemma balanceL2E c l r : dflattenn (balanceL2 c l r) = dflattenn l ++ dflatten r.
+  Proof. move: l => [] ?; case c; case r => [] [] // [] //= [] [] [] /=; intros; rewrite //= -!catA //= -!catA //. Qed.
 
-  Lemma belast'_cat T (s t : seq T) : size t != 0 ->
-    belast' (s ++ t) = s ++ (belast' t).
+  Lemma balanceR2E c l r : dflattenn (balanceR2 c l r) = dflatten l ++ dflattenn r.
   Proof.
-    elim: s => //= x s IHs H.
-    rewrite -IHs // belast'_belast //=.
-    by rewrite size_cat addn_eq0 negb_and H orbT.
+    move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; try case c'; try case c''; try (intros; rewrite //= -!catA //= -!catA //=);
+    move => ? ? [] x; first case x; intros; rewrite //= -!catA //= -!catA //=.
   Qed.
 
-  Lemma del_last_nonempty B x : (del_last B).2 = Some x ->
-    size (dflatten B) != 0.
+  Lemma delete_cat {arr arr' : seq bool} {i} : delete (arr ++ arr') i = (if i < size arr then delete arr i ++ arr' else arr ++ delete arr' (i - (size arr))).
   Proof.
-    elim: B => [c l IHl [num ones] r IHr | []] //=.
-    case: (del_last r) IHr => r' /= [b Hb /Hb | _].
-      by rewrite size_cat addn_eq0 negb_and orbC => ->.
-    case: (del_last l) IHl => l' /= [b Hb /Hb | _ ] //.
-    by rewrite size_cat addn_eq0 negb_and => ->.
+    rewrite /delete take_cat -catA.
+    case: ifP => H.
+     rewrite drop_cat.
+     case: ifP => // H2.
+     move: (negbT H2).
+     rewrite -leqNgt => H3.
+     have H4 : i.+1 = size arr. apply/eqP. rewrite eqn_leq. by apply/andP.
+     by rewrite H4 subnn drop0 drop_oversize //.
+    rewrite drop_cat.
+    case: ifP => H2. move: (ltnW H2). by rewrite H.
+    move: (negbT H) (negbT H2).
+    rewrite -!leqNgt => H3 H4.
+    by rewrite catA subSn //.
   Qed.
 
-  Lemma del_last_none_isempty B : (del_last B).2 = None -> dflatten B = [::].
+  Lemma delete_leaves2E c l r i : (w ^ 2)./2 <= size l < (w ^ 2).*2 -> (w ^ 2)./2 <= size r < (w ^ 2).*2 -> dflatten (delete_leaves2 c l r i) = delete (l ++ r) i.
   Proof.
-    elim: B => [c l IHl [num ones] r IHr | []] //=.
-    case: (del_last r) IHr => r' [b Hb | ->] //=.
-    by case: (del_last l) IHl => l' [b Hb | ->].
+    rewrite /delete_leaves2 delete_cat.
+    case: ifP; case: ifP => //; case: ifP => //; try (rewrite /delete /= take0 drop1 cat0s cat_rcons -!catA; case r => //=; move: (Hw); case w; first rewrite ltn0 //; case => //).
+    move => ? ? ?; case/andP => Hl ? ?; have Hp : (w ^ 2)./2 > 0; first (move: (Hw); case w; first rewrite ltn0 //; case => //); move: (leq_trans Hp Hl) => ?.
+    rewrite /delete /= /access drop_oversize; last rewrite prednK //; rewrite cats0 -cat_rcons -take_nth prednK // take_oversize //.
   Qed.
 
-  Lemma del_lastE B : wf_dtree B ->
-    dflatten (del_last B).1 = belast' (dflatten B).
+  Lemma ltn_subLR a b c : c > 0 -> a - b < c = (a < b + c).
   Proof.
-    move: B; apply: dtree_ind => [c l r num ones -> -> _ IHl IHr | []] //=.
-    rewrite (surjective_pairing (del_last r)).
-    case Hb: (del_last r).2 => /=.
-      by rewrite IHr belast'_cat // (del_last_nonempty Hb).
-    rewrite (surjective_pairing (del_last l)).
-    case Hb': (del_last l).2 => /=.
-      by rewrite (del_last_none_isempty Hb) !cats0.
-    by rewrite !del_last_none_isempty.
+    case H1 : (b <= a) => H2. by rewrite -(ltn_add2r b) subnK // addnC.
+    move: H1; rewrite leqNgt; move/negP/negP => H1.
+    rewrite ltn_addr //; move: H1.
+    case: b => // n H1.
+    move/eqP: (ltnW H1) => W.
+    by rewrite W H2.
   Qed.
 
-  Lemma del_last2E B x0 : wf_dtree B -> dsize B > 0 ->
-    (del_last B).2 = Some (last x0 (dflatten B)).
+  Lemma ddeleteE (B : dtree) i :
+    wf_dtree B -> dflattenn (ddelete B i) = delete (dflatten B) i.
   Proof.
-    move=> wf; move: B wf x0.
-    apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr x0 | []] //=.
-    rewrite (surjective_pairing (del_last r)).
-    case Hb: (del_last r).2 => /=.
-      by rewrite -Hb last_cat -IHr // dsizeE // lt0n (del_last_nonempty Hb).
-    rewrite (dsizeE wfr) /= (del_last_none_isempty Hb) cats0 addn0 => Hsize.
-    rewrite (surjective_pairing (del_last l)).
-    case Hb': (del_last l).2 => /=.
-      by rewrite -IHl // Hb'.
-    by rewrite (dsizeE wfl) (del_last_none_isempty Hb') in Hsize.
+    have Hp : (w ^ 2)./2 > 0; first (move: (Hw); case w; first rewrite ltn0 //; case => //).
+    functional induction (ddelete B i); try (case/andP => ?; case/andP => ?; case/andP => ? ?; by rewrite /= /ddelete delete_leaves2E).
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP; case/andP => ?; case/andP => ?; case/andP => ? ? ?; rewrite delete_cat -Hs e0 delete_leaves2E //.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP; case/andP => ?; case/andP => ?; case/andP => ? Hlr ?; move: y; case: ifP => // e0 ?;
+    rewrite delete_leaves2E // !delete_cat -subnDA; case/andP: Hlr => Hlr ?; move: (leq_trans Hp Hlr) => ?; by rewrite ltn_subLR // -size_cat -Hs e0 -!catA.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => Hrl ?;
+    rewrite delete_leaves2E // !delete_cat -subnDA; case/andP: Hrl => Hrl ?; move: (leq_trans Hp Hrl) => ?; by rewrite ltn_subLR // -size_cat -Hs e0 -!catA.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => ?; case/andP => ? ?; move: y; case: ifP => // e0 ?.
+    by rewrite delete_leaves2E // !delete_cat -Hs e0.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl; case/andP => ?; case/andP => ?; case/andP => wfrl ?.
+    move: IHn; rewrite /= /wf_dtree wfl wfrl size_cat count_cat; case/andP: wfl => ?; case/andP => ?; case/andP => wfll wflr; rewrite !dsizeE // !donesE // !eq_refl; move => IH.
+    rewrite balanceL2E IH // !catA [RHS]delete_cat size_cat -Hs ltn_addr //.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ? wfr; move: IHn; rewrite /= /wf_dtree wfr; move => IH; move: y; case: ifP => // e0 ?;
+    by rewrite balanceR2E IH // [RHS]delete_cat -Hs e0.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => ? ?.
+    rewrite balanceL2E delete_cat -Hs e0 IHn //.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr.
+    rewrite balanceR2E IHn //;last (case/andP: wfl => ?; case/andP => ?; case/andP => wfll wflr; by rewrite /= /wf_dtree wfr donesE // dsizeE // wflr !eq_refl).
+    move: y; case: ifP => //; rewrite Hs size_cat => e0 ?; rewrite -!catA // delete_cat; case: ifP => H; first by rewrite ltn_addr in e0.
+    case/andP: wfl; move/eqP => Hll ?; by rewrite /= Hll.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr.
+    rewrite balanceL2E delete_cat -Hs e0 IHn //.
+
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr; move: y0; case: ifP => // e0.
+    rewrite balanceR2E delete_cat -Hs e0 IHn //.
+
+    done.
   Qed.
-
-  Definition redden (B : dtree) :=
-    match B with
-    | Bnode _ l (num, ones) r => Bnode Red l (num, ones) r
-    | _ => B
-    end.
-
-  Definition bal_left (l r : dtree) :=
-    match l, r with
-    | Bnode Red a (na, oa) b, c => Bnode Red (Bnode Black a (na, oa) b)
-                                         (dsize l, drank_size l) c
-    | bl, Bnode Black a (na, oa) b => balanceR Black l (Bnode Red a (na, oa) b)
-    | bl, Bnode Red (Bnode Black a (na, oa) b) _ c => Bnode Red (Bnode Black bl (dsize bl, drank_size bl) a) (dsize bl + na, drank_size bl + oa) (balanceR Black b (redden c))
-    | _, _ => Bnode Red l (dsize l, drank_size l) r
-    end.
-
-  Fixpoint bdel B i w uf : (dtree * option bool) :=
-    match B with
-    | Bleaf s => let (s, b) := delete_leaf s i uf
-                 in (Bleaf _ s, b)
-    | Bnode c l (num, ones) r as v =>
-      if i <= num
-      then let (l', opt_b) := bdel l i w uf
-           in match opt_b with
-              | None => (v, None)
-              | Some b => if num == (w ^ 2) %/ 2
-                          then let (r', opt_b') := del_head r
-                               in match opt_b' with
-                                  | None => (* merge leaves *)
-                                    (insw r' 0 (dflatten l') (w ^ 2 - 1)
-                                          (ones - b), opt_b)
-                                  | Some b' =>
-                                    let l'_i := dinsert l' b' ((w^2) %/ 2)
-                                    in match l'_i with
-                                       | Bnode Black _ _ _ =>
-                                      (bal_left l'_i r', opt_b)
-                                       | _ => (Bnode Red l'_i (dsize l'_i, drank_size l'_i) r, opt_b)
-                                       end
-                                  end
-                          else (Bnode c l' (num - 1, ones - b) r, opt_b)
-              end
-      else let o := drank_size B
-           in let (r', opt_b) := bdel r (i - num) w uf
-           in match opt_b with
-              | None => (v, None)
-              | Some b => if (dsize B) - num == (w ^ 2) %/ 2
-                          then let (l', opt_b') := del_last l
-                               in match opt_b' with
-                                  | None =>
-                                    (insw l' (num + 1) (dflatten r')
-                                         ((w ^ 2) - 1) (o - b - ones),
-                                     opt_b)
-                                  | Some b' =>
-                                    (balanceL c (dinsert r' b' 1)
-                                              r', opt_b)
-                                  end
-                          else (Bnode c l (num, ones) r', opt_b)
-              end
-    end.
-
-(*
-  Definition ddelete B i w := (bdel B i (drank_size B) w true).1.
-
-  Definition ddeleteE B i w :
-    wf_dtree B -> dflatten (ddelete B i w) = delete (dflatten B) i.
-  Proof.
-    move=> wf; move: B wf i w; rewrite /ddelete. apply: dtree_ind => //=.
-    move=> c l r num ones -> -> _ IHl IHr //= i w.
-    case: ifP => Hi.
-    case_eq (bdel l i ((count_mem true) (dflatten l)) w true) => l' [b Hl'|] //=.
-    rewrite Hl'. case: eqP => Hw.
-    case_eq (bdel r 0 0 w false) => r' [b' Hr'|] //=.
-    rewrite balanceRE. rewrite dinsertE.
-*)
-
 End delete.
 
 End dtree.
