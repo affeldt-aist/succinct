@@ -704,7 +704,10 @@ Section delete.
     | Stay l => Stay (rbnode col l r)
     | Down l =>
       match col,r with
-      | _, Bnode _ (Bnode Red rll _ rlr) _ rr => Stay (rbnode col (bnode l rll) (bnode rlr rr))
+      | _, Bnode Black (Bnode Red rll _ rlr) _ rr => Stay (rbnode col (bnode l rll) (bnode rlr rr))
+      | Red, Bnode Black (Bleaf _ as rl) _ rr
+      | Red, Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
+        Stay (bnode (rnode l rl) rr)
       | Black,Bnode Red (Bnode Black (Bnode Black _ _ _ as rll) _ rlr) _ rr
       | Black,Bnode Red (Bnode Black (Bleaf _ as rll) _ rlr) _ rr =>
         Stay (bnode (bnode (rnode l rll) rlr) rr)
@@ -717,13 +720,16 @@ Section delete.
       | _,_ => Stay (rbnode col l r)
       end
     end.
-
+  
   Definition balanceR' col (l : dtree) (r : deleted_dtree) : deleted_dtree :=
     match r with
     | Stay r => Stay (rbnode col l r)
     | Down r =>
       match col,l with
-      | _, Bnode _ ll _ (Bnode Red lrl _ lrr) => Stay (rbnode col (bnode ll lrl) (bnode lrr r))
+      | _, Bnode Black ll _ (Bnode Red lrl _ lrr) => Stay (rbnode col (bnode ll lrl) (bnode lrr r))
+      | Red,Bnode Black ll _ (Bleaf _ as lr)
+      | Red,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
+        Stay (bnode ll (rnode lr r))
       | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Black _ _ _ as lrr))
       | Black,Bnode Red ll _ (Bnode Black lrl _ (Bleaf _ as lrr)) =>
         Stay (bnode ll (bnode lrl (rnode lrr r)))
@@ -903,54 +909,68 @@ Section delete.
     by rewrite balanceR'E delete_cat -Hs e0 IHd.
   Qed.
 
-  Definition is_nearly_redblack' tr bh :=
+  Definition is_nearly_redblack' tr c bh :=
     match tr with
-    | Stay tr => is_redblack tr Black bh
+    | Stay tr => is_redblack tr c bh
     | Down tr => is_redblack tr Red bh.-1
     end.
+  
+  Lemma is_nearly_redblack'_Red_Black B n :
+    is_nearly_redblack' B Red n -> is_nearly_redblack' B Black n.
+  Proof. case: B => [[]|] //= [] //. Qed.
     
-  Lemma balanceL'_Black_nearly_is_redblack l r n :
-    0 < n -> is_nearly_redblack' l n.-1 -> is_redblack r Black n.-1 ->
-    is_nearly_redblack' (balanceL' Black l r) n.
+  Lemma balanceL'_Black_nearly_is_redblack l r n c :
+    0 < n -> is_nearly_redblack' l Black n.-1 -> is_redblack r Black n.-1 ->
+    is_nearly_redblack' (balanceL' Black l r) c n.
   Proof.
     move => Hn okl okr; move: okr okl Hn.
     case: l => l; first by move => /= -> -> ->.
-    case: n r l => [//|n] [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
-  Qed.
-    
-  Lemma balanceR'_Black_nearly_is_redblack l r n :
-    0 < n -> is_redblack l Black n.-1 -> is_nearly_redblack' r n.-1 ->
-    is_nearly_redblack' (balanceR' Black l r) n.
-  Proof.
-    case: r => r; first by move => /= -> -> ->.
-    case: n l r => [//|n] [[[[] lll ? llr|?] ? [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
+    case: c n r l => [] [//|n] [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l //=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
   Qed.
   
-  Lemma ddelete_is_redblack B i n :
-    is_redblack B Red n -> forall res, R_ddelete B i res -> is_nearly_redblack' res n.
+  Lemma balanceL'_Red_nearly_is_redblack l r n :
+    is_nearly_redblack' l Red n -> is_redblack r Red n ->
+    is_nearly_redblack' (balanceL' Red l r) Black n.
   Proof.
-    move => okB res okres; move: okres okB => [].
-    move => ? ? ? ? ? ? ?; rewrite /delete_leaves2; case: ifP => ?; case: ifP => ? /=; try case: ifP => ? /=; by repeat decompose_rewrite.
-    move => ? ? ? ? ? ? ?; rewrite /delete_leaves2; case: ifP => ?; case: ifP => ? /=; try case: ifP => ? /=; by repeat decompose_rewrite.
-    move => ? ? ? ? ? ? ?; rewrite /delete_leaves2; case: ifP => ?; case: ifP => ? /=; try case: ifP => ? /=; by repeat decompose_rewrite.
-    move => ? ? ? ? ? ? ? ? ? ? [//|] ? ?.
-    move => /= ok.
-    apply balanceR'_Black_nearly_is_redblack; move: ok => /=; repeat decompose_rewrite => /= //.
-    rewrite /=.
+    move => okl okr; move: okr okl.
+    case: l => l; first by move => /= -> ->.
+    case: r l => [ [//|] [[] rll ? rlr| ?] ? rr | ?] l /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
+  Qed.
     
-    done.
-    rewrite /delete_leaves2; case: ifP => ?; case: ifP => ? /=; try case: ifP => ? /=; by repeat decompose_rewrite.
+  Lemma balanceR'_Black_nearly_is_redblack l r n c :
+    0 < n -> is_redblack l Black n.-1 -> is_nearly_redblack' r Black n.-1 ->
+    is_nearly_redblack' (balanceR' Black l r) c n.
+  Proof.
+    case: r => r; first by move => /= -> -> ->.
+    case: c n l r => [] [//|n] [[[[] lll ? llr|?] ? [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
+  Qed.
+  
+  Lemma balanceR'_Red_nearly_is_redblack l r n :
+    is_redblack l Red n -> is_nearly_redblack' r Red n ->
+    is_nearly_redblack' (balanceR' Red l r) Black n.
+  Proof.
+    case: r => r; first by move => /= -> ->.
+    move: l r => [ [//|] ll ? [[] lrl ? lrr|?] |?] r /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
+  Qed.
+
+  Lemma delete_leaves2_is_nearly_redblack l r c i:
+    is_nearly_redblack' (delete_leaves2 c l r i) Black (c == Black).
+  Proof.
+    rewrite /delete_leaves2.
+    case: c;case: ifP => ?; case: ifP => ?; try case: ifP => ?; rewrite //=.
+  Qed.
+  
+  Lemma ddelete_is_redblack B i n c :
+    0 < n -> is_redblack B c n -> is_nearly_redblack' (ddelete B i) c n.
+  Proof.
+    move: n c; functional induction (ddelete B i) => n c' H; try (case: c' => //=; rewrite /delete_leaves2; case: ifP => ?; case: ifP => ? /=; try case: ifP => ? /=; by repeat decompose_rewrite);
+    try (move => ok; apply balanceL'_Black_nearly_is_redblack => //=; try apply IHd; move: ok => /=; repeat decompose_rewrite => //=; by apply is_redblack_Red_Black);
+    try (move => ok; apply balanceR'_Black_nearly_is_redblack => //=; try apply IHd; move: ok => /=; repeat decompose_rewrite => //=; by apply is_redblack_Red_Black).
     
-    decompose_rewrite.
-    move: c B => [] [ [] [[] ll ? lr|?] ? [[] rl ? rr|?] | ?].
-    case.
-    case.
-    [] [ [] [[] ll' ? lr'|?] ? [[] rl' ? rr'|?] | ? ] //=.
-    move => okB res.
-    About R_ddelete_correct.
-                   [[[] l ? r|?]|?] //=.
-    Print R_ddelete.
-    rewrite /=.
+    move => ok.
+    move: c c' l r y IHd ok => [] [] [[] // [? lll ? llr|?] d [? lrl ? lrr|?] |?] [[] // rl [] ? ? rr|?] //; case: d => // ? ? ? IHd;
+      try by (move => ok; try apply balanceL'_Red_nearly_is_redblack; try apply balanceL'_Black_nearly_is_redblack; try apply balanceR'_Black_nearly_is_redblack; try apply balanceR'_Red_nearly_is_redblack; try apply IHd => //; move: ok; repeat decompose_rewrite => //=; apply is_redblack_Red_Black => //).
+    move => ok; apply balanceL'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok; repeat decompose_rewrite => //=.
     
 End delete.
 
