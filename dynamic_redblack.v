@@ -710,6 +710,7 @@ Section delete.
         Stay (bnode (bnode (rnode l rll) rlr) rr)
       | Black,Bnode Red (Bnode Black (Bnode Red rlll _ rllr) _ rlr) _ rr =>
         Stay (bnode (bnode l rlll) (rnode (bnode rllr rlr) rr))
+      | Black,Bnode Black (Bleaf _ as rl) _ rr 
       | Black,Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
         Down (bnode (rnode l rl) rr)
         (* absurd case *)
@@ -728,6 +729,7 @@ Section delete.
         Stay (bnode ll (bnode lrl (rnode lrr r)))
       | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Red lrrl _ lrrr)) =>
         Stay (bnode (rnode ll (bnode lrl lrrl)) (bnode lrrr r))
+      | Black,Bnode Black ll _ (Bleaf _ as lr)
       | Black,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
         Down (bnode ll (rnode lr r))
         (* absurd case *)
@@ -899,6 +901,30 @@ Section delete.
 
     move: y0; case: ifP => // e0.
     rewrite balanceR2E delete_cat -Hs e0 IHn //.
+  Qed.
+
+  Fixpoint is_redblack' tr c bh :=
+    match bh,tr with
+    | _, Stay tr => is_redblack tr c bh
+    | O,Down _ => false
+    | S bh, Down tr => is_redblack tr Red bh
+    end.
+    
+  Lemma balanceL2_Black_nearly_is_redblack l r n :
+    is_redblack' l Black n -> is_redblack r Black n ->
+    is_redblack' (balanceL2 Black l r) Black n.+1.
+  Proof.
+    move => okl okr; move: okr okl.
+    case: l => l; first by case: n => [|n] /= -> ->.
+    case: n r l => [//|n] [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
+  Qed.
+    
+  Lemma balanceR2_Black_nearly_is_redblack l r n :
+    is_redblack l Black n -> is_redblack' r Black n ->
+    is_redblack' (balanceR2 Black l r) Black n.+1.
+  Proof.
+    case: r => r; first by case: n => [|n] /= -> ->.
+    case: n l r => [//|n] [[[[] lll ? llr|?] ? [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
   Qed.
 End delete.
 
