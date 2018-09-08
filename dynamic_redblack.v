@@ -967,28 +967,32 @@ Section delete.
 Lemma ddel_is_nearly_redblack' B i n c :
   0 < n -> is_redblack B c n -> is_nearly_redblack' (ddel B i) c n.
 Proof.
-move: n c; functional induction (ddel B i) => n c' H; try (case: c' => //=; rewrite /delete_leaves; case: ifP => ?; case: ifP => ? /=; try case: ifP => ? /=; by repeat decompose_rewrite);
-try (move => ok; apply balanceL'_Black_nearly_is_redblack => //= || apply balanceR'_Black_nearly_is_redblack => //=; try apply IHd; move: ok => /=; repeat decompose_rewrite => //=; by apply is_redblack_Red_Black).
-
- move: c c' l r y IHd => [] [] // [[] ll [] ? ? lr |?] [[] // rl [] ? ? rr|?] //= y IHd; first (by rewrite !andbF);
- try (case/andP => C H'; case/andP: C; move/eqP in H'; by rewrite -H' ltnn /=);
- try (move => ok; apply balanceL'_Red_nearly_is_redblack => //; try apply IHd => //; move: ok; repeat decompose_rewrite => //=; apply is_redblack_Red_Black => //=);
- move => ok;
- try ((move: ll y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceL'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
- try ((move: lr y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceL'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
- try ((move: rl y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceL'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
- try ((move: rr y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceL'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
- try (rewrite ddel0E /delete_leaves; case: ifP => ?; case: ifP => ? //=; try case: ifP => ? //=; move: ok => /=; repeat decompose_rewrite => //=). 
- 
-move: c c' l r y IHd => [] [] // [[] ll [] ? ? lr |?] [[] // rl [] ? ? rr|?] //= y IHd; try (by rewrite !andbF);
+move: n c; functional induction (ddel B i) => n c' H; 
+try (case: c' => //=; rewrite /delete_leaves;
+     case: ifP => ?; case: ifP => ? /=; try case: ifP => ? /=; by repeat decompose_rewrite);
+try (move => ok; apply balanceL'_Black_nearly_is_redblack || apply balanceR'_Black_nearly_is_redblack;
+     try apply IHd; move: ok => //=; repeat decompose_rewrite => //; by apply is_redblack_Red_Black);
+move: c c' l r y IHd => [] [] // [[] ll [] ? ? lr |?] [[] // rl [] ? ? rr|?] //= y IHd; 
+try (by rewrite !andbF);
 try (case/andP; move/eqP => ->; by rewrite ltnn /=);
-try (move => ok; apply balanceR'_Red_nearly_is_redblack => //; try apply IHd => //; move: ok; repeat decompose_rewrite => //=; apply is_redblack_Red_Black => //=);
+try (case/andP => C H'; case/andP: C; move/eqP in H'; by rewrite -H' ltnn /=);
 move => ok;
-try ((move: ll y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceR'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
-try ((move: lr y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceR'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
-try ((move: rl y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceR'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
-try ((move: rr y IHd ok => [[] ? ? ?|?] // y IHd ok; try by apply balanceR'_Black_nearly_is_redblack => //; try apply IHd => //; move: ok => /=; repeat decompose_rewrite => //=); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
-try (rewrite ddel0E /delete_leaves; case: ifP => ?; case: ifP => ? //=; try case: ifP => ? //=; move: ok => /=; repeat decompose_rewrite => //=).
+try (apply balanceL'_Red_nearly_is_redblack || apply balanceR'_Red_nearly_is_redblack;
+     try apply IHd; move: ok => //=; repeat decompose_rewrite => //; apply is_redblack_Red_Black);
+try ((move: ll y IHd ok => [[] ? ? ?|?] // y IHd ok;
+      try by apply balanceL'_Black_nearly_is_redblack || apply balanceR'_Black_nearly_is_redblack; try apply IHd;
+      move: ok => /=; repeat decompose_rewrite => //); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
+try ((move: lr y IHd ok => [[] ? ? ?|?] // y IHd ok;
+      try by apply balanceL'_Black_nearly_is_redblack || apply balanceR'_Black_nearly_is_redblack; try apply IHd;
+      move: ok => /=; repeat decompose_rewrite => //); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
+try ((move: rl y IHd ok => [[] ? ? ?|?] // y IHd ok;
+      try by apply balanceL'_Black_nearly_is_redblack || apply balanceR'_Black_nearly_is_redblack; try apply IHd;
+      move: ok => /=; repeat decompose_rewrite => //); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
+try ((move: rr y IHd ok => [[] ? ? ?|?] // y IHd ok;
+      try by apply balanceL'_Black_nearly_is_redblack || apply balanceR'_Black_nearly_is_redblack; try apply IHd;
+      move: ok => /=; repeat decompose_rewrite => //); try by (move: ok; repeat (rewrite andbA || case/andP => //=)));
+by rewrite ddel0E /delete_leaves; case: ifP => ?; case: ifP => ?; try case: ifP => ?;
+   move: ok => //=; repeat decompose_rewrite => //.
 Qed.
     
 End delete.
