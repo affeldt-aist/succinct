@@ -82,8 +82,11 @@ Fixpoint dones (B : dtree) :=
   end.
 
 Definition rbnode c l r := Bnode c l (dsize l, dones l) r.
+
 Definition bnode l r := Bnode Black l (dsize l, dones l) r.
+
 Definition rnode l r := Bnode Red l (dsize l, dones l) r.
+
 Definition leaf a : dtree := Bleaf _ a.
 
 Definition eq_color c1 c2 :=
@@ -93,35 +96,43 @@ Definition eq_color c1 c2 :=
   end.
 
 Lemma color_eqP : Equality.axiom eq_color.
-Proof. move; case; case => /=; try apply ReflectT => //; try apply ReflectF => //. Qed.
+Proof.
+  move; case; case => /=;
+  try apply ReflectT => //;
+  apply ReflectF => //. 
+Qed.
 
 Canonical color_eqMixin := EqMixin color_eqP.
 Canonical color_eqType := Eval hnf in EqType color color_eqMixin.
 
 Fixpoint eq_dtree (t1 t2 : dtree) := 
   match t1,t2 with
-  | Bleaf a,Bleaf b => a == b
-  | Bnode c1 l1 d1 r1,Bnode c2 l2 d2 r2 => (d1 == d2) && (c1 == c2) && (eq_dtree l1 l2) && (eq_dtree r1 r2)
-  | Bnode _ _ _ _,Bleaf _ 
-  | Bleaf _,Bnode _ _ _ _ => false
+  | Bleaf a, Bleaf b => a == b
+  | Bnode c1 l1 d1 r1, Bnode c2 l2 d2 r2 =>
+    (d1 == d2) && (c1 == c2) && (eq_dtree l1 l2) && (eq_dtree r1 r2)
+  | Bnode _ _ _ _, Bleaf _ 
+  | Bleaf _, Bnode _ _ _ _ => false
   end.
 
-Lemma eq_dtree_ref (t : dtree) : eq_dtree t t.
+Lemma eq_dtree_refl (t : dtree) : eq_dtree t t.
 Proof. elim t => [? l H1 ? r H2 /=|a //=]; by rewrite H1 H2 !eq_refl. Qed.
 
 Lemma eq_dtree_iff t1 t2 : t1 = t2 <-> eq_dtree t1 t2.
 Proof.
-  split => [->|]; first by rewrite eq_dtree_ref.
-  move: t1 t2; elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;last by move/eqP => /= ->.
+  split => [->|]; first by rewrite eq_dtree_refl.
+  move: t1 t2; elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;
+  last by move/eqP => /= ->.
   move/andP: H; case; move/andP; case; move/andP; case; move/eqP => ->; move/eqP => -> H1 H2.
   by rewrite (lH1 _ H1) (rH1 _ H2).
 Qed.
 
 Lemma dtree_eqP : Equality.axiom eq_dtree.
 Proof.
-  move; case => [? l1 ? r1 |?]; case => [? l2 ? r2|?] //; set b:= (eq_dtree _ _); case Hb : b; subst b; try (apply ReflectT; apply eq_dtree_iff => //); try apply ReflectF => //.
-   by case => H1 H2 H3 H4; move: Hb; rewrite H1 H2 H3 H4 eq_dtree_ref.
-  by case => H1; move: Hb; rewrite H1 eq_dtree_ref.
+  move; case => [? l1 ? r1 |?]; case => [? l2 ? r2|?] //;
+  set b:= (eq_dtree _ _); case Hb : b; subst b;
+  try (apply ReflectT; apply eq_dtree_iff => //); try apply ReflectF => //.
+   by case => H1 H2 H3 H4; move: Hb; rewrite H1 H2 H3 H4 eq_dtree_refl.
+  by case => H1; move: Hb; rewrite H1 eq_dtree_refl.
 Qed.
 
 Canonical dtree_eqMixin := EqMixin dtree_eqP.
@@ -703,7 +714,8 @@ Section delete.
     | Stay l => Stay (rbnode col l r)
     | Down l =>
       match col,r with
-      | _, Bnode Black (Bnode Red rll _ rlr) _ rr => Stay (rbnode col (bnode l rll) (bnode rlr rr))
+      | _, Bnode Black (Bnode Red rll _ rlr) _ rr =>
+        Stay (rbnode col (bnode l rll) (bnode rlr rr))
       | Red, Bnode Black (Bleaf _ as rl) _ rr
       | Red, Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
         Stay (bnode (rnode l rl) rr)
@@ -725,7 +737,8 @@ Section delete.
     | Stay r => Stay (rbnode col l r)
     | Down r =>
       match col,l with
-      | _, Bnode Black ll _ (Bnode Red lrl _ lrr) => Stay (rbnode col (bnode ll lrl) (bnode lrr r))
+      | _, Bnode Black ll _ (Bnode Red lrl _ lrr) =>
+        Stay (rbnode col (bnode ll lrl) (bnode lrr r))
       | Red,Bnode Black ll _ (Bleaf _ as lr)
       | Red,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
         Stay (bnode ll (rnode lr r))
@@ -768,17 +781,33 @@ Section delete.
     | Bleaf _ => 0
     end.
 
-  Lemma hc_pcl {l r c s n} : height_of_dtree l < height_of_dtree (Bnode c l (s, n) r).
-  Proof. case c; rewrite /= -!maxnSS leq_max ltnS; [ rewrite leqnn // | rewrite ltnW // ]. Qed.
+  Lemma hc_pcl {l r c s n} :
+    height_of_dtree l < height_of_dtree (Bnode c l (s, n) r).
+  Proof.
+    case c; rewrite /= -!maxnSS leq_max ltnS;
+    [ rewrite leqnn // | rewrite ltnW // ].
+  Qed.
 
-  Lemma hc_pcr {l r c s n} : height_of_dtree r < height_of_dtree (Bnode c l (s, n) r).
-  Proof. case c; rewrite /= -!maxnSS leq_max ltnS; [ rewrite leqnn orbT // | apply/orP; apply or_intror; rewrite ltnW // ]. Qed.
+  Lemma hc_pcr {l r c s n} :
+    height_of_dtree r < height_of_dtree (Bnode c l (s, n) r).
+  Proof.
+    case c; rewrite /= -!maxnSS leq_max ltnS;
+    [ rewrite leqnn orbT // | apply/orP; right; rewrite ltnW // ]. 
+  Qed.
 
-  Lemma hc_pcl' {lr ll r s p n} : height_of_dtree (rnode lr r) < height_of_dtree (Bnode Black (Bnode Red ll p lr) (s, n) r).
-  Proof. rewrite /= -!maxnSS -maxnA !leq_max !/maxn; case: ifP => H; [ rewrite ltnSn !orbT // | rewrite [ _.+1 < (_ lr).+3]ltnW // orbT // ]. Qed.
+  Lemma hc_pcl' {lr ll r s p n} :
+    height_of_dtree (rnode lr r) < height_of_dtree (Bnode Black (Bnode Red ll p lr) (s, n) r).
+  Proof.
+    rewrite /= -!maxnSS -maxnA !leq_max !/maxn; case: ifP => H;
+    [ rewrite ltnSn !orbT // | rewrite [ _.+1 < (_ lr).+3]ltnW // orbT // ]. 
+  Qed.
 
-  Lemma hc_pcr' {l rl rr s n p} : height_of_dtree (rnode l rl) < height_of_dtree (Bnode Black l (s, n) (Bnode Red rl p rr)).
-  Proof. rewrite /= -!maxnSS maxnA !leq_max !/maxn; case: ifP => H; [ rewrite [ _.+1 < (_ rl).+3]ltnW // orbT // | rewrite ltnSn // ]. Qed.
+  Lemma hc_pcr' {l rl rr s n p} :
+    height_of_dtree (rnode l rl) < height_of_dtree (Bnode Black l (s, n) (Bnode Red rl p rr)).
+  Proof.
+    rewrite /= -!maxnSS maxnA !leq_max !/maxn; case: ifP => H;
+   [ rewrite [ _.+1 < (_ rl).+3]ltnW // orbT // | rewrite ltnSn // ]. 
+  Qed.
 
   Function ddel (B : dtree) (i : nat) { measure height_of_dtree B } : deleted_dtree :=
     match B  with
@@ -804,13 +833,20 @@ Section delete.
     | Bleaf x =>  Stay (leaf (delete x i))
     end.
 
-  all: intros; subst B; apply/leP; try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); try (apply hc_pcl); try (apply hc_pcr).
-  apply hc_pcl'.
-  apply hc_pcr'.
+  all: intros; subst B; apply/leP; 
+  try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); 
+  try (apply hc_pcl); try (apply hc_pcr).
+  apply hc_pcl'. apply hc_pcr'.
   Defined.
 
-  Lemma ddel0E s o l r i : ddel (Bnode Red (Bleaf (nat * nat) l) (s,o) (Bleaf (nat * nat) r)) i = delete_leaves Red l r i.
-  Proof. move Heq : (Bnode Red _ _ _) => B; functional induction (ddel B i) => //=; move: Heq => /=; try (by move => Heq; case: Heq y => <- <- ? ? <-; case c => //); by case => -> ? ? ->. Qed.
+  Lemma ddel0E s o l r i :
+    ddel (Bnode Red (Bleaf (nat * nat) l) (s,o) (Bleaf (nat * nat) r)) i = delete_leaves Red l r i.
+  Proof.
+    move Heq : (Bnode Red _ _ _) => B; 
+    functional induction (ddel B i) => //=; 
+    move: Heq => /=; try (by move => Heq; case: Heq y => <- <- ? ? <-; case c => //);
+    by case => -> ? ? ->. 
+  Qed.
 
   Definition dflattenn tr :=
     match tr with
@@ -819,15 +855,20 @@ Section delete.
     end.
 
   Lemma balanceL'E c l r : dflattenn (balanceL' c l r) = dflattenn l ++ dflatten r.
-  Proof. move: l => [] ?; case c; case r => [] [] // [] //= [] [] [] /=; intros; rewrite //= -!catA //= -!catA //. Qed.
+  Proof. 
+    move: l => [] ?; case c; case r => [] [] // [] //= [] [] [] /=; 
+    intros; rewrite //= -!catA //= -!catA //. 
+  Qed.
 
   Lemma balanceR'E c l r : dflattenn (balanceR' c l r) = dflatten l ++ dflattenn r.
   Proof.
-    move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; try case c'; try case c''; try (intros; rewrite //= -!catA //= -!catA //=);
+    move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; 
+    try case c'; try case c''; try (intros; rewrite //= -!catA //= -!catA //=);
     move => ? ? [] x; first case x; intros; rewrite //= -!catA //= -!catA //=.
   Qed.
 
-  Lemma delete_cat {arr arr' : seq bool} {i} : delete (arr ++ arr') i = (if i < size arr then delete arr i ++ arr' else arr ++ delete arr' (i - (size arr))).
+  Lemma delete_cat {arr arr' : seq bool} {i} :
+    delete (arr ++ arr') i = (if i < size arr then delete arr i ++ arr' else arr ++ delete arr' (i - (size arr))).
   Proof.
     rewrite /delete take_cat -catA drop_cat.
     case: ifP => H1; case: ifP => // H2; try (move: (ltnW H2); by rewrite H1).
@@ -836,27 +877,42 @@ Section delete.
     by rewrite catA subSn // leqNgt H1.
   Qed.
 
-  Lemma delete_leavesE c l r i : (w ^ 2)./2 <= size l < (w ^ 2).*2 -> (w ^ 2)./2 <= size r < (w ^ 2).*2 -> dflattenn (delete_leaves c l r i) = delete (l ++ r) i.
+  Lemma delete_leavesE c l r i :
+    (w ^ 2)./2 <= size l < (w ^ 2).*2 -> (w ^ 2)./2 <= size r < (w ^ 2).*2 ->
+    dflattenn (delete_leaves c l r i) = delete (l ++ r) i.
   Proof.
     rewrite /delete_leaves delete_cat.
-    case: ifP; case: ifP => //; case: ifP => //; try (rewrite /delete /= take0 drop1 cat0s cat_rcons -!catA; case r => //=; move: (Hw); case w; first rewrite ltn0 //; case => //).
-    move => ? ? ?; case/andP => Hl ? ?; have Hp : (w ^ 2)./2 > 0; first (move: (Hw); case w; first rewrite ltn0 //; case => //); move: (leq_trans Hp Hl) => ?.
-    rewrite /delete /= /access drop_oversize; last rewrite prednK //; rewrite cats0 -cat_rcons -take_nth prednK // take_oversize //.
+    case: ifP; case: ifP => //; case: ifP => //;
+    try (rewrite /delete /= take0 drop1 cat0s cat_rcons -!catA;
+         case r => //=; move: (Hw); case w; first rewrite ltn0 //; case => //).
+    move => ? ? ?; case/andP => Hl ? ?;
+    have Hp : (w ^ 2)./2 > 0; first (move: (Hw); case w; first rewrite ltn0 //; case => //); 
+    move: (leq_trans Hp Hl) => ?.
+    rewrite /delete /= /access drop_oversize; last rewrite prednK //; 
+    rewrite cats0 -cat_rcons -take_nth prednK // take_oversize //.
   Qed.
 
   Lemma ddelE (B : dtree) i :
     wf_dtree B -> dflattenn (ddel B i) = delete (dflatten B) i.
   Proof.
-    functional induction (ddel B i) => //; case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr;
+    functional induction (ddel B i) => //; 
+    case/andP => /=; move/eqP => Hs; case/andP => ?; case/andP => wfl wfr; 
     try (by rewrite balanceL'E delete_cat -Hs e0 IHd);
     try (by rewrite /= /ddel delete_leavesE);
     try ((move: y0 y|| move: y); case: ifP => // e0; by rewrite balanceR'E delete_cat -Hs e0 IHd).
 
-     rewrite balanceL'E IHd;last by move: wfl wfr; rewrite /= /wf_dtree; repeat decompose_rewrite => //; rewrite size_cat !dsizeE // count_cat !donesE // !eq_refl.
+    rewrite balanceL'E IHd;
+      last by move: wfl wfr; rewrite /= /wf_dtree;
+      repeat decompose_rewrite => //;
+      rewrite size_cat !dsizeE // count_cat !donesE // !eq_refl.
      by rewrite !catA [RHS]delete_cat size_cat -Hs ltn_addr.
     
-    rewrite balanceR'E IHd;last by move: wfl wfr; rewrite /= /wf_dtree; repeat decompose_rewrite => //; rewrite dsizeE // donesE // !eq_refl.
-    move: y; case: ifP => //; rewrite Hs size_cat => e0 ?; rewrite -!catA // delete_cat; case: ifP => H; first by rewrite ltn_addr in e0.
+    rewrite balanceR'E IHd;
+     last by move: wfl wfr; rewrite /= /wf_dtree; 
+     repeat decompose_rewrite => //; 
+     rewrite dsizeE // donesE // !eq_refl.                              
+    move: y; case: ifP => //; rewrite Hs size_cat => e0 ?; 
+    rewrite -!catA // delete_cat; case: ifP => H; first by rewrite ltn_addr in e0.
     by move: wfl; repeat decompose_rewrite => //.
   Qed.
 
@@ -875,7 +931,9 @@ Section delete.
     is_nearly_redblack' (balanceL' Black l r) c n.
   Proof.
     move => Hn okl okr; move: okr okl Hn; case: l => l; first by move => /= -> -> ->.
-    case: c n r l => [] [//|n] [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l //=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
+    case: c n r l => [] [//|n]
+    [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l //=; 
+    repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
   Qed.
   
   Lemma balanceL'_Red_nearly_is_redblack l r n :
@@ -883,7 +941,8 @@ Section delete.
     is_nearly_redblack' (balanceL' Red l r) Black n.
   Proof.
     move => okl okr; move: okr okl; case: l => l; first by move => /= -> ->.
-    case: r l => [ [//|] [[] rll ? rlr| ?] ? rr | ?] l /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
+    case: r l => [ [//|] [[] rll ? rlr| ?] ? rr | ?] l /=; 
+    repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black.
   Qed.
     
   Lemma balanceR'_Black_nearly_is_redblack l r n c :
@@ -891,7 +950,9 @@ Section delete.
     is_nearly_redblack' (balanceR' Black l r) c n.
   Proof.
     case: r => r; first by move => /= -> -> ->.
-    case: c n l r => [] [//|n] [[[[] lll ? llr|?] ? [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
+    case: c n l r => [] [//|n] [[[[] lll ? llr|?] ?
+    [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=; 
+    repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
   Qed.
   
   Lemma balanceR'_Red_nearly_is_redblack l r n :
@@ -899,7 +960,8 @@ Section delete.
     is_nearly_redblack' (balanceR' Red l r) Black n.
   Proof.
     case: r => r; first by move => /= -> ->.
-    move: l r => [ [//|] ll ? [[] lrl ? lrr|?] |?] r /=; repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
+    move: l r => [ [//|] ll ? [[] lrl ? lrr|?] |?] r /=; 
+    repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
   Qed.
   
 Lemma ddel_is_nearly_redblack' B i n c :
