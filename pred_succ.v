@@ -24,6 +24,23 @@ elim: j s H => [|j IH] [|a s] //=; rewrite rank_cons.
 case: (a == b) => /= Hrk; by rewrite ?add0n IH.
 Qed.
 
+Lemma pred_same_of_rank (b : T) m i B :
+  rank b i (drop m B) = 0 -> pred b B (m+i) = pred b B m.
+Proof.
+elim: m B => [|m IH] B.
+  by rewrite drop0 /pred rank0 add0n => ->.
+case: B => [|a B] //= /IH.
+rewrite /pred /= addSn 2!rank_cons.
+case: (a == b) => /=.
+  by move ->.
+rewrite !add0n.
+case Hr: (rank b (m+i) B);
+case Hr': (rank b m B) => //.
++ by rewrite rank_addn Hr' addSn in Hr.
++ rewrite select0. by destruct B.
++ by move => ->.
+Qed.
+
 Lemma predP b y n (s : n.-tuple T) :
   y <= n ->
   b \notin \bigcup_(i : [1,n] | pred b s y < i <= y) [set tacc s i].
@@ -61,6 +78,23 @@ rewrite /= ltnS => /IH{IH} H; apply: (leq_ltn_trans H) => {H}.
 rewrite /succ /=; case: ifPn => [/eqP ->{s1}|s10].
 - by rewrite ltnS select_incr // rank_cons eqxx add1n.
 - by rewrite ltnS rank_cons (negbTE s10) add0n.
+Qed.
+
+Lemma succ_drop (b : T) B n :
+  size B > n ->
+  succ b B n.+1 - n.+1 = (select b 1 (drop n B)).-1.
+Proof.
+elim: n B => [|n IH] B.
+  by rewrite drop0 /succ rank0 subn1.
+case: B => [|a B] //=.
+rewrite ltnS => Hn.
+rewrite /succ.
+destruct n => /=.
+  rewrite subSS subn1 rank_cons rank0 addn0 drop0.
+  by case: (a == b).
+rewrite -IH{} //.
+rewrite /succ /= rank_cons subSS.
+by case: (a == b).
 Qed.
 
 Lemma succP b n (s : n.-tuple T) (y : [1, n]) :

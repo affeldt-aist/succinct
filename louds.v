@@ -353,12 +353,6 @@ rewrite drop_size_cat // size_flatten_node_description.
 by rewrite -(size_cat w) take_size.
 Qed.
 
-Lemma take_nseq B m n (a : B) : take m (nseq n a) = nseq (minn m n) a.
-Proof.  
-elim: m n => [|m IH] [|n] //=.
-by rewrite minnSS IH.
-Qed.
-
 Theorem LOUDS_index_rank w p n :
   valid_position (head dummy w) (rcons p n) ->
   LOUDS_index w (rcons p n) =
@@ -410,23 +404,6 @@ elim: n B => [|n IH] [|a B] //= Hn.
   by rewrite -[in RHS](IH _ Hn).
 Qed.
 
-Lemma pred_seq (b:bool) m i B :
-  rank b i (drop m B) = 0 -> pred b B (m+i) = pred b B m.
-Proof.
-elim: m B => [|m IH] B.
-  by rewrite drop0 /pred rank0 add0n => ->.
-case: B => [|a B] //= /IH.
-rewrite /pred /= addSn 2!rank_cons.
-case: (a == b) => /=.
-  by move ->.
-rewrite !add0n.
-case Hr: (rank b (m+i) B);
-case Hr': (rank b m B) => //.
-+ by rewrite rank_addn Hr' addSn in Hr.
-+ rewrite select0. by destruct B.
-+ by move => ->.
-Qed.
-
 Lemma take_children_position t p x :
   valid_position t p ->
   take (children t p).+1 (drop (LOUDS_position [:: t] p)
@@ -450,13 +427,6 @@ rewrite (_ : head dummy (drop n cl) = head dummy w').
 by rewrite -!nth0 /w' nth_cat size_drop ltn_subRL addn0 Hn.
 Qed.
 
-Lemma valid_position_children (t : tree A) p x :
-  valid_position t (rcons p x) -> x < children t p.
-Proof.
-rewrite /children.
-by elim: p t => [|n p IH] [a cl] //= /andP [Hn] // /IH.
-Qed.
-
 Lemma rank_false_LOUDS_position t p x :
   valid_position t (rcons p x) ->
   rank false x.+1 (drop (LOUDS_position [:: t] p)
@@ -466,7 +436,7 @@ move => HV.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
 rewrite take_children_position ?(valid_position_rcons HV) //.
 rewrite /rank /node_description -cats1 -catA takel_cat.
-  by apply /count_memPn /negP => /mem_take /nseqP /andP [].
+  by apply /count_memPn /negP => /mem_take /nseqP /andP.
 by rewrite size_nseq valid_position_children. 
 Qed.
 
@@ -558,25 +528,8 @@ rewrite (LOUDS_position_select [::]) // cats0.
 rewrite selectK; last by apply LOUDS_index_leq_count_mem_false.
 rewrite LOUDS_index_rank // add1n.
 rewrite rankK; last by apply nth_LOUDS_position.
-rewrite -addnS pred_seq; last by apply rank_false_LOUDS_position.
+rewrite -addnS pred_same_of_rank; last by apply rank_false_LOUDS_position.
 by apply pred_false_LOUDS_position.
-Qed.
-
-Lemma succ_drop (b:bool) B n :
-  size B > n ->
-  succ b B n.+1 - n.+1 = (select b 1 (drop n B)).-1.
-Proof.
-elim: n B => [|n IH] B.
-  by rewrite drop0 /succ rank0 subn1.
-case: B => [|a B] //=.
-rewrite ltnS => Hn.
-rewrite /succ.
-destruct n => /=.
-  rewrite subSS subn1 rank_cons rank0 addn0 drop0.
-  by case: (a == b).
-rewrite -IH{} //.
-rewrite /succ /= rank_cons subSS.
-by case: (a == b).
 Qed.
 
 (* see [Navarro, p.214, l.-1] *)

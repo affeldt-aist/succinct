@@ -27,6 +27,9 @@ Implicit Type s : seq T.
 Lemma take_take: forall s a b, a <= b -> take a (take b s) = take a s.
 Proof. by elim => // h t H [*|a[//|b] ab]; rewrite ?take0 // !take_cons H. Qed.
 
+Lemma take_nseq B m n (a : B) : take m (nseq n a) = nseq (minn m n) a.
+Proof. by elim: m n => [|m IH] [|n] //=; rewrite minnSS IH. Qed.
+
 Lemma drop_drop : forall s a b, drop a (drop b s) = drop (a + b) s.
 Proof. by elim => // ?? H [*|a[|b]]; rewrite ?(drop0,addn0) // addnS /= -H. Qed.
 
@@ -312,6 +315,13 @@ Lemma valid_position_weaken a1 a2 l1 l2 p :
 Proof.
 case: p => //= a p; rewrite size_cat => /andP[al1]; rewrite ltn_addr //=.
 by rewrite nth_cat al1 -(in_tupleE l1) (_ : a = Ordinal al1) // -!tnth_nth.
+Qed.
+
+Lemma valid_position_children (t : tree A) p x :
+  valid_position t (rcons p x) -> x < children t p.
+Proof.
+rewrite /children.
+by elim: p t => [|n p IH] [a cl] //= /andP [Hn] // /IH.
 Qed.
 
 End valid_position.
