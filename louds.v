@@ -393,17 +393,6 @@ rewrite -add1n (_ : 1 = size [::t]) // -LOUDS_index_rank //.
 by rewrite (@LOUDS_position_select _ _ [::]) ?cats0.
 Qed.
 
-Lemma rankK b n B : nth (negb b) B n = b -> select b (rank b n B).+1 B = n.+1.
-Proof.
-elim: n B => [|n IH] [|a B] //= Hn.
-+ by rewrite rank0 Hn eqxx select0.
-+ by destruct b.
-+ rewrite rank_cons.
-  case: (a == b) => /=.
-    by rewrite IH.
-  by rewrite -[in RHS](IH _ Hn).
-Qed.
-
 Lemma take_children_position t p x :
   valid_position t p ->
   take (children t p).+1 (drop (LOUDS_position [:: t] p)
@@ -451,6 +440,14 @@ rewrite count_cat count_mem_false_node_description.
 rewrite flatten_cat count_cat map_comp.
 rewrite count_mem_false_flatten_node_description size_map add1n ltnS.
 by rewrite leq_add2l.
+Qed.
+
+(* Cannot move it to rank_select because pred_is_self is in pred_succ *)
+Lemma nth_brankK b n B :
+  nth (negb b) B n = b -> select b (rank b n B).+1 B = n.+1.
+Proof.
+move/nth_brank1 => Hrk; move/pred_is_self: (Hrk).
+by rewrite /pred -addn1 rank_addn Hrk addn1.
 Qed.
 
 Lemma nth_LOUDS_position t p x :
@@ -527,7 +524,7 @@ rewrite /LOUDS_parent => HV.
 rewrite (LOUDS_position_select [::]) // cats0.
 rewrite selectK; last by apply LOUDS_index_leq_count_mem_false.
 rewrite LOUDS_index_rank // add1n.
-rewrite rankK; last by apply nth_LOUDS_position.
+rewrite nth_brankK; last by apply nth_LOUDS_position.
 rewrite -addnS pred_same_of_rank; last by apply rank_false_LOUDS_position.
 by apply pred_false_LOUDS_position.
 Qed.

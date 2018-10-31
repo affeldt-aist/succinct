@@ -258,6 +258,14 @@ elim : s i => [i| h t IH [|i]]; rewrite /brank.
 rewrite rank_cons big_ord_recl /= -IH; by case: h.
 Qed.
 
+(* The b = true case is a corollary of brank_sum_nth *)
+Lemma nth_brank1 b n B : nth (negb b) B n = b -> brank b 1 (drop n B) = 1.
+Proof.
+elim: n B b => [|n IH] [[] //|a B] /= b Hn.
++ by rewrite Hn /brank rank_cons rank0 eqxx.
++ by rewrite IH.
+Qed.
+
 End binary_rank.
 
 Section select_def.
