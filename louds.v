@@ -302,9 +302,8 @@ Proof.
 elim: a l => [|a IH] [|t l] //= Hl; first by rewrite select0.
 rewrite children_of_forest_cons size_cat addSn addnCA -addSn select_cat.
 rewrite count_mem_false_node_description size_node_description.
-case: ifP => Ha.
-  destruct a => //; by rewrite take0 /= !addn0 select_false_node_description.
-by rewrite subn1 /= IH.
+case: a => [|a] in IH Hl *; last by rewrite subn1 /= IH.
+by rewrite take0 /= !addn0 select_false_node_description.
 Qed.
 
 Lemma size_flatten_node_description (l : forest A) :
@@ -491,23 +490,21 @@ Lemma pred_false_LOUDS_position t p x :
 Proof.
 move/valid_position_rcons.
 rewrite /LOUDS_position -cats1 LOUDS_lt_cat.
-remember (size _) as sz.
-case /boolP: (sz == 0) => Hsz HV.
-  by rewrite (eqP Hsz) /pred rank0 select0.
-destruct sz => //.
+move Hsz: (size _) => sz HV.
+case: sz => [|sz] in Hsz HV *.
+  by rewrite /pred rank0 select0.
 rewrite pred_is_self //.
-set w := [:: t] in Heqsz *.
+set w := [:: t] in Hsz *.
 rewrite (_ : t = head dummy w) // in HV.
-elim: p {t} w sz (LOUDS_lt _ [:: x]) HV Heqsz {Hsz} => // n p IH w sz B HV.
+elim: p {t} w sz (LOUDS_lt _ [:: x]) HV Hsz => // n p IH w sz B HV.
 rewrite LOUDS_lt_cons size_cat -catA.
 case Hp: (size (LOUDS_lt _ p)).
   rewrite addn0 => Hsz.
-  rewrite drop_cat Hsz leqnn rank_cat size_drop -Hsz -(add1n sz) addnK ltnn.
+  rewrite drop_cat Hsz leqnn rank_cat size_drop Hsz -(add1n sz) addnK ltnn.
   by rewrite subnn rank0 addn0 rank_false_last_LOUDS_position.
 rewrite addnS => -[Hsz].
-rewrite drop_cat Hsz leqNgt ltnS leq_addr addKn IH //.
-destruct w as [|[a cl] w] => //=.
-by rewrite (valid_position_drop _ HV).
+rewrite drop_cat -Hsz leqNgt ltnS leq_addr addKn IH //.
+by case: w HV {IH Hp Hsz} => // -[a cl] w /valid_position_drop ->.
 Qed.
 
 Definition LOUDS_parent (B : bitseq) (v : nat) : nat :=
