@@ -207,6 +207,23 @@ Proof. exact (lo_traversal_lt_cat wood [:: n] p). Qed.
 
 End lo_traversal.
 
+Theorem lo_traversal_lt_ok B (f : forest A -> seq B) (t : tree A) :
+  let g x := f (children_of_node x) in
+  lo_traversal f t = flatten (lo_traversal_lt g [:: t] (nseq (height t) 0)).
+Proof.
+rewrite /lo_traversal.
+set w := [:: t]; set h := height t.
+have Hh : forall t : tree A, t \in w -> height t <= h.
+  by move=> t'; rewrite inE => /eqP ->.
+elim: {t} h w Hh => [|h IH] [|[a cl] w] Hh //=.
+  by rewrite /lo_traversal' level_order_forest_traversal'_nil.
+rewrite take0 drop0 cats0 /lo_traversal' /= flatten_cat catA -map_comp.
+congr cat.
+rewrite -{}IH // => t'.
+rewrite (_ : cl ++ _ = children_of_forest (Node a cl :: w)); last done.
+by move/flattenP => [s] /mapP [[b cl']] /Hh /height_Node Ht -> /Ht.
+Qed.
+
 Variable dA : A.
 Notation dummy := (Node dA [::]).
 
@@ -251,18 +268,7 @@ Eval compute in LOUDS_index
 Theorem LOUDS_lt_ok (t : tree A) :
   LOUDS t = true :: false :: LOUDS_lt [:: t] (nseq (height t) 0).
 Proof.
-rewrite /LOUDS /LOUDS_lt /lo_traversal.
-do 2 congr cons.
-set w := [:: t]; set h := height t.
-have Hh : forall t : tree A, t \in w -> height t <= h.
-  by move=> t'; rewrite inE => /eqP ->.
-elim: {t} h w Hh => [|h IH] [|[a cl] w] Hh //=.
-  by rewrite /lo_traversal' level_order_forest_traversal'_nil.
-rewrite take0 drop0 cats0 /lo_traversal' /= flatten_cat map_comp catA.
-congr cat.
-rewrite -{}IH // => t'.
-rewrite (_ : cl ++ _ = children_of_forest (Node a cl :: w)); last done.
-by move/flattenP => [s] /mapP [[b cl']] /Hh /height_Node Ht -> /Ht.
+rewrite /LOUDS /LOUDS_lt; do 2 congr cons; apply lo_traversal_lt_ok.
 Qed.
 
 Lemma LOUDS_lt_cons w n p :
