@@ -8,7 +8,7 @@ Require Import compact_data_structures rank_select pred_succ.
 (* OUTLINE:
   0. Section louds_encoding
   1. Section size_louds
-  followed by Sections on the operations listed in todo.org
+  2. Section position: LOUDS_children, LOUDS_child and LOUDS_parent w/ proofs
 *)
 
 Set Implicit Arguments.
@@ -553,7 +553,6 @@ Qed.
 Definition LOUDS_children (B : bitseq) (v : nat) : nat :=
   succ false B v.+1 - v.+1.
 
-(* TODO: prove that LOUDS_children coincides with children (the definition using trees) *)
 Theorem LOUDS_childrenE (t : tree A) (p : seq nat) :
   let B := LOUDS_lt [:: t] (rcons p 0) in
   valid_position t p ->
