@@ -245,14 +245,13 @@ elim: h p l r Hh => [|h IH] p l r Hh Hp.
   rewrite Hw.
   move/(f_equal size)/eqP: Hw.
   rewrite size_cat addn_eq0 => /andP [] /eqP /size0nil -> /eqP /size0nil -> /=.
-  by destruct p.
+  by case: p Hp.
 rewrite [nseq _ _]/=.
-destruct p as [|n p] => //.
+case: p => // n p in Hp *.
 rewrite /= ltnS in Hp.
-rewrite lo_traversal_lt_cons0.
-rewrite map_cat -catA.
+rewrite lo_traversal_lt_cons0 map_cat -catA.
 congr cat.
-destruct r as [|[a cl] r].
+case: r => [|[a cl] r] in Hh *.
   rewrite !cat0s cats0.
   move: (IH (n::p) [::] (children_of_forest l)) => <-.
       by rewrite cats0.
@@ -263,19 +262,15 @@ destruct r as [|[a cl] r].
   by rewrite ltnW // ltnS.
 rewrite /= map_cat -catA.
 congr cons; congr cat.
-rewrite catA -map_cat.
-rewrite (children_of_forest_cat l) children_of_forest_cons /=.
-rewrite -[in cl ++ _](cat_take_drop n cl).
-rewrite !children_of_forest_cat -!catA.
+rewrite catA -map_cat (children_of_forest_cat l) children_of_forest_cons /=.
+rewrite -[in cl ++ _](cat_take_drop n cl) !children_of_forest_cat -!catA.
 rewrite (catA (children_of_forest l)) (catA (drop n cl)).
 rewrite -(children_of_forest_cat (children_of_forest l)).
-apply IH => // t.
+rewrite {}IH => // t.
 rewrite -catA (catA (take n cl)) cat_take_drop.
 rewrite (_ : cl ++ _ = children_of_forest (Node a cl :: r)) //.
-rewrite -children_of_forest_cat.
-move/flattenP => [s] /mapP [t'] Ht' -> Ht.
-move: (Hh t').
-rewrite Ht' => /(_ erefl).
+rewrite -children_of_forest_cat => /flattenP [s] /mapP [t'] Ht' -> Ht.
+move: (Hh t'); rewrite Ht' => /(_ erefl).
 by rewrite -(nodeK t') => /height_Node/(_ _ Ht).
 Qed.
 
