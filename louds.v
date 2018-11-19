@@ -284,13 +284,10 @@ rewrite /lo_traversal.
 set w := [:: t]; set h := height t.
 have Hh : forall t : tree A, t \in w -> height t <= h.
   by move=> t'; rewrite inE => /eqP ->.
-elim: {t} h w Hh => [|h IH] [|[a cl] w] Hh //=.
-  by rewrite /lo_traversal' level_order_forest_traversal'_nil.
-rewrite take0 drop0 cats0 /lo_traversal' /= flatten_cat catA -map_comp.
-congr cat.
-rewrite -{}IH // => t'.
-rewrite (_ : cl ++ _ = children_of_forest (Node a cl :: w)); last done.
-by move/flattenP => [s] /mapP [[b cl']] /Hh /height_Node Ht -> /Ht.
+elim: {t} h w Hh => // h IH w Hh.
+rewrite [nseq _ _]/= lo_traversal_lt_cons0 /lo_traversal' /=.
+rewrite flatten_cat -map_comp -{}IH //.
+by move=> t' /flattenP [s] /mapP [[b cl']] /Hh /height_Node Ht -> /Ht.
 Qed.
 
 Variable dA : A.
