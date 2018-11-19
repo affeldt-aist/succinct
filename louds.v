@@ -248,6 +248,23 @@ Definition LOUDS_index w p := size (lo_traversal_lt id w p).
 Eval compute in LOUDS_index
   [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (1::nil).
 
+Theorem LOUDS_lt_ok (t : tree A) :
+  LOUDS t = true :: false :: LOUDS_lt [:: t] (nseq (height t) 0).
+Proof.
+rewrite /LOUDS /LOUDS_lt /lo_traversal.
+do 2 congr cons.
+set w := [:: t]; set h := height t.
+have Hh : forall t : tree A, t \in w -> height t <= h.
+  by move=> t'; rewrite inE => /eqP ->.
+elim: {t} h w Hh => [|h IH] [|[a cl] w] Hh //=.
+  by rewrite /lo_traversal' level_order_forest_traversal'_nil.
+rewrite take0 drop0 cats0 /lo_traversal' /= flatten_cat map_comp catA.
+congr cat.
+rewrite -{}IH // => t'.
+rewrite (_ : cl ++ _ = children_of_forest (Node a cl :: w)); last done.
+by move/flattenP => [s] /mapP [[b cl']] /Hh /height_Node Ht -> /Ht.
+Qed.
+
 Lemma LOUDS_lt_cons w n p :
   LOUDS_lt w (n :: p) =
   LOUDS_lt w [:: n] ++ LOUDS_lt (lo_traversal_res w [:: n]) p.
