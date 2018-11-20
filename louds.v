@@ -221,57 +221,45 @@ Definition label_of_node (t : tree A) := let: Node a _ := t in a.
 Lemma nodeK (t : tree A) : Node (label_of_node t) (children_of_node t) = t.
 Proof. by case: t. Qed.
 
-Theorem lo_traversal_lt_max t p :
-  size p >= height t ->
-  lo_traversal_lt [:: t] p = lo_traversal_lt [:: t] (nseq (height t) 0).
+Lemma lo_traversal_lt_max0 l r h p :
+  (forall t, t \in l ++ r -> height t <= h) ->
+  size p >= h ->
+  map f l ++ lo_traversal_lt (r ++ children_of_forest l) p =
+  lo_traversal_lt (l ++ r) (nseq h 0).
 Proof.
-suff: forall l r,
-    let h := \max_(t <- l ++ r) height t in
-    size p >= h ->
-    map f l ++ lo_traversal_lt (r ++ children_of_forest l) p =
-    lo_traversal_lt (l ++ r) (nseq h 0).
-  move=> /(_ [::] [:: t]) /=.
-  by rewrite big_cons big_nil maxn0 => IH /IH <-.
-move=> l r h {t}.
-have Hh: forall t, t \in l ++ r -> height t <= h.
-  rewrite {}/h => t.
-  by apply bigmax_mem.
-clearbody h.
-elim: h p l r Hh => [|h IH] p l r Hh Hp.
-  have Hw: l++r = [::].
+elim: h p l r => [|h IH] p l r Hh Hp.
+  have/(f_equal size)/eqP : l++r = [::].
     case: (l++r) Hh => // t w /(_ t).
-    rewrite inE eqxx => /(_ isT).
-    by case: t.
-  rewrite Hw.
-  move/(f_equal size)/eqP: Hw.
-  rewrite size_cat addn_eq0 => /andP [] /eqP /size0nil -> /eqP /size0nil -> /=.
+    by rewrite mem_head leqNgt height_gt0 => /(_ isT).
+  rewrite size_cat addn_eq0 => /andP[/nilP -> /nilP ->] /=.
   by case: p Hp.
-rewrite [nseq _ _]/=.
-case: p => // n p in Hp *.
-rewrite /= ltnS in Hp.
-rewrite lo_traversal_lt_cons0 map_cat -catA.
+case: p Hp => // n p.
+rewrite [size _]/= ltnS [nseq _ _]/= lo_traversal_lt_cons0 map_cat -catA => Hp.
 congr cat.
 case: r => [|[a cl] r] in Hh *.
-  rewrite !cat0s cats0.
-  move: (IH (n::p) [::] (children_of_forest l)) => <-.
-      by rewrite cats0.
+  rewrite !cat0s cats0 -(IH (n::p) [::] (children_of_forest l)) ?cats0 //.
     move=> t /= /flattenP [s] /mapP [t'] Ht' -> Ht.
-    move: (Hh t').
-    rewrite cats0 Ht' => /(_ erefl).
+    move: (Hh t'); rewrite cats0 => /(_ Ht').
     by rewrite -(nodeK t') => /height_Node/(_ _ Ht).
   by rewrite ltnW // ltnS.
 rewrite /= map_cat -catA.
 congr cons; congr cat.
 rewrite catA -map_cat (children_of_forest_cat l) children_of_forest_cons /=.
 rewrite -[in cl ++ _](cat_take_drop n cl) !children_of_forest_cat -!catA.
-rewrite (catA (children_of_forest l)) (catA (drop n cl)).
-rewrite -(children_of_forest_cat (children_of_forest l)).
-rewrite {}IH => // t.
+rewrite (catA _ (take n cl)) (catA (drop n cl)).
+rewrite -children_of_forest_cat {}IH => // t.
 rewrite -catA (catA (take n cl)) cat_take_drop.
-rewrite (_ : cl ++ _ = children_of_forest (Node a cl :: r)) //.
-rewrite -children_of_forest_cat => /flattenP [s] /mapP [t'] Ht' -> Ht.
-move: (Hh t'); rewrite Ht' => /(_ erefl).
-by rewrite -(nodeK t') => /height_Node/(_ _ Ht).
+rewrite -(children_of_forest_cons (Node a cl)) -children_of_forest_cat.
+move/flattenP => [s] /mapP [t'] Ht' -> Ht.
+by move/Hh: Ht'; rewrite -(nodeK t') => /height_Node/(_ _ Ht).
+Qed.
+
+Theorem lo_traversal_lt_max t p :
+  size p >= height t ->
+  lo_traversal_lt [:: t] p = lo_traversal_lt [:: t] (nseq (height t) 0).
+Proof.
+refine (@lo_traversal_lt_max0 [::] [:: t] (height t) p _) => t'.
+by rewrite inE => /eqP ->.
 Qed.
 
 End lo_traversal.
