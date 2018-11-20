@@ -214,7 +214,7 @@ Proof.
 elim: s => // y s IH.
 rewrite inE big_cons => /orP [/eqP <- | /IH Ht].
   by rewrite leq_maxl.
-apply (leq_trans Ht), leq_maxr.
+by apply (leq_trans Ht), leq_maxr.
 Qed.
 
 Definition label_of_node (t : tree A) := let: Node a _ := t in a.
@@ -228,10 +228,10 @@ Lemma lo_traversal_lt_max0 l r h p :
   lo_traversal_lt (l ++ r) (nseq h 0).
 Proof.
 elim: h p l r => [|h IH] p l r Hh Hp.
-  have/(f_equal size)/eqP : l++r = [::].
+  have/nilP : l++r = [::].
     case: (l++r) Hh => // t w /(_ t).
     by rewrite mem_head leqNgt height_gt0 => /(_ isT).
-  rewrite size_cat addn_eq0 => /andP[/nilP -> /nilP ->] /=.
+  rewrite /nilp size_cat addn_eq0 => /andP[/nilP -> /nilP ->] /=.
   by case: p Hp.
 case: p Hp => // n p.
 rewrite [size _]/= ltnS [nseq _ _]/= lo_traversal_lt_cons0 map_cat -catA => Hp.
@@ -286,14 +286,11 @@ Lemma size_lo_traversal w p :
   size (lo_traversal_res w p) > 0.
 Proof.
 elim: p w => [|n p IH] [|[a cl] w] //= /andP [Hn HV].
-rewrite IH //.
-rewrite /= size_cat ltn_addr /=; last by rewrite size_drop ltn_subRL addn0.
+rewrite IH //= size_cat.
+rewrite ltn_addr /=; last by rewrite size_drop ltn_subRL addn0.
 case Hd: (drop n cl).
-  move: (f_equal size Hd).
-  rewrite size_drop /= => /eqP.
-  by rewrite subn_eq0 leqNgt Hn.
-move: HV.
-by rewrite -(addn0 n) -nth_drop Hd.
+  by move/nilP: Hd; rewrite /nilp size_drop /= subn_eq0 leqNgt Hn.
+by move: HV; rewrite -(addn0 n) -nth_drop Hd.
 Qed.
 
 Definition children_description := @node_description A \o @children_of_node A.
@@ -447,8 +444,8 @@ congr addn.
 rewrite -addnA rank_addn rank_cat ltnn rank_size //.
 rewrite count_mem_true_node_description subnn rank0 addn0 drop_cat ltnn.
 rewrite subnn drop0.
-rewrite IH; last by rewrite (valid_position_drop _ HV).
-rewrite {IH} size_cat !addnA -size_cat cat_take_drop -addnA.
+rewrite {}IH; last by rewrite (valid_position_drop _ HV).
+rewrite size_cat !addnA -size_cat cat_take_drop -addnA.
 congr addn.
 rewrite flatten_cat size_cat -addnA [in RHS]rank_addn flatten_cat.
 congr addn.
@@ -623,12 +620,10 @@ rewrite /LOUDS_children succ_drop; last first.
   rewrite size_cat -[X in X < _]addn0 ltn_add2l.
   move: (@size_lo_traversal [:: t] _ HV).
   case: (lo_traversal_res _ _) => //= [[a cl] w] _.
-  rewrite /LOUDS_lt /=.
-  by rewrite size_cat size_node_description addSn.
+  by rewrite /LOUDS_lt /= size_cat size_node_description addSn.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
-rewrite take_children_position //.
-rewrite select_cat count_mem_false_node_description /=.
-by rewrite select_false_node_description.
+rewrite take_children_position // select_cat.
+by rewrite count_mem_false_node_description select_false_node_description.
 Qed.
 
 Definition LOUDS_childrank (B : bitseq) (v : nat) : nat :=
