@@ -448,7 +448,7 @@ Definition lo_traversal t := lo_traversal' (height t) [:: t].
 End level_order_traversal.
 
 Section lo_traversal_st.
-Variables (A B : Type) (f : tree A -> B).
+Variables (A : eqType) (B : Type) (f : tree A -> B).
 
 Fixpoint merge1 (l r : seq (seq B)) {struct l} :=
   match l, r with
@@ -491,9 +491,48 @@ rewrite -!(foldr_map level_traversal merge1).
 by rewrite (foldr_catA merge1A) ?foldr_cat.
 Qed.
 
+Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
+  let: (s, ss) := if ss is s :: ss then (s, ss) else (nil, nil) in
+  let: Node a cl := t in
+  (f t :: s) :: foldr level_traversal_cat ss cl.
+
+Definition lo_traversal_cat t := flatten (level_traversal_cat t [::]).
+
+Lemma level_traversal_cat_ok t ss :
+  merge1 (level_traversal t) ss = level_traversal_cat t ss.
+Proof.
+set h := height t.
+have Hh : height t <= h by [].
+clearbody h.
+elim: h t ss Hh => // [|h IH] [a cl] ss.
+  by rewrite leqNgt height_gt0.
+move/height_Node => /= Hh.
+case: ss => [|s ss].
+  congr cons.
+  elim: cl Hh => // {a} t w IHw Hh /=.
+  rewrite IHw.
+    by rewrite IH // Hh // mem_head.
+  move=> t' Ht'; apply Hh.
+  by rewrite inE Ht' orbT.
+congr cons.
+elim: cl Hh => // {a} t w IHw Hh /=.
+rewrite -IHw.
+  by rewrite -merge1A IH // Hh // mem_head.
+move=> t' Ht'; apply Hh.
+by rewrite inE Ht' orbT.
+Qed.
+
+Theorem lo_traversal_cat_ok t : lo_traversal_cat t = lo_traversal_st t.
+Proof. by rewrite /lo_traversal_cat -level_traversal_cat_ok merge1s0. Qed.
+
 End lo_traversal_st.
 
 Goal lo_traversal_st (@label_of_node _)
+     (Node 1 [:: Node 2 [:: Node 4 [::]]; Node 3 [::]]) = [:: 1; 2; 3; 4].
+by [].
+Abort.
+
+Goal lo_traversal_cat (@label_of_node _)
      (Node 1 [:: Node 2 [:: Node 4 [::]]; Node 3 [::]]) = [:: 1; 2; 3; 4].
 by [].
 Abort.
