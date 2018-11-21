@@ -47,6 +47,18 @@ Lemma reshape_nseq_drop n s b :
   reshape (nseq b n) s = [seq take n (drop (x * n) s) | x <- iota 0 b].
 Proof. move: (@reshape_nseq_drop' n s b 0); by rewrite drop0. Qed.
 
+Variables (op : T -> T -> T) (e : T).
+Hypothesis opA : associative op.
+Hypothesis op_e : forall x, op e x = x.
+
+Lemma foldr_catA l1 l2 :
+  op (foldr op e l1) (foldr op e l2) = foldr op e (l1 ++ l2).
+Proof.
+elim: l1 => [|a l1 IH] /=.
+  by rewrite op_e.
+by rewrite -opA IH.
+Qed.
+
 End seq_ext.
 
 (* TODO: move? *)
@@ -231,6 +243,12 @@ Qed.
 
 Definition children_of_node (t : tree) :=
   let: Node _ l := t in l.
+
+Definition label_of_node (t : tree) :=
+  let: Node l _ := t in l.
+
+Lemma nodeK (t : tree) : Node (label_of_node t) (children_of_node t) = t.
+Proof. by case: t. Qed.
 
 Definition root (T : tree) : A := let: Node w _ := T in w.
 
@@ -428,6 +446,81 @@ Definition lo_traversal' n (l : forest A) :=
 Definition lo_traversal t := lo_traversal' (height t) [:: t].
 
 End level_order_traversal.
+
+Section lo_traversal_st.
+Variables (A B : Type) (f : tree A -> B).
+
+Fixpoint merge1 (l r : seq (seq B)) {struct l} :=
+  match l, r with
+  | (l1::ls), (r1::rs) => (l1++r1) :: merge1 ls rs
+  | nil, s | s, nil    => s
+  end.
+
+Fixpoint level_traversal t :=
+  let: Node a cl := t in
+  [:: f t] :: foldr (fun t1 => merge1 (level_traversal t1)) nil cl.
+
+Definition lo_traversal_st t := flatten (level_traversal t).
+
+Lemma merge1A : associative merge1.
+Proof.
+elim => [|lh lt IH] [|rh rt] [|sh st] //=.
+by rewrite catA IH.
+Qed.
+
+Lemma merge10s s : merge1 [::] s = s.
+Proof. by []. Qed.
+
+Lemma merge1s0 s : merge1 s [::] = s.
+Proof. by case: s. Qed.
+
+Canonical merge1_monoid := Monoid.Law merge1A merge10s merge1s0.
+
+Lemma level_traversal_eq w :
+  ~~ nilp w ->
+  foldr (fun t1 => merge1 (level_traversal t1)) nil w =
+  map f w ::
+      foldr (fun t1 => merge1 (level_traversal t1)) nil (children_of_forest w).
+Proof.
+elim: w => //= -[a cl] [|t w'] IH // _.
+  by rewrite /children_of_forest /= cats0.
+set w := t :: w' in IH *.
+move/(_ isT): (IH) => ->.
+rewrite children_of_forest_cons /= foldr_cat /=.
+rewrite -!(foldr_map level_traversal merge1).
+by rewrite (foldr_catA merge1A) ?foldr_cat.
+Qed.
+
+End lo_traversal_st.
+
+Goal lo_traversal_st (@label_of_node _)
+     (Node 1 [:: Node 2 [:: Node 4 [::]]; Node 3 [::]]) = [:: 1; 2; 3; 4].
+by [].
+Abort.
+
+Theorem lo_traversal_st_ok (A : eqType) B (f : forest A -> seq B) (t : tree A) :
+  let g x := f (children_of_node x) in
+  lo_traversal f t = flatten (lo_traversal_st g t).
+Proof.
+move=> g.
+rewrite /lo_traversal_st.
+have -> : level_traversal g t =
+          foldr (fun t1 => merge1 (level_traversal g t1)) nil [:: t]
+  by case: t.
+rewrite /lo_traversal /lo_traversal'.
+set w := [:: t]; set h := height t.
+have Hh : forall t : tree A, t \in w -> height t <= h.
+  by move=> t'; rewrite inE => /eqP ->.
+elim: {t} h w Hh => //= [|h IH] w Hh.
+  case: w Hh => // t w /(_ t).
+  by rewrite mem_head leqNgt height_gt0 => /(_ isT).
+rewrite IH.
+  case /boolP: (nilp w) => Hnil.
+    by move/nilP: Hnil => ->.
+  rewrite (level_traversal_eq g Hnil).
+  by rewrite flatten_cat [in RHS](map_comp f).
+by move=> t /flattenP [s] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
+Qed.
 
 (* alternative definition of the number of nodes *)
 Section nodes2.

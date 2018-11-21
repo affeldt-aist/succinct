@@ -217,10 +217,6 @@ rewrite inE big_cons => /orP [/eqP <- | /IH Ht].
 by apply (leq_trans Ht), leq_maxr.
 Qed.
 
-Definition label_of_node (t : tree A) := let: Node a _ := t in a.
-Lemma nodeK (t : tree A) : Node (label_of_node t) (children_of_node t) = t.
-Proof. by case: t. Qed.
-
 Lemma lo_traversal_lt_max0 l r h p :
   (forall t, t \in l ++ r -> height t <= h) ->
   size p >= h ->
@@ -264,11 +260,11 @@ Qed.
 
 End lo_traversal.
 
-Theorem lo_traversal_lt_ok B (f : forest A -> seq B) (t : tree A) :
+Theorem lo_traversal_lt_ok B (f : forest A -> seq B) (t : tree A) p :
   let g x := f (children_of_node x) in
-  lo_traversal f t = flatten (lo_traversal_lt g [:: t] (nseq (height t) 0)).
+  size p >= height t -> lo_traversal f t = flatten (lo_traversal_lt g [:: t] p).
 Proof.
-rewrite /lo_traversal.
+rewrite /lo_traversal => /lo_traversal_lt_max -> {p}.
 set w := [:: t]; set h := height t.
 have Hh : forall t : tree A, t \in w -> height t <= h.
   by move=> t'; rewrite inE => /eqP ->.
@@ -317,11 +313,9 @@ Definition LOUDS_index w p := size (lo_traversal_lt id w p).
 Eval compute in LOUDS_index
   [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (1::nil).
 
-Theorem LOUDS_lt_ok (t : tree A) :
-  LOUDS t = true :: false :: LOUDS_lt [:: t] (nseq (height t) 0).
-Proof.
-rewrite /LOUDS /LOUDS_lt; do 2 congr cons; apply lo_traversal_lt_ok.
-Qed.
+Theorem LOUDS_lt_ok (t : tree A) p :
+  size p >= height t -> LOUDS t = true :: false :: LOUDS_lt [:: t] p.
+Proof. by rewrite /LOUDS /LOUDS_lt => /lo_traversal_lt_ok ->. Qed.
 
 Lemma LOUDS_lt_cons w n p :
   LOUDS_lt w (n :: p) =
