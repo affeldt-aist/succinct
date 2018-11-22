@@ -47,16 +47,12 @@ Lemma reshape_nseq_drop n s b :
   reshape (nseq b n) s = [seq take n (drop (x * n) s) | x <- iota 0 b].
 Proof. move: (@reshape_nseq_drop' n s b 0); by rewrite drop0. Qed.
 
-Variables (op : T -> T -> T) (e : T).
-Hypothesis opA : associative op.
-Hypothesis op_e : forall x, op e x = x.
-
-Lemma foldr_catA l1 l2 :
-  op (foldr op e l1) (foldr op e l2) = foldr op e (l1 ++ l2).
+Lemma foldrA (e : T) (M : Monoid.law e) l1 l2 :
+  M (foldr M e l1) (foldr M e l2) = foldr M e (l1 ++ l2).
 Proof.
 elim: l1 => [|a l1 IH] /=.
-  by rewrite op_e.
-by rewrite -opA IH.
+  by rewrite Monoid.mul1m.
+by rewrite -Monoid.mulmA IH.
 Qed.
 
 End seq_ext.
@@ -447,48 +443,53 @@ Definition lo_traversal t := lo_traversal' (height t) [:: t].
 
 End level_order_traversal.
 
-Section lo_traversal_st.
-Variables (A : eqType) (B : Type) (f : tree A -> B).
+Section mzip.
+Variable (A : Type) (e : A) (M : Monoid.law e).
 
-Fixpoint merge1 (l r : seq (seq B)) {struct l} :=
+Fixpoint mzip (l r : seq A) {struct l} :=
   match l, r with
-  | (l1::ls), (r1::rs) => (l1++r1) :: merge1 ls rs
+  | (l1::ls), (r1::rs) => (M l1 r1) :: mzip ls rs
   | nil, s | s, nil    => s
   end.
 
+Lemma mzipA : associative mzip.
+Proof.
+elim => [|lh lt IH] [|rh rt] [|sh st] //=.
+by rewrite IH Monoid.Theory.mulmA.
+Qed.
+
+Lemma mzip0s s : mzip [::] s = s.
+Proof. by []. Qed.
+
+Lemma mzips0 s : mzip s [::] = s.
+Proof. by case: s. Qed.
+
+Canonical mzip_monoid := Monoid.Law mzipA mzip0s mzips0.
+End mzip.
+
+Section lo_traversal_st.
+Variables (A : eqType) (B : Type) (f : tree A -> B).
+
+Definition mzip_cat := mzip_monoid (cat_monoid B).
+
 Fixpoint level_traversal t :=
   let: Node a cl := t in
-  [:: f t] :: foldr (fun t1 => merge1 (level_traversal t1)) nil cl.
+  [:: f t] :: foldr (mzip_cat \o level_traversal) nil cl.
 
 Definition lo_traversal_st t := flatten (level_traversal t).
 
-Lemma merge1A : associative merge1.
-Proof.
-elim => [|lh lt IH] [|rh rt] [|sh st] //=.
-by rewrite catA IH.
-Qed.
-
-Lemma merge10s s : merge1 [::] s = s.
-Proof. by []. Qed.
-
-Lemma merge1s0 s : merge1 s [::] = s.
-Proof. by case: s. Qed.
-
-Canonical merge1_monoid := Monoid.Law merge1A merge10s merge1s0.
-
 Lemma level_traversal_eq w :
   ~~ nilp w ->
-  foldr (fun t1 => merge1 (level_traversal t1)) nil w =
-  map f w ::
-      foldr (fun t1 => merge1 (level_traversal t1)) nil (children_of_forest w).
+  foldr (mzip_cat \o level_traversal) nil w =
+  map f w :: foldr (mzip_cat \o level_traversal) nil (children_of_forest w).
 Proof.
 elim: w => //= -[a cl] [|t w'] IH // _.
   by rewrite /children_of_forest /= cats0.
 set w := t :: w' in IH *.
 move/(_ isT): (IH) => ->.
 rewrite children_of_forest_cons /= foldr_cat /=.
-rewrite -!(foldr_map level_traversal merge1).
-by rewrite (foldr_catA merge1A) ?foldr_cat.
+rewrite -!(foldr_map level_traversal mzip_cat).
+by rewrite foldrA ?foldr_cat.
 Qed.
 
 Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
@@ -499,7 +500,7 @@ Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
 Definition lo_traversal_cat t := flatten (level_traversal_cat t [::]).
 
 Lemma level_traversal_cat_ok t ss :
-  merge1 (level_traversal t) ss = level_traversal_cat t ss.
+  mzip_cat (level_traversal t) ss = level_traversal_cat t ss.
 Proof.
 set h := height t.
 have Hh : height t <= h by [].
@@ -517,13 +518,13 @@ case: ss => [|s ss].
 congr cons.
 elim: cl Hh => // {a} t w IHw Hh /=.
 rewrite -IHw.
-  by rewrite -merge1A IH // Hh // mem_head.
+  by rewrite -Monoid.mulmA IH // Hh // mem_head.
 move=> t' Ht'; apply Hh.
 by rewrite inE Ht' orbT.
 Qed.
 
 Theorem lo_traversal_cat_ok t : lo_traversal_cat t = lo_traversal_st t.
-Proof. by rewrite /lo_traversal_cat -level_traversal_cat_ok merge1s0. Qed.
+Proof. by rewrite /lo_traversal_cat -level_traversal_cat_ok Monoid.mulm1. Qed.
 
 End lo_traversal_st.
 
@@ -544,8 +545,7 @@ Proof.
 move=> g.
 rewrite /lo_traversal_st.
 have -> : level_traversal g t =
-          foldr (fun t1 => merge1 (level_traversal g t1)) nil [:: t]
-  by case: t.
+          foldr (mzip_cat _ \o level_traversal g) nil [:: t] by case: t.
 rewrite /lo_traversal /lo_traversal'.
 set w := [:: t]; set h := height t.
 have Hh : forall t : tree A, t \in w -> height t <= h.
