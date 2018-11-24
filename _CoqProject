@@ -7,5 +7,6 @@ insert_delete.v
 set_clear.v
 dynamic_redblack.v
 dynamic_dependent.v
+dynamic_dependent_with_deletion.v
 -R . compact
 

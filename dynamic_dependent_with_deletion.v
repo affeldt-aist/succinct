@@ -507,12 +507,14 @@ End query.
  * Feel free to comment this out or remove this...
  *)
 
+
 Section set_clear.
+
   Obligation Tactic := idtac.
   
   Program Fixpoint bset {num ones d c} (B : tree num ones d c) i
     {measure (size_of_tree B)} :
-    { B'b : (tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool)
+    { B'b : tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
     | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
     match B with
     | Leaf s _ _ => (Leaf (bit_set s i) _ _, ~~ (access s i))
@@ -535,8 +537,9 @@ Section set_clear.
 
   Next Obligation.
     intros; case Hi: (i < size s).
-      by rewrite /count_one /access (count_bit_set' false Hi) andbT.
-    by rewrite andbF addn0 bit_set_over //= leqNgt Hi.
+    rewrite /count_one /daccess (count_bit_set false). by rewrite andbT addnC.
+    by rewrite Hi.
+    rewrite andbF addn0. by rewrite /count_one /daccess bit_set_over //= leqNgt Hi.
   Qed.
 
   Next Obligation.
@@ -598,7 +601,7 @@ Section set_clear.
   Qed.
 
   Next Obligation. intuition. Qed.
-                   
+
 End set_clear.
 
 Section delete.
@@ -1245,6 +1248,8 @@ Section delete.
     rewrite ltn_addln //.
  Defined.
 End delete.
+
+Require Import Compare_dec.
 
 End dynamic_dependent.
 Extract Inductive tree => tree_ml [ "LeafML" "(function (s1,o1,s2,o2,d,c,cl,cr,l,r) -> NodeML (s1, o1, s2, o2, c, l, r))" ]

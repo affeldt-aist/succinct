@@ -80,6 +80,9 @@ Section bit_set_clear.
 
   Lemma bit_set_over (s : seq bool) i : i >= size s -> bit_set s i = s.
   Proof. rewrite /bit_set /update leqNgt. by move/negbTE => ->. Qed.
+
+  Lemma bit_clear_over (s : seq bool) i : i >= size s -> bit_clear s i = s.
+  Proof. rewrite /bit_clear /update leqNgt. by move/negbTE => ->. Qed.
   
   Lemma nth_bit_set (s : seq bool) b0 i :
     i < size s -> nth b0 (bit_set s i) i = true.
