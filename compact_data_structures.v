@@ -47,6 +47,14 @@ Lemma reshape_nseq_drop n s b :
   reshape (nseq b n) s = [seq take n (drop (x * n) s) | x <- iota 0 b].
 Proof. move: (@reshape_nseq_drop' n s b 0); by rewrite drop0. Qed.
 
+Lemma foldr0_mulr (e : T) (M : Monoid.law e) l m :
+  M (foldr M e l) m = foldr M m l.
+Proof.
+elim: l => [|a l IH] /=.
+  by rewrite Monoid.mul1m.
+by rewrite -Monoid.mulmA IH.
+Qed.
+
 End seq_ext.
 
 (* TODO: move? *)
@@ -231,6 +239,12 @@ Qed.
 
 Definition children_of_node (t : tree) :=
   let: Node _ l := t in l.
+
+Definition label_of_node (t : tree) :=
+  let: Node l _ := t in l.
+
+Lemma nodeK (t : tree) : Node (label_of_node t) (children_of_node t) = t.
+Proof. by case: t. Qed.
 
 Definition root (T : tree) : A := let: Node w _ := T in w.
 
@@ -428,6 +442,124 @@ Definition lo_traversal' n (l : forest A) :=
 Definition lo_traversal t := lo_traversal' (height t) [:: t].
 
 End level_order_traversal.
+
+Section mzip.
+Variable (A : Type) (e : A) (M : Monoid.law e).
+
+Fixpoint mzip (l r : seq A) {struct l} :=
+  match l, r with
+  | (l1::ls), (r1::rs) => (M l1 r1) :: mzip ls rs
+  | nil, s | s, nil    => s
+  end.
+
+Lemma mzipA : associative mzip.
+Proof.
+elim => [|lh lt IH] [|rh rt] [|sh st] //=.
+by rewrite IH Monoid.Theory.mulmA.
+Qed.
+
+Lemma mzip0s s : mzip [::] s = s.
+Proof. by []. Qed.
+
+Lemma mzips0 s : mzip s [::] = s.
+Proof. by case: s. Qed.
+
+Canonical mzip_monoid := Monoid.Law mzipA mzip0s mzips0.
+End mzip.
+
+Section lo_traversal_st.
+Variables (A : eqType) (B : Type) (f : tree A -> B).
+
+Definition mzip_cat := mzip_monoid (cat_monoid B).
+
+Fixpoint level_traversal t :=
+  let: Node a cl := t in
+  [:: f t] :: foldr (mzip_cat \o level_traversal) nil cl.
+
+Definition lo_traversal_st t := flatten (level_traversal t).
+
+Lemma level_traversal_eq w :
+  ~~ nilp w ->
+  foldr (mzip_cat \o level_traversal) nil w =
+  map f w :: foldr (mzip_cat \o level_traversal) nil (children_of_forest w).
+Proof.
+elim: w => //= -[a cl] [|t w'] IH // _.
+  by rewrite /children_of_forest /= cats0.
+set w := t :: w' in IH *.
+move/(_ isT): (IH) => ->.
+rewrite children_of_forest_cons /= foldr_cat /=.
+rewrite -!(foldr_map level_traversal mzip_cat).
+by rewrite foldr0_mulr.
+Qed.
+
+Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
+  let: (s, ss) := if ss is s :: ss then (s, ss) else (nil, nil) in
+  let: Node a cl := t in
+  (f t :: s) :: foldr level_traversal_cat ss cl.
+
+Definition lo_traversal_cat t := flatten (level_traversal_cat t [::]).
+
+Lemma level_traversal_cat_ok t ss :
+  mzip_cat (level_traversal t) ss = level_traversal_cat t ss.
+Proof.
+set h := height t.
+have Hh : height t <= h by [].
+clearbody h.
+elim: h t ss Hh => // [|h IH] [a cl] ss.
+  by rewrite leqNgt height_gt0.
+move/height_Node => /= Hh.
+case: ss => [|s ss].
+  congr cons.
+  elim: cl Hh => // {a} t w IHw Hh /=.
+  rewrite IHw.
+    by rewrite IH // Hh // mem_head.
+  move=> t' Ht'; apply Hh.
+  by rewrite inE Ht' orbT.
+congr cons.
+elim: cl Hh => // {a} t w IHw Hh /=.
+rewrite -IHw.
+  by rewrite -Monoid.mulmA IH // Hh // mem_head.
+move=> t' Ht'; apply Hh.
+by rewrite inE Ht' orbT.
+Qed.
+
+Theorem lo_traversal_cat_ok t : lo_traversal_cat t = lo_traversal_st t.
+Proof. by rewrite /lo_traversal_cat -level_traversal_cat_ok Monoid.mulm1. Qed.
+
+End lo_traversal_st.
+
+Goal lo_traversal_st (@label_of_node _)
+     (Node 1 [:: Node 2 [:: Node 4 [::]]; Node 3 [::]]) = [:: 1; 2; 3; 4].
+by [].
+Abort.
+
+Goal lo_traversal_cat (@label_of_node _)
+     (Node 1 [:: Node 2 [:: Node 4 [::]]; Node 3 [::]]) = [:: 1; 2; 3; 4].
+by [].
+Abort.
+
+Theorem lo_traversal_st_ok (A : eqType) B (f : forest A -> seq B) (t : tree A) :
+  let g x := f (children_of_node x) in
+  lo_traversal f t = flatten (lo_traversal_st g t).
+Proof.
+move=> g.
+rewrite /lo_traversal_st.
+have -> : level_traversal g t =
+          foldr (mzip_cat _ \o level_traversal g) nil [:: t] by case: t.
+rewrite /lo_traversal /lo_traversal'.
+set w := [:: t]; set h := height t.
+have Hh : forall t : tree A, t \in w -> height t <= h.
+  by move=> t'; rewrite inE => /eqP ->.
+elim: {t} h w Hh => //= [|h IH] w Hh.
+  case: w Hh => // t w /(_ t).
+  by rewrite mem_head leqNgt height_gt0 => /(_ isT).
+rewrite IH.
+  case /boolP: (nilp w) => Hnil.
+    by move/nilP: Hnil => ->.
+  rewrite (level_traversal_eq g Hnil).
+  by rewrite flatten_cat [in RHS](map_comp f).
+by move=> t /flattenP [s] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
+Qed.
 
 (* alternative definition of the number of nodes *)
 Section nodes2.

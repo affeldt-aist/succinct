@@ -8,7 +8,7 @@ Require Import compact_data_structures rank_select pred_succ.
 (* OUTLINE:
   0. Section louds_encoding
   1. Section size_louds
-  followed by Sections on the operations listed in todo.org
+  2. Section position: LOUDS_children, LOUDS_child and LOUDS_parent w/ proofs
 *)
 
 Set Implicit Arguments.
@@ -159,13 +159,6 @@ Section position.
 
 Variable A : eqType.
 
-(* the tth child node v, see [Navarro, p.215] *)
-Definition LOUDS_child (B : bitseq) (v t : nat) :=
-  select false (rank true (v + t) B).+1 B.
-
-Definition LOUDS_subtree (B : bitseq) (p : seq nat) :=
-  foldl (LOUDS_child B) 2 p.
-
 Section lo_traversal.
 Variable B : Type.
 Variable f : tree A -> B.
@@ -205,7 +198,81 @@ Lemma lo_traversal_lt_cons wood n p :
                   ++ lo_traversal_lt (lo_traversal_res wood [:: n]) p.
 Proof. exact (lo_traversal_lt_cat wood [:: n] p). Qed.
 
+Lemma lo_traversal_lt_cons0 w p :
+  lo_traversal_lt w (0 :: p) =
+  map f w ++ lo_traversal_lt (children_of_forest w) p.
+Proof.
+case: w => [|[a cl] w] //=.
+  by case: p.
+congr cons; congr cat.
+by rewrite take0 drop0 cats0.
+Qed.
+
+Lemma bigmax_mem (T : eqType) F (x : T) (s : seq T) :
+  x \in s -> F x <= \max_(i <- s) F i.
+Proof.
+elim: s => // y s IH.
+rewrite inE big_cons => /orP [/eqP <- | /IH Ht].
+  by rewrite leq_maxl.
+by apply (leq_trans Ht), leq_maxr.
+Qed.
+
+Lemma lo_traversal_lt_max0 l r h p :
+  (forall t, t \in l ++ r -> height t <= h) ->
+  size p >= h ->
+  map f l ++ lo_traversal_lt (r ++ children_of_forest l) p =
+  lo_traversal_lt (l ++ r) (nseq h 0).
+Proof.
+elim: h p l r => [|h IH] p l r Hh Hp.
+  have/nilP : l++r = [::].
+    case: (l++r) Hh => // t w /(_ t).
+    by rewrite mem_head leqNgt height_gt0 => /(_ isT).
+  rewrite /nilp size_cat addn_eq0 => /andP[/nilP -> /nilP ->] /=.
+  by case: p Hp.
+case: p Hp => // n p.
+rewrite [size _]/= ltnS [nseq _ _]/= lo_traversal_lt_cons0 map_cat -catA => Hp.
+congr cat.
+case: r => [|[a cl] r] in Hh *.
+  rewrite !cat0s cats0 -(IH (n::p) [::] (children_of_forest l)) ?cats0 //.
+    move=> t /= /flattenP [s] /mapP [t'] Ht' -> Ht.
+    move: (Hh t'); rewrite cats0 => /(_ Ht').
+    by rewrite -(nodeK t') => /height_Node/(_ _ Ht).
+  by rewrite ltnW // ltnS.
+rewrite /= map_cat -catA.
+congr cons; congr cat.
+rewrite catA -map_cat (children_of_forest_cat l) children_of_forest_cons /=.
+rewrite -[in cl ++ _](cat_take_drop n cl) !children_of_forest_cat -!catA.
+rewrite (catA _ (take n cl)) (catA (drop n cl)).
+rewrite -children_of_forest_cat {}IH => // t.
+rewrite -catA (catA (take n cl)) cat_take_drop.
+rewrite -(children_of_forest_cons (Node a cl)) -children_of_forest_cat.
+move/flattenP => [s] /mapP [t'] Ht' -> Ht.
+by move/Hh: Ht'; rewrite -(nodeK t') => /height_Node/(_ _ Ht).
+Qed.
+
+Theorem lo_traversal_lt_max t p :
+  size p >= height t ->
+  lo_traversal_lt [:: t] p = lo_traversal_lt [:: t] (nseq (height t) 0).
+Proof.
+refine (@lo_traversal_lt_max0 [::] [:: t] (height t) p _) => t'.
+by rewrite inE => /eqP ->.
+Qed.
+
 End lo_traversal.
+
+Theorem lo_traversal_lt_ok B (f : forest A -> seq B) (t : tree A) p :
+  let g x := f (children_of_node x) in
+  size p >= height t -> lo_traversal f t = flatten (lo_traversal_lt g [:: t] p).
+Proof.
+rewrite /lo_traversal => /lo_traversal_lt_max -> {p}.
+set w := [:: t]; set h := height t.
+have Hh : forall t : tree A, t \in w -> height t <= h.
+  by move=> t'; rewrite inE => /eqP ->.
+elim: {t} h w Hh => // h IH w Hh.
+rewrite [nseq _ _]/= lo_traversal_lt_cons0 /lo_traversal' /=.
+rewrite flatten_cat -map_comp -{}IH //.
+by move=> t' /flattenP [s] /mapP [[b cl']] /Hh /height_Node Ht -> /Ht.
+Qed.
 
 Variable dA : A.
 Notation dummy := (Node dA [::]).
@@ -215,19 +282,17 @@ Lemma size_lo_traversal w p :
   size (lo_traversal_res w p) > 0.
 Proof.
 elim: p w => [|n p IH] [|[a cl] w] //= /andP [Hn HV].
-rewrite IH //.
-rewrite /= size_cat ltn_addr /=; last by rewrite size_drop ltn_subRL addn0.
+rewrite IH //= size_cat.
+rewrite ltn_addr /=; last by rewrite size_drop ltn_subRL addn0.
 case Hd: (drop n cl).
-  move: (f_equal size Hd).
-  rewrite size_drop /= => /eqP.
-  by rewrite subn_eq0 leqNgt Hn.
-move: HV.
-by rewrite -(addn0 n) -nth_drop Hd.
+  by move/nilP: Hd; rewrite /nilp size_drop /= subn_eq0 leqNgt Hn.
+by move: HV; rewrite -(addn0 n) -nth_drop Hd.
 Qed.
 
+Definition children_description := @node_description A \o @children_of_node A.
+
 Definition LOUDS_lt w p :=
-  flatten (lo_traversal_lt (fun t => node_description (children_of_node t))
-                           w p).
+  flatten (lo_traversal_lt children_description w p).
 
 Eval compute in LOUDS_lt
   [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (0::0::0::nil).
@@ -247,6 +312,10 @@ Definition LOUDS_index w p := size (lo_traversal_lt id w p).
 
 Eval compute in LOUDS_index
   [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (1::nil).
+
+Theorem LOUDS_lt_ok (t : tree A) p :
+  size p >= height t -> LOUDS t = true :: false :: LOUDS_lt [:: t] p.
+Proof. by rewrite /LOUDS /LOUDS_lt => /lo_traversal_lt_ok ->. Qed.
 
 Lemma LOUDS_lt_cons w n p :
   LOUDS_lt w (n :: p) =
@@ -302,9 +371,8 @@ Proof.
 elim: a l => [|a IH] [|t l] //= Hl; first by rewrite select0.
 rewrite children_of_forest_cons size_cat addSn addnCA -addSn select_cat.
 rewrite count_mem_false_node_description size_node_description.
-case: ifP => Ha.
-  destruct a => //; by rewrite take0 /= !addn0 select_false_node_description.
-by rewrite subn1 /= IH.
+case: a => [|a] in IH Hl *; last by rewrite subn1 /= IH.
+by rewrite take0 /= !addn0 select_false_node_description.
 Qed.
 
 Lemma size_flatten_node_description (l : forest A) :
@@ -353,10 +421,10 @@ rewrite drop_size_cat // size_flatten_node_description.
 by rewrite -(size_cat w) take_size.
 Qed.
 
-Theorem LOUDS_index_rank w p n :
+Theorem LOUDS_index_rank w p p' n :
   valid_position (head dummy w) (rcons p n) ->
   LOUDS_index w (rcons p n) =
-  size w + rank true (LOUDS_position w p + n) (LOUDS_lt w (rcons p n)).
+  size w + rank true (LOUDS_position w p + n) (LOUDS_lt w (rcons p n ++ p')).
 Proof.
 rewrite /LOUDS_position /LOUDS_lt /LOUDS_index.
 elim: p w => [|i p IH] [|[a cl] w] HV //=.
@@ -370,8 +438,8 @@ congr addn.
 rewrite -addnA rank_addn rank_cat ltnn rank_size //.
 rewrite count_mem_true_node_description subnn rank0 addn0 drop_cat ltnn.
 rewrite subnn drop0.
-rewrite IH; last by rewrite (valid_position_drop _ HV).
-rewrite {IH} size_cat !addnA -size_cat cat_take_drop -addnA.
+rewrite {}IH; last by rewrite (valid_position_drop _ HV).
+rewrite size_cat !addnA -size_cat cat_take_drop -addnA.
 congr addn.
 rewrite flatten_cat size_cat -addnA [in RHS]rank_addn flatten_cat.
 congr addn.
@@ -383,28 +451,32 @@ congr rank.
 by rewrite drop_cat ltnn subnn drop0.
 Qed.
 
-Theorem LOUDS_childE (t : tree A) (p : seq nat) x :
-  let B := LOUDS_lt [::t] (rcons p x) in
+(* the tth child node v, see [Navarro, p.215] *)
+Definition LOUDS_child (B : bitseq) (v t : nat) :=
+  select false (rank true (v + t) B).+1 B.
+
+Theorem LOUDS_childE (t : tree A) (p p' : seq nat) x :
+  let B := LOUDS_lt [::t] (rcons p x ++ p') in
   valid_position t (rcons p x) ->
   LOUDS_child B (LOUDS_position [:: t] p) x = LOUDS_position [:: t] (rcons p x).
 Proof.
 rewrite /LOUDS_child => HV.
 rewrite -add1n (_ : 1 = size [::t]) // -LOUDS_index_rank //.
-by rewrite (@LOUDS_position_select _ _ [::]) ?cats0.
+by rewrite (@LOUDS_position_select _ _ p') ?cats0.
 Qed.
 
-Lemma take_children_position t p x :
+Lemma take_children_position t p p' x :
+  let B := LOUDS_lt [:: t] (rcons p x ++ p') in
   valid_position t p ->
-  take (children t p).+1 (drop (LOUDS_position [:: t] p)
-                               (LOUDS_lt [:: t] (rcons p x)))
+  take (children t p).+1 (drop (LOUDS_position [:: t] p) B)
   = node_description (children_of_node (subtree t p)).
 Proof.
-move=> HV.
-rewrite /LOUDS_position -cats1 LOUDS_lt_cat drop_cat ltnn subnn drop0.
+move=> B HV.
+rewrite /B /LOUDS_position -cats1 -catA LOUDS_lt_cat drop_cat ltnn subnn drop0.
 set w := [:: t].
 rewrite (_ : t = head dummy w) // in HV *.
 have Hw: size w > 0 by [].
-elim: p w Hw HV => [|n p IH] [|[a cl] w] //= Hw.
+elim: p w Hw HV {B} => [|n p IH] [|[a cl] w] //= Hw.
   rewrite /LOUDS_lt /children /= take_cat size_node_description ltnS ltnn.
   by rewrite subnn take0 cats0.
 move=> /andP [Hn].
@@ -416,10 +488,10 @@ rewrite (_ : head dummy (drop n cl) = head dummy w').
 by rewrite -!nth0 /w' nth_cat size_drop ltn_subRL addn0 Hn.
 Qed.
 
-Lemma rank_false_LOUDS_position t p x :
+Lemma rank_false_LOUDS_position t p p' x :
   valid_position t (rcons p x) ->
   rank false x.+1 (drop (LOUDS_position [:: t] p)
-                        (LOUDS_lt [:: t] (rcons p x))) = 0.
+                        (LOUDS_lt [:: t] (rcons p x ++ p'))) = 0.
 Proof.
 move => HV.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
@@ -429,9 +501,9 @@ rewrite /rank /node_description -cats1 -catA takel_cat.
 by rewrite size_nseq valid_position_children. 
 Qed.
 
-Lemma LOUDS_index_leq_count_mem_false t p x :
+Lemma LOUDS_index_leq_count_mem_false t p p' x :
   LOUDS_index [:: t] (rcons p x) <=
-  (count_mem false) (LOUDS_lt [:: t] (rcons p x)).
+  (count_mem false) (LOUDS_lt [:: t] (rcons p x ++ p')).
 Proof.
 rewrite /LOUDS_index /LOUDS_lt.
 elim: {p} (rcons p x) [:: t] => // n p IH [|[a cl] w] //=.
@@ -450,17 +522,17 @@ move/nth_brank1 => Hrk; move/pred_is_self: (Hrk).
 by rewrite /pred -addn1 rank_addn Hrk addn1.
 Qed.
 
-Lemma nth_LOUDS_position t p x :
+Lemma nth_LOUDS_position t p p' x :
   valid_position t (rcons p x) ->
-  nth false (LOUDS_lt [:: t] (rcons p x)) (LOUDS_position [:: t] p + x) = true.
+  nth false (LOUDS_lt [:: t] (rcons p x ++ p')) (LOUDS_position [:: t] p + x).
 Proof.
-move=> HV; move/rank_false_LOUDS_position: (HV).
+move=> HV; move/rank_false_LOUDS_position: (HV) => /(_ p').
 rewrite /rank -nth_drop => /count_memPn.
 case Hx: (nth _ _ _) => //.
 rewrite (take_nth (~~ true)).
   by rewrite mem_rcons in_cons Hx eqxx.
 move/take_children_position/(f_equal size): (valid_position_rcons HV).
-move/(_ x); rewrite size_take.
+move/(_ x)/(_ p'); rewrite size_take.
 case: ifP => Hc Hc'.
   rewrite (leq_trans _ Hc) //.
   by rewrite ltnW // ltnS ltnW // ltnS valid_position_children.
@@ -484,46 +556,44 @@ rewrite -{1}(size_nseq (size (children_of_node cl')) true).
 by rewrite drop_size /= rank_cons eqxx rank0.
 Qed.
 
-Lemma pred_false_LOUDS_position t p x :
+Lemma pred_false_LOUDS_position t p p' x :
   valid_position t (rcons p x) ->
-  pred false (LOUDS_lt [:: t] (rcons p x)) (LOUDS_position [:: t] p) =
+  pred false (LOUDS_lt [:: t] (rcons p x ++ p')) (LOUDS_position [:: t] p) =
   LOUDS_position [:: t] p.
 Proof.
 move/valid_position_rcons.
-rewrite /LOUDS_position -cats1 LOUDS_lt_cat.
-remember (size _) as sz.
-case /boolP: (sz == 0) => Hsz HV.
-  by rewrite (eqP Hsz) /pred rank0 select0.
-destruct sz => //.
+rewrite /LOUDS_position -cats1 -catA LOUDS_lt_cat.
+move Hsz: (size _) => sz HV.
+case: sz => [|sz] in Hsz HV *.
+  by rewrite /pred rank0 select0.
 rewrite pred_is_self //.
-set w := [:: t] in Heqsz *.
+set w := [:: t] in Hsz *.
 rewrite (_ : t = head dummy w) // in HV.
-elim: p {t} w sz (LOUDS_lt _ [:: x]) HV Heqsz {Hsz} => // n p IH w sz B HV.
+elim: p {t} w sz (LOUDS_lt _ [:: x & p']) HV Hsz => // n p IH w sz B HV.
 rewrite LOUDS_lt_cons size_cat -catA.
 case Hp: (size (LOUDS_lt _ p)).
   rewrite addn0 => Hsz.
-  rewrite drop_cat Hsz leqnn rank_cat size_drop -Hsz -(add1n sz) addnK ltnn.
+  rewrite drop_cat Hsz leqnn rank_cat size_drop Hsz -(add1n sz) addnK ltnn.
   by rewrite subnn rank0 addn0 rank_false_last_LOUDS_position.
 rewrite addnS => -[Hsz].
-rewrite drop_cat Hsz leqNgt ltnS leq_addr addKn IH //.
-destruct w as [|[a cl] w] => //=.
-by rewrite (valid_position_drop _ HV).
+rewrite drop_cat -Hsz leqNgt ltnS leq_addr addKn IH //.
+by case: w HV {IH Hp Hsz} => // -[a cl] w /valid_position_drop ->.
 Qed.
 
 Definition LOUDS_parent (B : bitseq) (v : nat) : nat :=
   let j := select true (rank false v B) B in
   pred false B j.
 
-Theorem LOUDS_parentE (t : tree A) p x :
+Theorem LOUDS_parentE (t : tree A) p p' x :
+  let B := LOUDS_lt [:: t] (rcons p x ++ p') in
   valid_position t (rcons p x) ->
-  LOUDS_parent (LOUDS_lt [:: t] (rcons p x))
-               (LOUDS_position [:: t] (rcons p x)) =
+  LOUDS_parent B (LOUDS_position [:: t] (rcons p x)) =
   LOUDS_position [:: t] p.
 Proof.
-rewrite /LOUDS_parent => HV.
-rewrite (LOUDS_position_select [::]) // cats0.
+move=> B HV.
+rewrite {}/B /LOUDS_parent (LOUDS_position_select p') //.
 rewrite selectK; last by apply LOUDS_index_leq_count_mem_false.
-rewrite LOUDS_index_rank // add1n.
+rewrite (LOUDS_index_rank p') // add1n.
 rewrite nth_brankK; last by apply nth_LOUDS_position.
 rewrite -addnS pred_same_of_rank; last by apply rank_false_LOUDS_position.
 by apply pred_false_LOUDS_position.
@@ -533,25 +603,21 @@ Qed.
 Definition LOUDS_children (B : bitseq) (v : nat) : nat :=
   succ false B v.+1 - v.+1.
 
-(* TODO: prove that LOUDS_children coincides with children (the definition using trees) *)
-Theorem LOUDS_childrenE (t : tree A) (p : seq nat) :
-  let B := LOUDS_lt [:: t] (rcons p 0) in
+Theorem LOUDS_childrenE (t : tree A) (p p' : seq nat) :
+  let B := LOUDS_lt [:: t] (rcons p 0 ++ p') in
   valid_position t p ->
   children t p = LOUDS_children B (LOUDS_position [:: t] p).
 Proof.
 move=> B HV.
 rewrite /LOUDS_children succ_drop; last first.
-  rewrite /LOUDS_position /B.
-  rewrite -cats1 LOUDS_lt_cat.
+  rewrite /LOUDS_position /B cat_rcons LOUDS_lt_cat.
   rewrite size_cat -[X in X < _]addn0 ltn_add2l.
   move: (@size_lo_traversal [:: t] _ HV).
   case: (lo_traversal_res _ _) => //= [[a cl] w] _.
-  rewrite /LOUDS_lt /=.
-  by rewrite size_cat size_node_description addSn.
+  by rewrite /LOUDS_lt /= size_cat size_node_description addSn.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
-rewrite take_children_position //.
-rewrite select_cat count_mem_false_node_description /=.
-by rewrite select_false_node_description.
+rewrite take_children_position // select_cat.
+by rewrite count_mem_false_node_description select_false_node_description.
 Qed.
 
 Definition LOUDS_childrank (B : bitseq) (v : nat) : nat :=
