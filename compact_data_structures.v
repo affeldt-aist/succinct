@@ -55,6 +55,14 @@ elim: l => [|a l IH] /=.
 by rewrite -Monoid.mulmA IH.
 Qed.
 
+Lemma eq_in_foldr (T1 : eqType) T2 (f1 f2 : T1 -> T2 -> T2) (s : seq T1) a :
+  {in s, f1 =2 f2} -> foldr f1 a s = foldr f2 a s.
+Proof.
+elim: s => //= t s IH Hs.
+rewrite IH ?Hs ?mem_head // => x Hx y.
+by rewrite Hs // inE Hx orbT.
+Qed.
+
 End seq_ext.
 
 (* TODO: move? *)
@@ -493,9 +501,8 @@ by rewrite foldr1_mulr.
 Qed.
 
 Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
-  let: (s, ss) := if ss is s :: ss then (s, ss) else (nil, nil) in
   let: Node a cl := t in
-  (f t :: s) :: foldr level_traversal_cat ss cl.
+  (f t :: head nil ss) :: foldr level_traversal_cat (behead ss) cl.
 
 Definition lo_traversal_cat t := flatten (level_traversal_cat t [::]).
 
@@ -508,19 +515,10 @@ clearbody h.
 elim: h t ss Hh => // [|h IH] [a cl] ss.
   by rewrite leqNgt height_gt0.
 move/height_Node => /= Hh.
-case: ss => [|s ss].
-  congr cons.
-  elim: cl Hh => // {a} t w IHw Hh /=.
-  rewrite IHw.
-    by rewrite IH // Hh // mem_head.
-  move=> t' Ht'; apply Hh.
-  by rewrite inE Ht' orbT.
-congr cons.
-elim: cl Hh => // {a} t w IHw Hh /=.
-rewrite -IHw.
-  by rewrite -Monoid.mulmA IH // Hh // mem_head.
-move=> t' Ht'; apply Hh.
-by rewrite inE Ht' orbT.
+rewrite -[in RHS](eq_in_foldr (f1:=mzip_cat \o level_traversal)).
+  case: ss => // s ss.
+  by rewrite -(foldr_map level_traversal) foldr1_mulr foldr_map.
+by move=> t Ht l; apply IH, Hh.
 Qed.
 
 Theorem lo_traversal_cat_ok t : lo_traversal_cat t = lo_traversal_st t.
