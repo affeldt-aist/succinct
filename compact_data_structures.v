@@ -47,7 +47,7 @@ Lemma reshape_nseq_drop n s b :
   reshape (nseq b n) s = [seq take n (drop (x * n) s) | x <- iota 0 b].
 Proof. move: (@reshape_nseq_drop' n s b 0); by rewrite drop0. Qed.
 
-Lemma foldr0_mulr (e : T) (M : Monoid.law e) l m :
+Lemma foldr1_mulr (e : T) (M : Monoid.law e) l m :
   M (foldr M e l) m = foldr M m l.
 Proof.
 elim: l => [|a l IH] /=.
@@ -458,13 +458,13 @@ elim => [|lh lt IH] [|rh rt] [|sh st] //=.
 by rewrite IH Monoid.Theory.mulmA.
 Qed.
 
-Lemma mzip0s s : mzip [::] s = s.
+Lemma mzip1s s : mzip [::] s = s.
 Proof. by []. Qed.
 
-Lemma mzips0 s : mzip s [::] = s.
+Lemma mzips1 s : mzip s [::] = s.
 Proof. by case: s. Qed.
 
-Canonical mzip_monoid := Monoid.Law mzipA mzip0s mzips0.
+Canonical mzip_monoid := Monoid.Law mzipA mzip1s mzips1.
 End mzip.
 
 Section lo_traversal_st.
@@ -489,7 +489,7 @@ set w := t :: w' in IH *.
 move/(_ isT): (IH) => ->.
 rewrite children_of_forest_cons /= foldr_cat /=.
 rewrite -!(foldr_map level_traversal mzip_cat).
-by rewrite foldr0_mulr.
+by rewrite foldr1_mulr.
 Qed.
 
 Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
