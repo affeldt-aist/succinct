@@ -975,17 +975,17 @@ Ltac splitL' t y IHd ok :=
   case: t => [[] ? ? ?|?] // in y IHd ok *; try by solveL' IHd ok.
 Ltac splitR' t y IHd ok :=
   case: t => [[] ? ? ?|?] // in y IHd ok *; try by solveR' IHd ok.
-Ltac solve_ddel ok :=
-  by rewrite ddel0E /delete_leaves; repeat case: ifP => ?; decomp ok.     
+Ltac decomp_ifP ok :=
+  repeat case: ifP => ?; decomp ok.
 
 Lemma ddel_is_nearly_redblack' B i n c :
   0 < n -> is_redblack B c n -> is_nearly_redblack' (ddel B i) c n.
 Proof.
 move: n c; functional induction (ddel B i) => n c' H.
 + rewrite /delete_leaves.
-  case: c' => /= ok; repeat (case: ifP => ?); by decomp ok.
+  case: c' => /= ok; by decomp_ifP ok.
 + rewrite /delete_leaves.
-  case: c' => /= ok; repeat (case: ifP => ?); by decomp ok.
+  case: c' => /= ok; by decomp_ifP ok.
 + move=> ok; solveL' IHd ok => //.
   by apply is_redblack_Red_Black.
 + move=> ok; by solveR' IHd ok.
@@ -1000,9 +1000,8 @@ move: n c; functional induction (ddel B i) => n c' H.
   first (by rewrite balanceL'_Red_nearly_is_redblack // ?IHd //; decomp ok);
   splitL' ll y IHd ok;
   splitL' lr y IHd ok;
-  try solve_ddel ok;
-  splitL' rl y IHd ok;
-  solve_ddel ok.
+  try splitL' rl y IHd ok;
+  by rewrite ddel0E /delete_leaves; decomp_ifP ok.
 + move: c c' l r y IHd =>
     [] [] // [[] ll [] ? ? lr |?] [[] // rl [] ? ? rr|?] //= y IHd;
   try (by rewrite !andbF);
@@ -1011,12 +1010,11 @@ move: n c; functional induction (ddel B i) => n c' H.
   first (by rewrite balanceR'_Red_nearly_is_redblack // ?IHd //; decomp ok);
   splitR' rl y IHd ok;
   splitR' rr y IHd ok;
-  try solve_ddel ok;
-  splitR' lr y IHd ok;
-  solve_ddel ok.
+  try splitR' lr y IHd ok;
+  by rewrite ddel0E /delete_leaves; decomp_ifP ok.
 + by [].
 Qed.
-    
+
 End delete.
 
 End dtree.
