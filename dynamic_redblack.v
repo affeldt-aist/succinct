@@ -968,9 +968,9 @@ Section delete.
   
 Ltac decomp ok := move: ok => /=; repeat decompose_rewrite.
 Ltac solveL' IHd ok :=
-  apply balanceL'_Black_nearly_is_redblack => //; try apply IHd; decomp ok.
+  rewrite balanceL'_Black_nearly_is_redblack // ?IHd //; decomp ok.
 Ltac solveR' IHd ok :=
-  apply balanceR'_Black_nearly_is_redblack => //; try apply IHd; decomp ok.
+  rewrite balanceR'_Black_nearly_is_redblack // ?IHd //; decomp ok.
 Ltac splitL' t y IHd ok :=
   case: t => [[] ? ? ?|?] // in y IHd ok *; try by solveL' IHd ok.
 Ltac splitR' t y IHd ok :=
@@ -983,9 +983,9 @@ Lemma ddel_is_nearly_redblack' B i n c :
 Proof.
 move: n c; functional induction (ddel B i) => n c' H.
 + rewrite /delete_leaves.
-  case: c' => //=; repeat (case: ifP => ? /=); by repeat decompose_rewrite.
+  case: c' => /= ok; repeat (case: ifP => ?); by decomp ok.
 + rewrite /delete_leaves.
-  case: c' => //=; repeat (case: ifP => ? /=); by repeat decompose_rewrite.
+  case: c' => /= ok; repeat (case: ifP => ?); by decomp ok.
 + move=> ok; solveL' IHd ok => //.
   by apply is_redblack_Red_Black.
 + move=> ok; by solveR' IHd ok.
@@ -995,10 +995,9 @@ move: n c; functional induction (ddel B i) => n c' H.
 + move: c c' l r y IHd =>
     [] [] // [[] ll [] ? ? lr |?] [[] // rl [] ? ? rr|?] //= y IHd;
   first (by rewrite !andbF);
-  try (case/andP => C /eqP H'; case/andP: C; by rewrite -H' ltnn /=);
+  try (case/andP => C /eqP H'; case/andP: C; by rewrite H' ltnn /=);
   move => ok;
-  first (by apply balanceL'_Red_nearly_is_redblack => //;
-            try apply IHd; decomp ok);
+  first (by rewrite balanceL'_Red_nearly_is_redblack // ?IHd //; decomp ok);
   splitL' ll y IHd ok;
   splitL' lr y IHd ok;
   try solve_ddel ok;
@@ -1009,8 +1008,7 @@ move: n c; functional induction (ddel B i) => n c' H.
   try (by rewrite !andbF);
   try (case/andP => /eqP ->; by rewrite ltnn /=);
   move => ok;
-  first (by apply balanceR'_Red_nearly_is_redblack => //;
-            try apply IHd; decomp ok);
+  first (by rewrite balanceR'_Red_nearly_is_redblack // ?IHd //; decomp ok);
   splitR' rl y IHd ok;
   splitR' rr y IHd ok;
   try solve_ddel ok;
