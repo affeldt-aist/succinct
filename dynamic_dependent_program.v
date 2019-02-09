@@ -6,6 +6,8 @@ Require Import set_clear Wf_nat Compare_dec ExtrOcamlNatInt.
 
 Tactic Notation "remember_eq" constr(expr) ident(vname) ident(eqname) := case (exist (fun x => x = expr) expr erefl) => vname eqname.
 
+Set Implicit Arguments.
+
 Section dynamic_dependent.
 
 Variable w : nat.
@@ -472,3 +474,334 @@ Section insert.
  Qed.
 
 End insert.
+
+Section query.
+  
+  Fixpoint daccess {n m d c} (tr : tree n m d c) i :=
+    match tr with
+    | Leaf s _ _ => nth false s i
+    | Node lnum _ _ _ _ _ _ _ _ _ l r =>
+      if i < lnum
+      then daccess l i
+      else daccess r (i - lnum)
+    end.
+
+  Fixpoint drank {n m d c} (tr : tree n m d c) i :=
+    match tr with
+    | Leaf s _ _ => rank true i s
+    | Node lnum lones rnum rones _ _ _ _ _ _ l r =>
+      if i < lnum
+      then drank l i
+      else lones + drank r (i - lnum)
+    end.
+
+  Fixpoint dselect_0 {n m d c} (tr : tree n m d c) i :=
+    match tr with
+    | Leaf s _ _ => select false i s
+    | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
+      let zeroes := s1 - o1
+      in if i <= zeroes 
+      then dselect_0 l i
+      else s1 + dselect_0 r (i - zeroes)
+    end.
+
+  Fixpoint dselect_1 {n m d c} (tr : tree n m d c) i :=
+    match tr with
+    | Leaf s _ _ => select true i s
+    | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
+      if i <= o1
+      then dselect_1 l i
+      else s1 + dselect_1 r (i - o1)
+    end.
+
+  Definition access (s : seq bool) i := nth false s i.
+
+  Lemma dflatten_ones {num ones d c} (B : tree num ones d c) :
+    ones = count_mem true (dflatten B).
+  Proof.
+    elim: B => //= s1 o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr.
+    by rewrite count_cat -IHl -IHr.
+  Qed.
+
+  Lemma predC_bool b : predC (pred1 b) =1 pred1 (negb b).
+  Proof. by case. Qed.
+
+  Lemma count_mem_false_true (s : seq bool) :
+    count_mem false s + count_mem true s = size s.
+  Proof.
+    by rewrite -(count_predC (pred1 false)) (eq_count (predC_bool false)).
+  Qed.
+  
+  Lemma ones_lt_num num ones d c (B : tree num ones d c) :
+    ones <= num.
+  Proof.
+    by rewrite (dflatten_ones B) [in X in _ <= X](dflatten_size B) count_size.
+  Qed.
+
+  Lemma dflatten_zeroes num ones d c (B : tree num ones d c) :
+    num - ones = count_mem false (dflatten B).
+  Proof.
+    rewrite [in LHS](dflatten_ones B) [in X in X - _](dflatten_size B).
+    apply/eqP. rewrite -(eqn_add2r (count_mem true (dflatten B))) subnK.
+      by rewrite count_mem_false_true.
+    by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
+  Qed.
+    
+  Lemma dflatten_rank num ones d c (B : tree num ones d c) :
+    ones = rank true num (dflatten B).
+  Proof.
+    by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
+  Qed.
+    
+  Lemma daccessK nums ones d c (B : tree nums ones d c) :
+    daccess B =1 access (dflatten B).
+  Proof.
+    rewrite /access.
+    elim: B => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+    by rewrite nth_cat -dflatten_size -IHl -IHr.
+  Qed.
+
+  Lemma drankK nums ones d c (B : tree nums ones d c) i :
+    drank B i = rank true i (dflatten B).
+  Proof.
+    elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+    by rewrite rank_cat -dflatten_size IHl -IHr -dflatten_rank.
+  Qed.
+
+  Lemma drank_ones num ones d c (B : tree num ones d c) :
+    drank B num = ones.
+  Proof.
+    by rewrite [in RHS](dflatten_rank B) drankK.
+  Qed.
+
+  Lemma dselect1K nums ones d c (B : tree nums ones d c) i :
+    dselect_1 B i = select true i (dflatten B).
+  Proof.
+    elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size. 
+  Qed.
+
+  Lemma dselect0K nums ones d c (B : tree nums ones d c) i :
+    dselect_0 B i = select false i (dflatten B).
+  Proof.
+    elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+    by rewrite select_cat -dflatten_zeroes IHl IHr -dflatten_size.
+  Qed.
+
+  Lemma access_leq_count (s : seq bool) i : i < size s -> access s i <= count_one s.
+  Proof.
+    rewrite /access.
+    elim: s i => //= h s IHs i H.
+    case_eq i => [| i'] //= Hi'. by case: h.
+    apply: leq_trans. apply: IHs. move: H. by rewrite Hi' ltnS.
+    by rewrite leq_addl.
+  Qed.
+    
+  Lemma daccess_leq_ones {num ones d c} (B : tree num ones d c) i :
+    i < num -> daccess B i <= ones.
+  Proof.
+    elim: B i => [s w_wf size_wf | lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr] //= i H.
+    by rewrite /count_one access_leq_count.
+    case: ifP => Hi.
+    apply: leq_trans. exact: IHl. exact: leq_addr.
+    apply: leq_trans. apply: IHr.
+    rewrite -(ltn_add2r lnum) addnC addnBA.
+    by rewrite addnC addnK addnC. by rewrite leqNgt Hi. 
+    by rewrite leq_addl.
+  Qed.
+    
+End query.
+
+Require Import Compare_dec.
+
+Section set_clear.
+
+  Obligation Tactic := idtac.
+  
+  Program Fixpoint bset {num ones d c} (B : tree num ones d c) i
+    {measure (tree_size B)} :
+    { B'b : tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
+    | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
+    match B with
+    | Leaf s _ _ => (Leaf (bit_set s i) _ _, ~~ (access s i))
+    | Node lnum lones rnum rones _ _ _ _ col cor l r =>
+      match lt_dec i lnum with
+      | left H =>
+        let x := bset l i
+        in (Node col cor x.1 r, x.2)
+      | right H =>
+        let x := bset r (i - lnum)
+        in (Node col cor l x.1, x.2)
+      end
+    end.
+
+  Next Obligation. intros. by rewrite size_bit_set. Qed.
+
+  Next Obligation. intros. by rewrite size_bit_set. Qed.
+  
+  Next Obligation. intros; apply: size_bit_set. Qed.
+
+  Next Obligation.
+    intros; case Hi: (i < size s).
+    rewrite /count_one /daccess (count_bit_set false). by rewrite andbT addnC.
+    by rewrite Hi.
+    rewrite andbF addn0. by rewrite /count_one /daccess bit_set_over //= leqNgt Hi.
+  Qed.
+
+  Next Obligation.
+    intros; subst; split => //.
+    by destruct bset_func_obligation_4 , bset_func_obligation_3 => /=.
+  Qed.
+
+  Next Obligation.
+    intros; subst. apply /ltP.
+    rewrite -Heq_B /=.
+    by rewrite -addn1 leq_add2l tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; move/ltP: (H) => Hi /=.
+    by rewrite Hi (ltn_addr _ Hi) addnAC.
+  Qed.
+
+  Next Obligation.
+    split; subst; last first.
+      destruct bset as [[l' flip][Hl' Hf]] => /=.
+      move/ltP: (H) => ->.
+      by rewrite -Hf.
+    move=> /=.
+    move: (lones + rones + _) (bset_func_obligation_7 _ _ _ _ _ _) => ones Ho.
+    destruct Ho => /=.
+    destruct bset as [[l' flip][Hl' Hf]] => /=.
+    rewrite /= in Hl'.
+    move/ltP: (H).
+    rewrite Hl' /bit_set update_cat -{1}(dflatten_size l) => Hi.
+    by rewrite ifT.
+  Qed.
+
+  Next Obligation.
+    intros; subst. apply /ltP.
+    rewrite -Heq_B /=.
+    by rewrite -add1n leq_add2r tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; move/ltP: (H) => Hi /=.
+    rewrite -if_neg Hi !addnA.
+    by rewrite -(ltn_add2l lnum) subnKC // leqNgt.
+  Qed.
+
+  Next Obligation.
+    split; subst; last first.
+      destruct bset as [[r' flip][Hr' Hf]] => /=.
+      move/ltP: (H) => Hi.
+      by rewrite -if_neg Hi -Hf.
+    move=> /=.
+    move: (lones + rones + _) (bset_func_obligation_10 _ _ _ _ _ _) => ones Ho.
+    destruct Ho => /=.
+    destruct bset as [[r' flip][Hr' Hf]] => /=.
+    rewrite /= in Hr'.
+    move/ltP: (H).
+    rewrite Hr' /bit_set update_cat -(dflatten_size l) => Hi.
+    by rewrite -if_neg Hi.
+  Qed.
+
+  Next Obligation. intuition. Qed.
+
+  
+  Program Fixpoint bclear {num ones d c}
+    (B : tree num ones d c) i
+    { measure (tree_size B) } :
+    { B'b : tree num (ones - (daccess B i) && (i < num)) d c * bool |
+      dflatten B'b.1 = bit_clear (dflatten B) i /\ snd B'b = daccess B i } :=
+
+    match B with
+    | Leaf s _ _ => (Leaf (bit_clear s i) _ _, access s i)
+    | Node lnum lones rnum rones _ _ _ _ col cor l r =>
+      match lt_dec i lnum with
+      | left H =>
+        let l'b := bclear l i
+        in (Node col cor l'b.1 r, l'b.2)
+      | right H =>
+        let r'b := bclear r (i - lnum)
+        in (Node col cor l r'b.1, r'b.2)
+      end
+    end.
+
+  Next Obligation. intros. by rewrite size_bit_clear. Qed.
+
+  Next Obligation. intros. by rewrite size_bit_clear. Qed.
+
+  Next Obligation. intros. by rewrite size_bit_clear. Qed.
+
+  Next Obligation.
+    intros. case Hi: (i < size s).
+    + by rewrite /count_one //= (count_bit_clear false) //= andbT.
+    + rewrite bit_clear_over //=. by rewrite andbF subn0.
+      by rewrite leqNgt Hi.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    by destruct bclear_func_obligation_4, bclear_func_obligation_3.
+  Qed.
+
+  Next Obligation.
+    intros; subst. apply/ltP.
+    by rewrite -Heq_B //= -addn1 leq_add2l tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; subst => //=.
+    move/ltP: (H) => Hi /=.
+    rewrite Hi ltn_addr //= andbT.
+    rewrite addnC addnBA. by rewrite addnC. by rewrite daccess_leq_ones.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct bclear_func_obligation_7 => //=.
+    move/ltP : (H) => Hi /=.
+    rewrite /proj1_sig; subst l'b. destruct bclear => //=.
+    split.
+    + rewrite (proj1 a) /bit_clear update_cat dflatten_sizeK.
+      by rewrite Hi.
+    + by rewrite (proj2 a) Hi.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite -Heq_B //=. apply/ltP.
+    by rewrite -[X in X < _]add0n ltn_add2r tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; subst => //=.
+    move/ltP: (H) => Hi /=. rewrite -if_neg Hi.
+    case Hi': (i - lnum < rnum); move: (Hi'); rewrite -(ltn_add2l lnum) subnKC;
+    try move => ->.
+    + rewrite andbT addnBA //= daccess_leq_ones //= Hi' //=.
+      by rewrite leqNgt Hi.
+    + by rewrite andbF !subn0.
+      by rewrite leqNgt Hi.
+  Qed.
+
+  Next Obligation.
+     split; subst; last first.
+      destruct bclear as [[r' tgt][Hr' Hf]] => /=.
+      move/ltP: (H) => Hi.
+      by rewrite -if_neg Hi -Hf.
+    move=> /=.
+    move: (lones + rones - _) (bclear_func_obligation_10 _ _ _ _ _ _) => ones Ho.
+    destruct Ho => /=.
+    destruct bclear as [[r' tgt][Hr' Hf]] => /=.
+    rewrite /= in Hr'.
+    move/ltP: (H).
+    rewrite Hr' /bit_clear update_cat -(dflatten_size l) => Hi.
+    by rewrite -if_neg Hi.
+  Qed.
+
+  Next Obligation. intuition. Qed.
+
+    
+End set_clear.
+
