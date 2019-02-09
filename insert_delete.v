@@ -93,7 +93,14 @@ Section insert_delete.
       by rewrite -addn1 addKn /= drop0 cat_take_drop.
     by rewrite ltnNge leqnSn.
   Qed.
-  
+
+  Lemma delete_oversize (s : seq T) i : i >= size s -> delete s i = s.
+  Proof.
+    move => H. rewrite /delete take_oversize. rewrite drop_oversize.
+    by rewrite cats0.
+    apply: leq_trans. apply: H. by rewrite leq_eqVlt ltnSn orbT. exact.
+  Qed.
+    
 End insert_delete.
 
 Section insert_delete_eqtype.
@@ -165,3 +172,25 @@ Section delete_with_return.
   Qed.
     
 End delete_with_return.
+
+Section insert_delete_bit.
+
+  Definition count_one := count_mem true.
+
+  Definition access := nth false.
+  
+  Lemma count_delete s i : count_one s - access s i = count_one (delete s i).
+  Proof.
+    rewrite /count_one /access /delete.
+    case Hi: (i < size s).
+    rewrite -(cat_take_drop i s) !count_cat cat_take_drop (drop_nth false) //=.
+    case: (nth false s i) => //=. by rewrite addnCA addnC addnK.
+    by rewrite add0n subn0.
+    rewrite count_cat drop_oversize. rewrite take_oversize;
+    try rewrite /= addn0 nth_default /=; try (by rewrite subn0);
+    try (by rewrite leqNgt Hi).
+    move/negbT: Hi. rewrite ltnNge. move/negbNE => Hi.
+    apply: leq_trans. apply: Hi. apply: leqnSn.
+  Qed.
+    
+End insert_delete_bit.

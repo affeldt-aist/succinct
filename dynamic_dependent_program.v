@@ -80,8 +80,6 @@ Section insert.
 
   Inductive param (A : Type) : Prop := Param : A -> param A.
 
-  Definition count_one arr := count_mem true arr.
-
   Inductive tree : nat -> nat -> nat -> color -> Type :=
   | Leaf : forall (arr : seq bool),
       (w ^ 2) %/ 2 <= size arr ->
@@ -514,8 +512,6 @@ Section query.
       else s1 + dselect_1 r (i - o1)
     end.
 
-  Definition access (s : seq bool) i := nth false s i.
-
   Lemma dflatten_ones {num ones d c} (B : tree num ones d c) :
     ones = count_mem true (dflatten B).
   Proof.
@@ -805,3 +801,170 @@ Section set_clear.
     
 End set_clear.
 
+Section delete.
+
+  Lemma count_delete_tr {num ones} (tr : tree num ones 0 Black) i :
+    ones - (daccess tr i) = count_one (delete (dflatten tr) i).
+  Proof.
+    remember_eq 0 d' deq. remember_eq Black c' ceq. move: tr.
+    rewrite -deq -ceq => tr.
+    destruct tr => //=. by rewrite count_delete.
+    move: deq. by rewrite ceq.
+  Qed.
+
+  Inductive del_tree : nat -> nat -> nat -> color -> Type :=
+  | Stay : forall {num ones d c} pc,
+      color_ok c (inv pc) -> tree num ones d c -> del_tree num ones d c
+  | Down : forall {num ones d}, tree num ones d Black -> del_tree num ones d.+1 Black.
+
+  Definition dflattend {num ones d c} (tr : del_tree num ones d c) :=
+    match tr with
+    | Stay _ _ _ _ _ _ t => dflatten t
+    | Down _ _ _ t => dflatten t
+    end.
+
+  Lemma wordsize_sqrn_div2_gt0 : 0 < w ^ 2 %/ 2.
+  Proof.
+    rewrite lt0n. apply/eqP. apply: wordsize_sqrn_div2_neq0.
+  Qed.
+
+  Lemma wordsize_del_lt_twice : (w ^ 2 %/ 2 + (w ^ 2 %/ 2).-1 < 2 * w ^ 2).
+  Proof.
+    have Hw: (w ^ 2 %/ 2 + (w ^ 2 %/ 2).-1 < w ^ 2).
+    rewrite -subn1 addnBA divn2. rewrite addnn.
+    rewrite -[X in _ < X]odd_double_half subn1.
+    have Hw': (((w ^ 2)./2).*2.-1 < ((w ^ 2)./2).*2).
+    rewrite -subn1 -[X in _ < X]subn0 ltn_sub2l //=.
+    by rewrite -[X in X < _]double0 ltn_double -divn2 wordsize_sqrn_div2_gt0.
+    apply: leq_trans. apply: Hw'. apply: leq_addl.
+    by rewrite -divn2 wordsize_sqrn_div2_gt0.
+    apply: leq_trans. apply: Hw. exact: leq_pmull.  
+  Qed.
+
+  Lemma bool_true b : b = (b == true).
+  Proof. by case: b. Qed.
+
+  Lemma cons_del_head s : size s > 0 -> access s 0 :: delete s 0 = s.
+  Proof.
+    case: s => //= h s H.
+    by rewrite /delete //= drop0.
+  Qed.
+  
+  Program Definition merge_arrays
+    (s1 s2 : seq bool) (i : bool)
+    (w_ok1 : w ^ 2 %/ 2 == size s1)
+    (w_ok2 : w ^ 2 %/ 2 == size s2)
+    (Hi : i < size s1 + size s2) :
+    { tr : tree (size s1 + size s2 - 1)
+                (count_one s1 + count_one s2 - access (s1 ++ s2) i) 0 Black |
+      dflatten tr = delete (s1 ++ s2) i } :=
+    if i < size s1 is true
+    then Leaf ((rcons (delete s1 i) (access s2 0)) ++ (delete s2 0)) _ _
+    else Leaf (s1 ++ (delete s2 (i - size s1))) _ _.
+
+  Next Obligation.
+    rewrite size_cat size_rcons.
+    case Hi': (i < size s1).
+    + rewrite !size_delete. rewrite -(eqP w_ok1) -(eqP w_ok2). 
+      rewrite prednK. exact: leq_addr. exact: wordsize_sqrn_div2_gt0.
+      by rewrite -(eqP w_ok2) wordsize_sqrn_div2_gt0. by rewrite Hi'.
+    + rewrite delete_oversize //=. rewrite size_delete.
+      rewrite -[X in _ <= X + _]addn1 -(eqP w_ok1). rewrite addnAC -addnA.
+      apply: leq_addr. by rewrite -(eqP w_ok2) wordsize_sqrn_div2_gt0.
+      by rewrite leqNgt Hi'.
+  Qed.
+
+  Next Obligation.
+    rewrite size_cat size_rcons.
+    case Hi': (i < size s1).
+    + rewrite !size_delete. rewrite -(eqP w_ok1) -(eqP w_ok2).
+      rewrite prednK. apply: wordsize_del_lt_twice.
+      apply: wordsize_sqrn_div2_gt0.
+      by rewrite -(eqP w_ok2) wordsize_sqrn_div2_gt0.
+      by rewrite Hi'.
+    + rewrite delete_oversize. rewrite size_delete.
+      rewrite -(eqP w_ok1) -(eqP w_ok2).
+      rewrite addSnnS prednK.
+      by rewrite addnn mul2n ltn_double ltn_Pdiv //= wordsize_sqrn_gt0.
+      apply: wordsize_sqrn_div2_gt0. by rewrite -(eqP w_ok2) wordsize_sqrn_div2_gt0.
+      by rewrite leqNgt Hi'.
+  Qed.
+
+  Next Obligation.
+    rewrite size_cat size_rcons !size_delete ?prednK.
+    by rewrite -subn1 addnBA //= -(eqP w_ok2) wordsize_sqrn_div2_gt0.
+    by rewrite -(eqP w_ok1) wordsize_sqrn_div2_gt0.
+    by rewrite -?(eqP w_ok2) wordsize_sqrn_div2_gt0.
+    by rewrite -Heq_anonymous.
+  Qed.
+
+  Next Obligation.
+    rewrite /count_one. rewrite -[in LHS]cats1 count_cat count_cat.
+    rewrite -/count_one -!count_delete.
+    rewrite /access nth_cat -Heq_anonymous //= addn0.
+    rewrite -addnA -bool_true subnKC.
+    by rewrite addnC [in RHS]addnC addnBA //= -/access access_leq_count.
+    have Hmatch: (match s2 with
+                  | []%list => false
+                  | x :: _ => x
+                  end = access s2 0). by rewrite /access.
+    by rewrite Hmatch access_leq_count //= -(eqP w_ok2) wordsize_sqrn_div2_gt0. 
+  Qed.
+
+  Next Obligation.
+    rewrite /eq_rect.
+    destruct merge_arrays_obligation_3, merge_arrays_obligation_4 => //=.
+    have Hmatch: (match s2 with
+                  | []%list => false
+                  | x :: _ => x
+                  end = access s2 0). by rewrite /access.
+    rewrite Hmatch -cats1 -catA cat1s. rewrite cons_del_head.
+    rewrite /delete take_cat -Heq_anonymous -catA drop_cat.
+    case: ifP => Hi' //=.
+    rewrite drop_oversize //=.
+    have H: (i.+1 - size s1 == 0). by rewrite subn_eq0 -Heq_anonymous.
+    by rewrite (eqP H) drop0.
+    move/negbT: Hi'. by rewrite -leqNgt => ->.
+    by rewrite -(eqP w_ok2) wordsize_sqrn_div2_gt0.
+  Qed.
+
+  Next Obligation.
+    by rewrite size_cat -(eqP w_ok1) leq_addr.
+  Qed.
+
+  Next Obligation.
+    rewrite size_cat. rewrite size_delete.
+    rewrite -(eqP w_ok1) -(eqP w_ok2). 
+    apply: wordsize_del_lt_twice.
+    rewrite -(ltn_add2r (size s1)) subnK. by rewrite addnC.
+    move/eqP/eqnP/eqP: H. by rewrite subn_eq0 -leqNgt.
+  Qed.
+
+  Next Obligation.
+    rewrite size_cat. rewrite size_delete.
+    by rewrite -subn1 addnBA //= -(eqP w_ok2) wordsize_sqrn_div2_gt0.
+    rewrite -(ltn_add2r (size s1)) subnK. by rewrite addnC.
+    move/eqP/eqnP/eqP: H. by rewrite subn_eq0 -leqNgt.
+  Qed.
+
+  Next Obligation.
+    rewrite /count_one count_cat -/count_one. rewrite -count_delete.
+    rewrite /access. rewrite nth_cat.
+    case: ifP => H' //=. move: H. by rewrite H'.
+    rewrite addnBA //= -/access access_leq_count //=.
+    rewrite -(ltn_add2r (size s1)) subnK. by rewrite addnC.
+    move/eqP/eqnP/eqP: H. by rewrite subn_eq0 -leqNgt.
+  Qed.
+
+  Next Obligation.
+    rewrite /eq_rect.
+    destruct merge_arrays_obligation_9, merge_arrays_obligation_8 => //=.
+    rewrite /delete take_cat.
+    move/eqP/eqnP/eqP: H. rewrite subn_eq0. move/negbTE => H.
+    rewrite H //=. rewrite drop_cat.
+    move/negbT: (H). rewrite -ltnNge => H'.
+    rewrite ltnNge leq_eqVlt H' orbT //= subSn.
+    rewrite catA //=. by rewrite leqNgt H.
+  Qed.
+
+End delete.
