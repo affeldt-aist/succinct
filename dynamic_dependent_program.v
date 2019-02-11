@@ -1,3 +1,4 @@
+(* Xuanrui Qi, Kazunari Tanaka, Jacques Garrigue *)
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 
@@ -171,7 +172,6 @@ Section insert.
     | Tr _ _ _ _ _ t' => dflatten t'
     end.
 
-
   (* 
    * Translated from https://github.com/xuanruiqi/dtp/blob/master/RedBlack.idr
    * which in turn is translated from dynamic_dependent.v
@@ -315,7 +315,7 @@ Section insert.
   Proof.
     elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
     by rewrite size_cat -IHl -IHr.
-  Qed. Check @Leaf.
+  Qed.
 
   Program Fixpoint dins {num ones d c}
     (B : tree num ones d c)
@@ -433,8 +433,6 @@ Section insert.
       destruct dins => //=.
       by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
   Qed.
-
- Check Node.
 
  Program Definition paint_black {num ones d c} (B : tree num ones d c) :
    { B' : tree num ones (incr_black d (inv c)) Black |
@@ -608,7 +606,6 @@ Section query.
     
 End query.
 
-Require Import Compare_dec.
 
 Section set_clear.
 
@@ -814,7 +811,7 @@ Section delete.
 
   Inductive del_tree : nat -> nat -> nat -> color -> Type :=
   | Stay : forall {num ones d c} pc,
-      color_ok c (inv pc) -> tree num ones d c -> del_tree num ones d c
+      color_ok c (inv pc) -> tree num ones d c -> del_tree num ones d pc
   | Down : forall {num ones d}, tree num ones d Black -> del_tree num ones d.+1 Black.
 
   Definition dflattend {num ones d c} (tr : del_tree num ones d c) :=
@@ -851,7 +848,7 @@ Section delete.
   Qed.
   
   Program Definition merge_arrays
-    (s1 s2 : seq bool) (i : bool)
+    (s1 s2 : seq bool) (i : nat)
     (w_ok1 : w ^ 2 %/ 2 == size s1)
     (w_ok2 : w ^ 2 %/ 2 == size s2)
     (Hi : i < size s1 + size s2) :
@@ -967,4 +964,491 @@ Section delete.
     rewrite catA //=. by rewrite leqNgt H.
   Qed.
 
+  Definition delete_last (s : seq bool) := delete s (size s).-1.
+
+  Definition blast (s : seq bool) := access s (size s).-1.
+
+  (* Do not really understand why this doesn't work *)
+
+  (*
+  Program Definition delete_from_leaves {lnum lones rnum rones : nat}
+    (pc : color)
+    (l : tree lnum lones 0 Black)
+    (r : tree rnum rones 0 Black)
+    (i : nat) :
+    { B' : del_tree (lnum + rnum - (i < lnum + rnum))
+                    (lones + rones - access (dflatten l ++ dflatten r) i)
+                    (incr_black 0 pc) pc
+    | dflattend B' = delete (dflatten l ++ dflatten r) i} :=
+    match l with
+    | Leaf arr1 _ _ =>
+      match r with
+      | Leaf arr2 _ _ =>
+        if i < size arr1 is true
+        then if w ^ 2 %/ 2 == size arr1 is true
+             then if w ^ 2 %/ 2 == size arr2 is true
+                  then
+                    let ret := (` (merge_arrays arr1 arr2 i _ _ _)) in
+                    match pc with
+                    | Red => Stay Red _ ret
+                    | Black => Down ret
+                    end
+                  else
+                    match pc with
+                    | Red => Stay Red _ (RNode
+                                          (Leaf (rcons (delete arr1 i)
+                                                       (access arr2 0)) _ _)
+                                          (Leaf (delete arr2 0) _ _))
+                    | Black => Stay Black _ (BNode
+                                              (Leaf (rcons (delete arr1 i)
+                                                           (access arr2 0)) _ _)
+                                              (Leaf (delete arr2 0) _ _))
+                    end
+             else
+               match pc with
+               | Red => Stay Red _ (RNode
+                                     (Leaf (delete arr1 i) _ _)
+                                     (Leaf arr2 _ _))
+               | Black => Stay Black _ (BNode
+                                         (Leaf (delete arr1 i) _ _)
+                                         (Leaf arr2 _ _))
+               end
+        else
+          if i < size arr1 + size arr2 is true
+          then if w ^ 2 %/ 2 == size arr2 is true
+               then if w ^ 2 %/ 2 == size arr1 is true
+                    then
+                      let ret := (` (merge_arrays arr1 arr2 i _ _ _)) in
+                      match pc with
+                      | Red => Stay Red _ ret
+                      | Black => Down ret
+                      end
+                    else
+                      match pc with
+                      | Red => Stay Red _
+                                   (RNode (Leaf (delete_last arr1) _ _)
+                                          (Leaf ((blast arr1) ::
+                                                 (delete arr2 (i - size arr1)))
+                                            _ _))
+                      | Black => Stay Black _
+                                     (BNode (Leaf (delete_last arr1) _ _)
+                                            (Leaf ((blast arr1) ::
+                                                   (delete arr2 (i - size arr1)))
+                                              _ _))
+                      end
+               else
+                 match pc with
+                 | Red => Stay Red _ (RNode (Leaf arr1 _ _)
+                                           (Leaf (delete arr2 (i - size arr1)) _ _))
+                 | Black => Stay Black _ (BNode (Leaf arr1 _ _)
+                                               (Leaf (delete arr2 (i - size arr1)) _ _))
+                 end
+          else
+            match pc with
+            | Red => Stay Red _ (RNode (Leaf arr1 _ _) (Leaf arr2 _ _))
+            | Black => Stay Black _ (BNode (Leaf arr1 _ _) (Leaf arr2 _ _))
+            end
+      | _ => _
+      end
+    | _ => _
+    end. *)
+   
+
+
+  Lemma sizeW (arr : seq bool) : w ^ 2 %/ 2 <= size arr -> 0 < size arr.
+  Proof.
+    move/eqP: wordsize_sqrn_div2_neq0.
+    rewrite -lt0n => ltn1.
+    rewrite leq_eqVlt.
+    case/orP => eq2. move/eqP: eq2 => eq2. by rewrite eq2 in ltn1.
+    exact: (ltn_trans ltn1 eq2).
+  Qed.
+
+  Lemma sizeW' {s o d c} (tr : tree s o d c) : s > 0.
+  Proof. elim tr; intros; first apply sizeW => //; rewrite ltn_addr //. Qed.
+
+  Lemma ltn_addrn : forall(a b c: nat), a < c -> a < b + c.
+  Proof.
+    move => a b c ltn1.
+    move: (leq0n b) => leq2.
+    rewrite -(leq_add2r c) add0n in leq2.
+    rewrite leq_eqVlt in leq2.
+    case/orP: leq2 => [|ltn2]. move/eqP => H. by rewrite -H.
+    exact: (ltn_trans ltn1 ltn2).
+  Qed.
+  
+  Lemma ltn_addln : forall(a b c: nat), a < b -> a < b + c.
+  Proof. move => a b c. rewrite addnC. exact: (ltn_addrn a c b). Qed.
+
+  Lemma xir_ok {c} : color_ok c (inv Red).
+  Proof. move: c => [] //. Qed.
+
+  Lemma size_delete1 {arr : seq bool} (i : nat) : size arr = (size (delete arr i)) + (i < size arr).
+  Proof.
+    case_eq (i < size arr).
+     move/idP => G.
+     rewrite size_delete // -subn1 /= subnK //.
+     case_eq i => [H|i' H]. by rewrite H in G.
+     rewrite H in G.
+     exact: (ltn_trans (ltn0Sn i') G).
+    move/negP/negP => G.
+    rewrite -leqNgt in G.
+    rewrite /delete take_oversize // drop_oversize // /=;last first. exact: (leqW G).
+    by rewrite cats0.
+  Qed.
+
+  Lemma size_rcons_delete {arr : seq bool} (i : nat) (b : bool) : i < size arr -> size (rcons (delete arr i) b) = size arr.
+  Proof.
+    move => G.
+    rewrite size_rcons size_delete // -addn1 -subn1 subnK //.
+    case_eq i => [H|i' H]. by rewrite H in G.
+    rewrite H in G.
+    exact: (ltn_trans (ltn0Sn i') G).
+  Qed.
+
+  Lemma addnBAC a b c : a >= c -> (a + b) - c = (a - c) + b.
+  Proof. by move => ?; rewrite addnC -addnBA // addnC. Qed.
+
+  Lemma cons_head_behead (arr: seq bool) : (size arr) > 0 -> (access arr 0) :: (behead arr) = arr.
+  Proof. case: arr => /= //. Qed.
+  
+  Lemma cat_head_behead (arr arr' : seq bool) : 0 < size arr' -> (rcons arr (access arr' 0)) ++ (delete arr' 0) = arr ++ arr'.
+  Proof.
+    move => H. rewrite !cat_rcons -!cat_cons take0 drop1 /= cons_head_behead //.
+  Qed.
+
+  Lemma bx_ok x : color_ok Black x. Proof. by case: x. Qed.
+
+  Lemma delete_cat {arr arr' : seq bool} {i} : delete (arr ++ arr') i = (if i < size arr then delete arr i ++ arr' else arr ++ delete arr' (i - (size arr))).
+  Proof.
+    rewrite /delete take_cat -catA.
+    case: ifP => H.
+     rewrite drop_cat.
+     case: ifP => // H2.
+     move: (negbT H2).
+     rewrite -leqNgt => H3.
+     have H4 : i.+1 = size arr. apply/eqP. rewrite eqn_leq. by apply/andP.
+     by rewrite H4 subnn drop0 drop_oversize //.
+    rewrite drop_cat.
+    case: ifP => H2. move: (ltnW H2). by rewrite H.
+    move: (negbT H) (negbT H2).
+    rewrite -!leqNgt => H3 H4.
+    by rewrite catA subSn //.
+  Qed.
+
+  Lemma ltn_subln a b c : c > 0 -> a < b + c = (a - b < c).
+  Proof.
+    case H1 : (b <= a) => H2. by rewrite -[RHS](ltn_add2r b) subnK // addnC.
+    move: H1; rewrite leqNgt; move/negP/negP => H1.
+    rewrite ltn_addln //. move: H1.
+    case: b => // n H1.
+    move/eqP: (ltnW H1) => W.
+    by rewrite W H2.
+  Qed.
+
+  Lemma cat_last_belast (arr arr' : seq bool) : 0 < size arr -> (delete arr (size arr).-1) ++ ((access arr (size arr).-1) :: arr') = arr ++ arr'.
+  Proof.
+    move => H.
+    rewrite /delete /access drop_oversize;last by rewrite prednK.
+    rewrite cats0.
+    move: H.
+    elim arr => // /= b arr'' IH.
+    case H : (0 < size arr'').
+     by rewrite -(IH H); destruct arr''.
+    move/negP/negP in H.
+    rewrite leqNgt in H.
+    move/negPn in H.
+    move: H.
+    case arr'' => //.
+  Qed.
+  
+  Definition delete_leaves2 {s1 o1 s2 o2} p (l : tree s1 o1 0 Black) (r : tree s2 o2 0 Black) (i : nat) :
+    {B' : del_tree (s1 + s2 - (i < s1 + s2))
+                    (o1 + o2 - access (dflatten l ++ dflatten r) i) (incr_black 0 p) p | dflattend B' = delete (dflatten l ++ dflatten r) i}.
+  Proof.
+    move/eqP : wordsize_sqrn_div2_neq0 (sizeW' l) (sizeW' r); rewrite -lt0n => pos posl posr.
+    remember_eq 0 d' deq; remember_eq Black c' ceq; move: l r; rewrite -ceq -deq => l; destruct l as [al leql ueql|]; last rewrite ceq /= // in deq.
+    move => {deq ceq}; remember_eq 0 d' deq; remember_eq Black c' ceq; rewrite /= -ceq -deq => r; destruct r as [ar leqr ueqr|]; last rewrite ceq /= // in deq.
+
+    rewrite /access nth_cat.
+    case: ifP => Hl.
+     case bcl : (w ^ 2 %/ 2 == size al).
+      case bcr : (w ^ 2 %/ 2 == size ar).
+       case (merge_arrays al ar i bcl bcr (ltn_addln _ _ _ Hl)).
+       rewrite /access nth_cat Hl => res resK.
+       have H: (i < size al + size ar). apply: leq_trans. apply: Hl.
+       apply: leq_addr. rewrite H => //=.
+       case: p ; [by exists (Stay Red xir_ok res) | by exists (Down res)].
+      rewrite /=.
+      rewrite leq_eqVlt bcr (size_delete1 0) posr /= addn1 in leqr,ueqr.
+      rewrite -(size_rcons_delete i (access ar 0)) // in leql,ueql.
+      rewrite addnC -addnBA // ltn_addrn // subn1 -(size_delete Hl) addnC -size_cat addnBAC; last (rewrite -/access; exact: access_leq_count).
+      rewrite count_delete -count_cat -cat_head_behead // count_cat size_cat.
+      case: p;
+        [ exists (Stay Red xir_ok (RNode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr))))
+        | exists (Stay Black (bx_ok Red) (BNode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr)))) ];
+      by rewrite delete_cat Hl /= cat_head_behead.
+     rewrite leq_eqVlt bcl (size_delete1 i) Hl /= addn1 in leql,ueql.
+     rewrite addnC -addnBA // ltn_addrn // subn1 -(size_delete Hl) /= addnC addnBAC; last (rewrite -/daccess; exact: access_leq_count).
+     rewrite count_delete.
+      case: p;
+        [ exists (Stay Red xir_ok (RNode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr)))
+        | exists (Stay Black (bx_ok Red) (BNode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr))) ];
+     by rewrite delete_cat Hl.
+    case Hrl : (i < size al + size ar).
+     case bcr : (w ^ 2 %/ 2 == size ar).
+      case bcl : (w ^ 2 %/ 2 == size al).
+       rewrite -Hrl.
+       case (merge_arrays al ar i bcl bcr Hrl).
+       rewrite /access nth_cat Hl => res resK. rewrite Hrl //=.
+       case: p;[ by exists (Stay Red xir_ok res) | by exists (Down res)].
+      rewrite leq_eqVlt bcl (size_delete1 (size al).-1) prednK //= leqnn addn1 in leql,ueql.
+      move/eqP/eqP in bcl. move/eqP in bcr.
+      have leqr' : w ^ 2 %/ 2 <= size ((access al (size al).-1) :: (delete ar (i - size al))).
+       rewrite /= size_delete //; last rewrite -ltn_subln //. rewrite prednK //.
+      have ueqr' : size ((access al (size al).-1) :: (delete ar (i - size al))) < 2 * w ^ 2.
+       rewrite /= size_delete //; last rewrite -ltn_subln //. rewrite prednK //.
+     rewrite -!addnBA //; last (rewrite -/daccess; apply: access_leq_count).
+     rewrite count_delete -count_cat /= subn1 [size ar](size_delete1 (i - size al)) -ltn_subln // Hrl -subn1 -addnBA // subnn addn0 -size_cat -cat_last_belast // size_cat count_cat.
+      case: p;
+        [ exists (Stay Red xir_ok (RNode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr')))
+        | exists (Stay Black (bx_ok Red) (BNode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))) ];
+     by rewrite delete_cat Hl /= cat_last_belast.
+    rewrite /= -(ltn_add2l (size al)) subnKC //= leqNgt Hl //=.
+    rewrite /=.  
+    rewrite leq_eqVlt bcr (size_delete1 (i - size al)) -ltn_subln // Hrl addn1 /= in leqr,ueqr.
+    rewrite -!addnBA //; last (rewrite -/daccess; apply: access_leq_count).
+    rewrite //= count_delete subn1 [size ar](size_delete1 (i - size al)).
+    rewrite -ltn_subln // Hrl -subn1 -addnBA // subnn addn0.
+    case: p;
+      [ exists (Stay Red xir_ok (RNode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr))))
+      | exists (Stay Black (bx_ok Red) (BNode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr)))) ];
+    by rewrite delete_cat Hl.
+    rewrite /= -(ltn_add2l (size al)) subnKC //= leqNgt Hl //=.
+    rewrite /= nth_default;last rewrite ltn_subln // in Hrl;last by rewrite leqNgt Hrl.
+   rewrite !subn0.
+   case: p;
+     [ exists (Stay Red xir_ok (RNode (Leaf al leql ueql) (Leaf ar leqr ueqr)))
+       | exists (Stay Black (bx_ok Red) (BNode (Leaf al leql ueql) (Leaf ar leqr ueqr))) ];
+   rewrite //= delete_oversize //= size_cat leqNgt Hrl //=.
+  Defined.
+
+  About Stay. About Down. About Node.
+
+  Obligation Tactic := idtac.
+  
+  Program Definition balright {lnum rnum lones rones d cl cr}
+    (c : color)
+    (l : tree lnum lones d cl)
+    (r : del_tree rnum rones d cr)
+    (ok_l : color_ok c cl)
+    (ok_r : color_ok c cr) :
+    { B' : del_tree (lnum + rnum) (lones + rones) (incr_black d c) c |
+      dflattend B' = dflatten l ++ dflattend r } :=
+    match c with
+    | Red =>
+      match r with
+      | Stay _ _ _ _ _ _ r' => Stay Red _ (RNode l r')
+      | Down _ _ _ r' =>
+        match l with
+        | Leaf _ _ _ => _
+        | Node _ _ _ _ _ _ clr cl _ _ ll lr =>
+          match cl with
+          | Red => _
+          | Black =>
+            match clr with
+            | Black => Stay Red _ (BNode ll (RNode lr r'))
+            | Red => match lr with
+                    | Leaf _ _ _ => _
+                    | Node _ _ _ _ _ _ _ _ _ _ lrl lrr =>
+                      Stay Red _ (RNode (BNode ll lrl) (BNode lrr r'))
+                    end
+            end
+          end
+        end
+      end
+    | Black =>
+      match r with
+      | Stay _ _ _ _ _ _ r' => Stay Black _ (BNode l r')
+      | Down _ _ _ r' =>
+        match l with
+        | Leaf _ _ _ => _
+        | Node _ _ _ _ _ cll clr cl _ _ ll lr =>
+          match clr with
+          | Red => match cl with
+                  | Red => _
+                  | Black =>
+                    match lr with
+                    | Leaf _ _ _ => _
+                    | Node _ _ _ _ _ _ _ _ _ _ lrl lrr =>
+                      Stay Black _ (BNode (BNode ll lrl) (BNode lrr r'))
+                    end
+                  end
+          | Black => match cl with
+                    | Red =>
+                      match cll with
+                      | Red => _
+                      | Black =>
+                        match lr with
+                        | Leaf _ _ _ => _
+                        | Node _ _ _ _ _ clrl clrr _ _ _ lrl lrr =>
+                          match clrr with
+                          | Black =>
+                            Stay Black _ (BNode ll (BNode lrl (RNode lrr r')))
+                          | Red =>
+                            match lrr with
+                            | Leaf _ _ _ => _
+                            | Node _ _ _ _ _ clrrl clrrr _ _ _ lrrl lrrr =>
+                              match clrrl with
+                              | Red => _
+                              | Black =>
+                                match clrrr with
+                                | Red => _
+                                | Black =>
+                                  Stay Black _ (BNode ll
+                                                 (RNode
+                                                    (BNode lrl lrrl)
+                                                    (BNode lrrr r')))
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    | Black => Down (BNode ll (RNode lr r'))
+                    end
+          end
+        end
+      end
+    end.
+
+  Solve All Obligations with (intros; subst; try exact).
+
+  Next Obligation. intros; subst. by destruct cl. Qed.
+
+  Next Obligation. intros; subst. by destruct cr, wildcard'2. Qed.
+
+  Next Obligation.
+    intros; subst.
+    rewrite /eq_rect.
+    destruct balright_obligation_6, balright_obligation_5 => //=.
+    destruct balright_obligation_4, balright_obligation_2 => //=.
+    by rewrite -Heq_r.
+  Qed.
+
+  Next Obligation.
+    intros; subst. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite addnA. Qed.
+
+  Next Obligation.
+    intros; subst.
+    rewrite /eq_rect.
+    destruct balright_obligation_15, balright_obligation_14.
+    destruct balright_obligation_13, balright_obligation_12 => //=.
+    by rewrite -Heq_l -Heq_r //= catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balright_obligation_24, balright_obligation_23 => //=.
+    destruct balright_obligation_22, balright_obligation_20 => //=. 
+    by rewrite -Heq_l -Heq_r -Heq_lr //= !catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balright_obligation_29, balright_obligation_28 => //=.
+    by rewrite -Heq_r.
+  Qed.
+
+  Next Obligation.
+    intros; subst. move/eqP: Heq_d => //=. rewrite eqSS. by move/eqP => ->.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst => //=. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balright_obligation_40, balright_obligation_39 => //=.
+    destruct balright_obligation_38, balright_obligation_36 => //=.
+    by rewrite -Heq_l -Heq_r -Heq_lr //= !catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
+  Qed.
+
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst => //=. move/eqP: Heq_d => //=. by rewrite -eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balright_obligation_50, balright_obligation_49 => //=.
+    destruct balright_obligation_48, balright_obligation_46 => //=.
+    by rewrite -Heq_l -Heq_r -Heq_lr //= !catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst => //=. move/eqP: Heq_d => //=. by rewrite -eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balright_obligation_62, balright_obligation_61.
+    destruct balright_obligation_60, balright_obligation_57 => //=.
+    by rewrite -Heq_l -Heq_r -Heq_lr -Heq_lrr //= !catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite addnA. Qed.
+
+  Next Obligation.
+    intros; subst => //=. move/eqP: Heq_d => //=. by rewrite -eqSS => /eqP ->.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balright_obligation_68, balright_obligation_67 => //=.
+    destruct balright_obligation_66, balright_obligation_65 => //=.
+    by rewrite -Heq_l -Heq_r //= catA.
+  Qed.
+
+    
 End delete.
