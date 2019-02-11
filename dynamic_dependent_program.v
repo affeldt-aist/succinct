@@ -1656,7 +1656,7 @@ Section delete.
       end
     end.
 
-  Solve All Obligations with (intros; subst; try exact).
+  Solve All Obligations with (intros; subst; try exact; intuition).
 
   Next Obligation. intros; subst. by destruct cl. Qed.
 
@@ -1673,10 +1673,6 @@ Section delete.
   Next Obligation.
     intros; subst. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
   Qed.
-
-  Next Obligation. intros; subst. by rewrite addnA. Qed.
-
-  Next Obligation. intros; subst. by rewrite addnA. Qed.
 
   Next Obligation.
     intros; subst.
@@ -1769,18 +1765,14 @@ Section delete.
     intros; subst. move/eqP: Heq_d => //=. by rewrite eqSS => /eqP ->.
   Qed.
 
-  Next Obligation. intros; subst. by rewrite addnA. Qed.
-
-  Next Obligation. intros; subst. by rewrite addnA. Qed.
-
   Next Obligation.
     intros; subst => //=. move/eqP: Heq_d => //=. by rewrite -eqSS => /eqP ->.
   Qed.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct balright_obligation_68, balright_obligation_67 => //=.
-    destruct balright_obligation_66, balright_obligation_65 => //=.
+    destruct balright_obligation_68, balright_obligation_66, balright_obligation_65.
+    destruct balright_obligation_67 => //=.
     by rewrite -Heq_l -Heq_r //= catA.
   Qed.
     
