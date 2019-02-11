@@ -1570,7 +1570,8 @@ Section delete.
   Qed.    
 
   Obligation Tactic := idtac.
-  
+
+  (* Here we follow the naming pattern used in Kahrs (2001) *)
   Program Definition balright {lnum rnum lones rones d cl cr}
     (c : color)
     (l : tree lnum lones d cl)
@@ -1775,7 +1776,192 @@ Section delete.
     destruct balright_obligation_67 => //=.
     by rewrite -Heq_l -Heq_r //= catA.
   Qed.
-    
+
+ 
+  Program Definition balleft {lnum rnum lones rones d cl cr}
+    (c : color)
+    (l : del_tree lnum lones d cl)
+    (r : tree rnum rones d cr)
+    (ok_l : color_ok c cl)
+    (ok_r : color_ok c cr) :
+    { B' : del_tree (lnum + rnum) (lones + rones) (incr_black d c) c |
+      dflattend B' = dflattend l ++ dflatten r } :=
+    match c with
+    | Red =>
+      match cl with
+      | Red => _
+      | Black =>
+        match cr with
+        | Red => _
+        | Black =>
+          match l with
+          | Stay _ _ _ cl' _ _ l' =>
+            match cl' with
+            | Red => _
+            | Black => Stay Red _ (RNode l' r)
+            end
+          | Down _ _ _ l' =>
+            match r with
+            | Leaf _ _ _ => _
+            | Node _ _ _ _ _ crl crr _ _ _ rl rr =>
+              match crl with
+              | Red =>
+                match rl with
+                | Leaf _ _ _ => _
+                | Node _ _ _ _ _ crll crlr _ _ _ rll rlr =>
+                  match crll with
+                  | Red => _
+                  | Black =>
+                    match crlr with
+                    | Red => _
+                    | Black => Stay Red _ (RNode (BNode l' rll) (BNode rlr rr))
+                    end
+                  end
+                end
+              | Black => Stay Red _ (BNode (RNode l' rl) rr)
+              end
+            end
+          end
+        end
+      end
+    | Black =>
+      match l with
+      | Stay _ _ _ _ _ _ l' => Stay Black _ (BNode l' r)
+      | Down _ _ _ l' =>
+        match r with
+        | Leaf _ _ _ => _
+        | Node _ _ _ _ _ crl crr cr' _ _ rl rr =>
+          match crl with
+          | Red =>
+            match cr' with
+            | Red => _
+            | Black =>
+              match rl with
+              | Leaf _ _ _ => _
+              | Node _ _ _ _ _ crll crlr _ _ _ rll rlr =>
+                match crll with
+                | Red => _
+                | Black =>
+                  match crlr with
+                  | Red => _
+                  | Black => Stay Black _ (BNode (BNode l' rll) (BNode rlr rr))
+                  end
+                end
+              end
+            end
+          | Black =>
+            match cr' with
+            | Red =>
+              match crr with
+              | Red => _
+              | Black =>
+                match rl with
+                | Leaf _ _ _ => _
+                | Node _ _ _ _ _ crll crlr _ _ _ rll rlr =>
+                  match crll with
+                  | Red =>
+                    match rll with
+                    | Leaf _ _ _ => _
+                    | Node _ _ _ _ _ crlll crllr _ _ _ rlll rllr =>
+                      match crlll with
+                      | Red => _
+                      | Black =>
+                        match crllr with
+                        | Red => _
+                        | Black =>
+                          Stay Black _ (BNode (BNode l' rlll)
+                                              (RNode (BNode rllr rlr) rr))
+                        end
+                      end
+                    end
+                  | Black => Stay Black _ (BNode (BNode (RNode l' rll) rlr) rr)
+                  end
+                end
+              end
+            | Black => Down (BNode (RNode l' rl) rr)
+            end
+          end
+        end
+      end
+    end.
+
+  Solve All Obligations with (intros; subst; try exact; intuition).
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_10, balleft_obligation_9 => //=.
+    by rewrite -Heq_l.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_22, balleft_obligation_21.
+    destruct balleft_obligation_20, balleft_obligation_17 => //=.
+    rewrite /eq_ind_r /eq_ind //=.
+    destruct Heq_d. by rewrite -Heq_l -Heq_r //= -Heq_rl //= !catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_27, balleft_obligation_29, balleft_obligation_30.
+    destruct balleft_obligation_28 => //=.
+    rewrite /eq_ind_r /eq_ind => //=.
+    destruct Heq_cl. by rewrite -Heq_l -Heq_r //= catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_36, balleft_obligation_35, balleft_obligation_34 => //=.
+    by rewrite -Heq_l.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_44, balleft_obligation_47, balleft_obligation_48 => //=.
+    rewrite /eq_ind_r /eq_ind //=.
+    destruct Heq_d. by rewrite -Heq_l -Heq_r //= -Heq_rl //= !catA.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_64, balleft_obligation_63.
+    destruct balleft_obligation_62, balleft_obligation_57 => //=.
+    rewrite /eq_ind_r /eq_ind //=.
+    destruct Heq_d => //=.
+    by rewrite -Heq_l -Heq_r //= -Heq_rl //= -Heq_rll //= !catA.
+  Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation. intros; subst. by rewrite !addnA. Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_73, balleft_obligation_72.
+    destruct balleft_obligation_71, balleft_obligation_67 => //=.
+    rewrite /eq_ind_r /eq_ind //=.
+    destruct Heq_d. by rewrite -Heq_l -Heq_r //= -Heq_rl //= !catA.
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct balleft_obligation_80, balleft_obligation_79.
+    destruct balleft_obligation_78, balleft_obligation_75 => //=.
+    by rewrite -Heq_l -Heq_r //= catA. 
+  Qed.
+  
 End delete.
 
 End dynamic_dependent.
