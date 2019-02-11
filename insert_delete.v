@@ -100,6 +100,26 @@ Section insert_delete.
     by rewrite cats0.
     apply: leq_trans. apply: H. by rewrite leq_eqVlt ltnSn orbT. exact.
   Qed.
+
+  Lemma delete_catL s i t : i < size s ->
+    delete (s ++ t) i = delete s i ++ t.
+  Proof.
+    move => H. rewrite /delete take_cat H.
+    rewrite drop_cat.
+    case: ifP => Hif. rewrite catA //=.
+    move/negbT: (Hif). rewrite -leqNgt leq_eqVlt.
+    rewrite ltnNge H //= orbF. move/eqP => ->.
+    rewrite subnn drop0 [in RHS]drop_oversize //=.
+    rewrite cats0 //=. by rewrite leqNgt Hif.
+  Qed.
+    
+
+  Lemma delete_catR s i t : i >= size s ->
+    delete (s ++ t) i = s ++ delete t (i - size s).
+  Proof.
+    move => H. rewrite /delete take_cat ltnNge H //= drop_cat ltnNge.
+    by rewrite leqW //= catA subSn.
+  Qed.
     
 End insert_delete.
 
