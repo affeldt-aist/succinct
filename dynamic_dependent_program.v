@@ -2129,8 +2129,39 @@ Section delete.
   Solve All Obligations with (intros; subst; exact).
 
   Next Obligation.
-    intros; subst. move: (Heq_anonymous0). by subst filtered_var0 => ->.
+    intros; subst. subst filtered_var0. by rewrite Heq_anonymous0.
   Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct ddelete_func_obligation_5, ddelete_func_obligation_4.
+    destruct ddelete_func_obligation_7 => //=.
+    subst filtered_var. rewrite /access nth_cat //= -Heq_l //=.
+    by rewrite -Heq_anonymous. 
+  Qed.
+
+  Next Obligation.
+    intros; subst. rewrite /eq_rect.
+    destruct ddelete_func_obligation_11, ddelete_func_obligation_10.
+    by destruct ddelete_func_obligation_9, ddelete_func_obligation_8.
+  Qed.
+
+  Next Obligation.
+    intros; subst. apply/ltP. rewrite -Heq_B -Heq_l //= -[X in X < _]addn0.
+    by rewrite -!addnA !ltn_add2l tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var. rewrite -Heq_anonymous //=.
+    (* Shouldn't be too hard to proof, but give me some time... *)
+  Admitted.
+
+  Next Obligation.
+    intros; subst => //=. subst filtered_var. rewrite -Heq_anonymous.
+  Admitted.
+
+  Admit Obligations.
+    
 End delete.
 
 End dynamic_dependent.
