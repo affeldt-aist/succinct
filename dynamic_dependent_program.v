@@ -1960,8 +1960,177 @@ Section delete.
     destruct balleft_obligation_80, balleft_obligation_79.
     destruct balleft_obligation_78, balleft_obligation_75 => //=.
     by rewrite -Heq_l -Heq_r //= catA. 
-  Qed.
+  Qed. About Node. About delete_from_leaves.
+
   
+  
+  Program Fixpoint ddelete {num ones d c}
+    (B : tree num ones d c)
+    (i : nat) { measure (tree_size B) } :
+    { B' : del_tree (num - (i < num)) (ones - (daccess B i))
+                    d c |
+      dflattend B' = delete (dflatten B) i } :=
+    if i < num is true
+    then
+      match c with
+      | Red =>
+        match B with
+        | Leaf _ _ _ => _
+        | Node lnum _ _ _ _ cl cr _ _ _ l r =>
+          match cl with
+          | Red => _
+          | Black =>
+            match cr with
+            | Red => _
+            | Black =>
+              if i < lnum is true
+              then
+                match l with
+                | Leaf _ _ _ =>
+                  let (res, _) := delete_from_leaves Red l r i in
+                  res
+                | Node _ _ _ _ _ _ _ _ _ _ ll lr =>
+                  let (l', _) := ddelete l i in
+                  let (res, _) := balleft Red l' r _ _ in
+                  res
+                end
+              else
+                match l with
+                | Leaf _ _ _ =>
+                  let (res, _) := delete_from_leaves Red l r i in
+                  res
+                | Node _ _ _ _ _ _ _ _ _ _ _ _  =>
+                  let (r', _) := ddelete r (i - lnum) in
+                  let (res, _) := balright Red l r' _ _ in
+                  res
+                end
+            end
+          end
+        end
+      | Black =>
+        match B with
+        | Leaf _ _ _ => _
+        | Node lnum _ _ _ _ cl cr _ _ _ l r =>
+          if i < lnum is true
+          then
+            match r with
+            | Leaf _ _ _ =>
+              match cl with
+              | Black =>
+                let (res, _) := delete_from_leaves Black l r i in
+                res
+              | Red =>
+                match l with
+                | Leaf _ _ _ => _
+                | Node _ _ _ _ _ cll clr _ _ _ ll lr =>
+                  match cll with
+                  | Red => _
+                  | Black =>
+                    match clr with
+                    | Red => _
+                    | Black =>
+                      let (lres, _) := delete_from_leaves Black ll lr i in
+                      match lres with
+                      | Stay _ _ _ _ _ _ lres' =>
+                        Stay Black _ (BNode lres' r)
+                      | Down _ _ _ _ => _
+                      end
+                    end
+                  end
+                end
+              end
+          | Node _ _ _ _ _ crl crr _ _ _ rl rr =>
+            match cr with
+            | Red =>
+              match crl with
+              | Red => _
+              | Black =>
+                match crr with
+                | Red => _
+                | Black =>
+                  match cl with
+                  | Red =>
+                    let (l', _) := ddelete l i in
+                    let (res, _) := balleft Black l' r _ _ in
+                    res
+                  | Black =>
+                    let (l', _) := ddelete (RNode l rl) i in
+                    let (res, _) := balleft Black l' rr _ _ in
+                    res
+                  end
+                end
+              end
+            | Black =>
+              let (l', _) := ddelete l i in
+              let (res, _) := balleft Black l' r _ _ in
+              res
+            end
+            end
+          else
+            match l with
+            | Leaf _ _ _ =>
+              match cr with
+              | Red =>
+                match r with
+                | Leaf _ _ _ => _
+                | Node _ _ _ _ _ crl crr _ _ _ rl rr =>
+                  match crl with
+                  | Red => _
+                  | Black =>
+                    match crr with
+                    | Red => _
+                    | Black =>
+                      let (r', _) := delete_from_leaves Red rl rr (i - lnum) in
+                      match r' with
+                      | Stay _ _ _ _ _ _ r' =>
+                        Stay Black _ (BNode l r')
+                      | Down _ _ _ _ => _
+                      end
+                    end
+                  end
+                end
+              | Black =>
+                let (res, _) := delete_from_leaves Black l r i in
+                res
+              end
+            | Node llnum _ _ _ _ cll clr _ _ _ ll lr =>
+              match cl with
+              | Red =>
+                match cll with
+                | Red => _
+                | Black =>
+                  match clr with
+                  | Red => _
+                  | Black =>
+                    match cr with
+                    | Red =>
+                      let (r', _) := ddelete r (i - lnum) in
+                      let (res, _) := balright Black l r' _ _ in
+                      res
+                    | Black =>
+                      let (r', _) := ddelete (RNode lr r) (i - llnum) in
+                      let (res, _) := balright Black ll r' _ _ in
+                      res
+                    end
+                  end
+                end
+              | Black =>
+                let (r', _) := ddelete r (i - lnum) in
+                let (res, _) := balright Black l r' _ _ in
+                res
+              end
+            end
+        end
+      end
+    else Stay c _ B.
+
+  Solve All Obligations with (intros; subst; intuition).
+
+  Solve All Obligations with (intros; subst; exact).
+
+  Next Obligation.
+    intros; subst. move: (Heq_anonymous0). by subst filtered_var0 => ->.
+  Qed.
 End delete.
 
 End dynamic_dependent.
