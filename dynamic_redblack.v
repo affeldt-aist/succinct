@@ -370,16 +370,15 @@ Section insert.
     wf_dtree B -> wf_dtree (dins B b i).
   Proof.
     move => wf;  move: B wf b i.
-    apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr b i] /=.
-      case: ifP => Hi. by apply: balanceL_wf.
-      by apply: balanceR_wf.
-    move => s Hs b i //=.
+    apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr b i | s Hs b i] /=.
+    case: ifP => Hi. by apply: balanceL_wf.
+    by apply: balanceR_wf.
     rewrite addn1 divn2 mul2n.
     case: ifP => Hsize /=.
-      rewrite ?(eqxx,size_insert1,(eqP Hsize),size_drop,size_takel).
-        rewrite doubleK -[X in X - _]addnn addnK leq_half -muln2 ltn_Pmulr //.
-        by rewrite sqrn_gt0 (leq_trans _ Hw).
-      by rewrite leq_half.
+    rewrite ?(eqxx,size_insert1,(eqP Hsize),size_drop,size_takel).
+    rewrite doubleK -[X in X - _]addnn addnK leq_half -muln2 ltn_Pmulr //.
+    by rewrite sqrn_gt0 (leq_trans _ Hw).
+    by rewrite leq_half.
     rewrite size_insert1.
     move/andP: Hs => [Hs1].
     rewrite leq_eqVlt Hsize /= => ->.
@@ -624,15 +623,15 @@ Section set_clear.
   Proof.
     rewrite /dbitset.
     move=> wf Hsize; move: B wf i Hsize.
-    apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi].
-      rewrite -dsizeE //.
-      case: ifP => Hil.
-        case_eq (bset l i) => l' b Hbset /=.
-        by rewrite addnAC -IHl // Hbset.
-      case_eq (bset r (i - dsize l)) => r' b Hbset /=.
-      rewrite -addnA -IHr ?Hbset //.
-      by rewrite -(ltn_add2l (dsize l)) subnKC // leqNgt Hil.
-    move => s Hs i Hi; by rewrite addnC -count_bit_set.
+    apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi | s Hs i Hi].
+    rewrite -dsizeE //.
+    case: ifP => Hil.
+    case_eq (bset l i) => l' b Hbset /=.
+    by rewrite addnAC -IHl // Hbset.
+    case_eq (bset r (i - dsize l)) => r' b Hbset /=.
+    rewrite -addnA -IHr ?Hbset //.
+    by rewrite -(ltn_add2l (dsize l)) subnKC // leqNgt Hil.
+    by rewrite addnC -count_bit_set.
   Qed.
 
   Lemma flipped_count_pos (B : dtree) i :
@@ -648,22 +647,22 @@ Section set_clear.
   Proof.
     rewrite /dbitclear.
     move=> wf Hsize; move: B wf i Hsize.
-    apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi].
-      rewrite -(dsizeE wfl) //.
-      case: ifP => Hil.
-        case_eq (bclear l i) => l' b Hbclear /=.
-        rewrite [in RHS]addnC -addnBA. by rewrite -IHl // Hbclear addnC.
-        rewrite -flip_bit_bclear // Hbclear /=.
-        destruct b => //.
-        by rewrite (flipped_count_pos wfl Hil) // Hbclear.
-      have Hilr: i - dsize l < dsize r.
-        by rewrite -(ltn_add2l (dsize l)) subnKC // leqNgt Hil.
-      case_eq (bclear r (i - dsize l)) => r' b Hbclear /=.
-      rewrite -addnBA. by rewrite -IHr // Hbclear.
-      rewrite -flip_bit_bclear // Hbclear /=.
-      destruct b => //.
-      by rewrite (@flipped_count_pos _ (i - dsize l)) // Hbclear.
-    move => s Hs i Hi; by rewrite -count_bit_clear.
+    apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi | s Hs i Hi].
+    rewrite -(dsizeE wfl) //.
+    case: ifP => Hil.
+    case_eq (bclear l i) => l' b Hbclear /=.
+    rewrite [in RHS]addnC -addnBA. by rewrite -IHl // Hbclear addnC.
+    rewrite -flip_bit_bclear // Hbclear /=.
+    destruct b => //.
+    by rewrite (flipped_count_pos wfl Hil) // Hbclear.
+    have Hilr: i - dsize l < dsize r.
+    by rewrite -(ltn_add2l (dsize l)) subnKC // leqNgt Hil.
+    case_eq (bclear r (i - dsize l)) => r' b Hbclear /=.
+    rewrite -addnBA. by rewrite -IHr // Hbclear.
+    rewrite -flip_bit_bclear // Hbclear /=.
+    destruct b => //.
+    by rewrite (@flipped_count_pos _ (i - dsize l)) // Hbclear.
+    by rewrite -count_bit_clear.
   Qed.
 
   Lemma wf_dbitset (B : dtree) i :
@@ -951,7 +950,7 @@ Section delete.
     0 < n -> is_redblack l Black n.-1 -> is_nearly_redblack' r Black n.-1 ->
     is_nearly_redblack' (balanceR' Black l r) c n.
   Proof.
-    case: r => [r /= -> -> -> //].
+    case: r => [r /= -> -> -> //| //].
     case: c n l => [] [//|n] [[[[] lll ? llr|?] ?
       [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=;
     repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
@@ -961,7 +960,7 @@ Section delete.
     is_redblack l Red n -> is_nearly_redblack' r Red n ->
     is_nearly_redblack' (balanceR' Red l r) Black n.
   Proof.
-    case: r => [r /= -> -> //].
+    case: r => [r /= -> -> //| //].
     case: l => [ [//|] ll ? [[] lrl ? lrr|?] |?] r /=;
     repeat decompose_rewrite => //; by rewrite !is_redblack_Red_Black. 
   Qed.
