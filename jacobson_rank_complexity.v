@@ -253,6 +253,6 @@ Definition first_level_dir' (sz : nat) (s : seq bool) : seq (int (Z.abs_nat (flo
 pose number_of_blocks := size s %/ sz.
 refine ([seq _ s | x <- iota 1 number_of_blocks]).
 intro s'.
-apply mk_int with (adjust_u (nat2ulst (rank true (x * sz) s')) (Z.abs_nat (floor (log (size s)))).+1).
+apply mk_int with (adjust_u (nat2ulst (rank true (x * sz) s')) (Z.abs_nat (floor (log (size s')))).+1).
 apply len_adjust_u.
 Defined.
