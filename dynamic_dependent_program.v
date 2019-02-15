@@ -2122,137 +2122,7 @@ Section delete.
       end
     else Stay c _ B.
 
-  (*
-  
   Solve All Obligations with program_simpl.
-
-  Next Obligation.
-    intros; subst. subst filtered_var0. by rewrite -Heq_anonymous0.
-  Qed.
-
-  Next Obligation.
-    intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_6, ddelete_func_obligation_5, ddelete_func_obligation_8 => //=.
-    subst filtered_var.
-    by rewrite daccessK /access nth_cat dflatten_sizeK -Heq_anonymous.
-  Qed.
-
-  Next Obligation.
-    intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_12, ddelete_func_obligation_11.
-    destruct ddelete_func_obligation_10, ddelete_func_obligation_9 => //=.
-    rewrite H0 /eq_rect.
-    destruct ddelete_func_obligation_6, ddelete_func_obligation_5.
-    by destruct ddelete_func_obligation_8.
-  Qed.
-  
-  Next Obligation.
-    intros; subst.
-    apply/ltP. by rewrite -Heq_B //= -[X in X < _]addn0 ltn_add2l tree_size_pos. 
-  Qed.
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0.
-    rewrite -Heq_anonymous. rewrite addnC addnBA //=.
-    by rewrite addnAC addnCA addnA.
-    apply: (leq_ltn_trans (n := i)). by rewrite leq0n.
-    by rewrite -Heq_anonymous.
-  Qed.
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0 => //=.
-    rewrite -Heq_anonymous.
-    rewrite addnC -[in RHS]addnC addnBA //=.
-    rewrite -{2}(dflatten_countK l) daccessK access_leq_count //=.
-    by rewrite dflatten_sizeK.
-  Qed.
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
-    destruct ddelete_func_obligation_21, ddelete_func_obligation_20.
-    destruct ddelete_func_obligation_19, ddelete_func_obligation_18 => //=.
-    by rewrite H1 H0 delete_catL //= dflatten_sizeK.
-  Qed.
-
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0. by rewrite Heq_anonymous0.
-  Qed.
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0.
-    rewrite /eq_rect.
-    destruct ddelete_func_obligation_24, ddelete_func_obligation_23.
-    destruct ddelete_func_obligation_26 => //=.
-    rewrite !daccessK /access nth_cat dflatten_sizeK.
-    move/eqP/eqnP/eqP: (H0). by rewrite -if_neg -[in RHS]if_neg => ->.
-  Qed.
-    
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0.
-    rewrite /eq_rect.
-    destruct ddelete_func_obligation_30, ddelete_func_obligation_29.
-    destruct ddelete_func_obligation_28, ddelete_func_obligation_27 => //=.
-    rewrite H1 /eq_rect.
-    by destruct ddelete_func_obligation_24, ddelete_func_obligation_23, ddelete_func_obligation_26.
-  Qed.
-
-  Next Obligation.
-    intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -[X in X < _]add0n ltn_add2r tree_size_pos.
-  Qed.
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0.
-    have Hi: i - (wildcard' + wildcard'1) < wildcard'16.
-    rewrite -(ltn_add2r (wildcard' + wildcard'1)) subnK addnC //=.
-    move/eqP/eqnP/eqP: (H0). by rewrite -leqNgt addnC.
-    rewrite Hi addnBA //=.
-    apply: (leq_ltn_trans (n := (i - (wildcard' + wildcard'1)))).
-    by rewrite leq0n. exact.
-  Qed.
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0 => //=.
-    move/eqP/eqnP/eqP: (H0) => H0'.
-    rewrite -if_neg H0' addnBA //= daccess_leq_ones //=.
-    rewrite -(ltn_add2r (wildcard' + wildcard'1)) subnK addnC //=.
-    move: H0'. by rewrite -leqNgt addnC.
-  Qed.
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect. 
-    destruct ddelete_func_obligation_39, ddelete_func_obligation_38.
-    destruct ddelete_func_obligation_37, ddelete_func_obligation_36.
-    rewrite H2 H1 //= delete_catR dflatten_sizeK //=.
-    move/eqP/eqnP/eqP: H0. by rewrite -leqNgt.
-  Qed.
-
-  Next Obligation.
-    intros; subst. by subst wildcard'.
-  Qed.
-
-
-  Next Obligation.
-    intros; subst. subst filtered_var filtered_var0.
-    by rewrite -Heq_anonymous0.
-  Qed.
-
-  Time Admit Obligations. *)
-
-
-  
-  (* 
-   * It seems that exact can cause nontermination!
-   * Therefore, we set a timeout of 5 seconds. If, after 5s, 
-   * exact still does not solve the goal, then probably exact has 
-   * run into a infinite loop so we just give up. 
-   *) 
-
-  
-  Ltac obligation_crush := intros; subst; try solve [ timeout 5 exact ].
-  
-  Time Solve All Obligations with obligation_crush.
 
   Next Obligation.
     intros; subst. subst filtered_var0. by rewrite Heq_anonymous0.
@@ -2281,12 +2151,15 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var. rewrite -Heq_anonymous //=.
-    (* Shouldn't be too hard to proof, but give me some time... *)
-  Admitted.
-
+    rewrite [in LHS]addnC -addnA [X in _ = _ + X - _]addnC addnCA addnBA //=.
+    by apply: (leq_ltn_trans (n := i)).
+  Qed.
+      
   Next Obligation.
-    intros; subst => //=. subst filtered_var. rewrite -Heq_anonymous.
-  Admitted.
+    intros; subst. subst filtered_var filtered_var0 => //=.
+    rewrite -Heq_anonymous [in LHS]addnC -addnA [X in _ = _ + X - _]addnC.
+    by rewrite addnCA addnBA //= daccess_leq_ones.
+  Qed.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
@@ -2375,21 +2248,38 @@ Section delete.
     intros; subst.
     subst filtered_var.
     rewrite -Heq_anonymous3 //=.
-    admit.
-  Admitted.
+    rewrite [in LHS]addnC -addnA [X in _ = _ + X - _]addnC addnCA.
+    rewrite addnBA //=. by apply: (leq_ltn_trans (n := i)).
+  Qed.
 
   Next Obligation.
-    intros; subst. rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
+    intros; subst. subst filtered_var.
     move: Heq_wildcard'2 lres H0 lres' Heq_lres.
-    rewrite  //=. subst filtered_var => //=. rewrite -Heq_anonymous3.
-    destruct Heq_wildcard'2 => lres H0 lres' Heq_lres.
-    rewrite -Heq_l //= /access nth_cat (dflatten_sizeK ll).
-    case: ifP => Hif. rewrite daccessK /access. admit.
-    admit.
-  Admitted.
+    rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
+    destruct Heq_wildcard'2 => //= lres H0 lres' Heq_lres.
+    rewrite -Heq_anonymous3 -Heq_l //= /access nth_cat dflatten_sizeK.
+    case: ifP => Hif;
+    rewrite daccessK /access -addnA [in LHS]addnC;
+    rewrite [X in _ = _ + X - _]addnC addnCA addnBA //=;
+    [ rewrite -{2}(dflatten_countK ll) | rewrite -{2}(dflatten_countK lr) ];
+    [ apply: (leq_trans (n := (count_one (dflatten ll)))) | 
+      apply: (leq_trans (n := (count_one (dflatten lr)))) ];
+    try rewrite -/access access_leq_count //= dflatten_sizeK //=;
+    try by rewrite ?leq_addr ?leq_addl.
+    rewrite -(ltn_add2r (wildcard'17)) subnK. rewrite addnC //=.
+    by rewrite leqNgt Hif.
+  Qed.
 
   Next Obligation.
-  Admitted.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_64, ddelete_func_obligation_63.
+    destruct ddelete_func_obligation_62, ddelete_func_obligation_61 => //=.
+    move: Heq_wildcard'2 lres lres' Heq_lres H0.
+    rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
+    destruct Heq_wildcard'2 => lres lres' Heq_lres.
+    subst lres => //= ->. rewrite -Heq_l //= [in RHS]delete_catL //=.
+    by rewrite size_cat !dflatten_sizeK.
+  Qed.
 
   Next Obligation.
     intros; subst. apply/ltP.
@@ -2425,12 +2315,272 @@ Section delete.
   Qed.
 
   Next Obligation.
-    intros; subst. rewrite /eq_rect //=.
-  Admitted.
+    intros; subst.
+    subst filtered_var filtered_var0.
+    have Hi: i < lnum + wildcard'.
+    apply: (leq_trans (n := lnum)) => //=. by rewrite leq_addr.
+    rewrite Hi addnC addnBA //=.
+    by rewrite addnCA addnA [X in _ = _ + X - _]addnC addnA.
+    apply: (leq_ltn_trans (n := i)). by rewrite leq0n. exact.  
+  Qed.
 
-    
-  Admit Obligations.    
-    
+  Next Obligation.
+    intros; subst. subst filtered_var.
+    rewrite /eq_rect //= -Heq_anonymous.
+    rewrite addnC addnBA //=.
+    by rewrite addnCA addnA [X in _ = _ + X - _]addnC addnA.
+    rewrite -{2}(dflatten_countK l).
+    apply: (leq_trans (n := count_one (dflatten l))).
+    by rewrite daccessK access_leq_count //= dflatten_sizeK.
+    by rewrite leq_addr.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var.
+    rewrite /eq_rect.
+    destruct ddelete_func_obligation_89, ddelete_func_obligation_88.
+    destruct ddelete_func_obligation_87, ddelete_func_obligation_86 => //=.
+    rewrite H1 H0 /eq_rect //= -Heq_r //=.
+    by rewrite !delete_catL ?catA //= dflatten_sizeK.
+  Qed.
+
+  Next Obligation. intros; subst. by destruct cl. Qed.
+
+  Next Obligation.
+    intros; subst. apply/ltP.
+    by rewrite -Heq_B //= -{1}(addn0 (tree_size l)) ltn_add2l tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var.
+    rewrite -Heq_anonymous [in LHS]addnC addnBA //=.
+    by rewrite [in RHS]addnC. apply: (leq_ltn_trans (n := i)).
+    by rewrite leq0n. exact.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var => //=.
+    rewrite -Heq_anonymous.
+    rewrite addnC addnBA //=.
+    by rewrite addnCA [X in _ = _ + X - _]addnC addnA.
+    rewrite -{2}(dflatten_countK l).
+    apply: (leq_trans (n := count_one (dflatten l))).
+    by rewrite daccessK access_leq_count //= dflatten_sizeK.
+    by rewrite leqnn.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var. rewrite /eq_rect.
+    destruct ddelete_func_obligation_98, ddelete_func_obligation_97.
+    destruct ddelete_func_obligation_96, ddelete_func_obligation_95 => //=.
+    by rewrite H1 H0 delete_catL //= dflatten_sizeK -Heq_anonymous.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0.
+    have Hi: (i - size wildcard'10 < wildcard'18 + wildcard'20).
+    rewrite -(ltn_add2r (size wildcard'10)) subnK //=.
+    by rewrite addnC -Heq_anonymous4.
+    move/eqP/eqnP/eqP: (H0). by rewrite -leqNgt.  
+    rewrite Hi addnBA //=. apply: (leq_ltn_trans (n := i - size wildcard'10)).
+    by rewrite leq0n. exact.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0.
+    rewrite /eq_rect.
+    destruct ddelete_func_obligation_104, ddelete_func_obligation_103.
+    destruct ddelete_func_obligation_106 => //=.
+    move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0' //=.
+    rewrite daccessK. move: Heq_r r'0 H1 r' Heq_r'.
+    rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
+    destruct Heq_wildcard'2 => //= Heq_r r'0 H1 r' Heq_r'.
+    rewrite -Heq_r //= addnA addnBA //=. rewrite addnA //=.
+    rewrite -{2}(dflatten_countK rl) -{2}(dflatten_countK rr).
+    have Hcount: (count_one (dflatten rl) + count_one (dflatten rr) = count_one (dflatten rl ++ dflatten rr)).
+    by rewrite /count_one count_cat.
+    rewrite Hcount access_leq_count //=.
+    rewrite size_cat !dflatten_sizeK -(ltn_add2r (size wildcard'10)) subnK //=.
+    by rewrite addnC -Heq_anonymous4. move/eqP/eqnP/eqP: (H0).
+    by rewrite leqNgt.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_112, ddelete_func_obligation_111.
+    destruct ddelete_func_obligation_110, ddelete_func_obligation_109 => //=.
+    move: Heq_r r'0 H1 r' Heq_r'.
+    rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
+    destruct Heq_wildcard'2 => //= Heq_r r'0 H1 r' Heq_r'.
+    move: H1. rewrite -Heq_r -Heq_r' //= => ->.
+    rewrite [in RHS]delete_catR. by rewrite dflatten_sizeK.
+    rewrite leqNgt dflatten_sizeK. by move/eqP/eqnP/eqP: H0.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0.
+    by rewrite -Heq_anonymous0.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_116, ddelete_func_obligation_115 => //=.
+    move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0' daccessK /access.
+    by rewrite nth_cat dflatten_sizeK -if_neg H0'.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_122, ddelete_func_obligation_121.
+    by destruct ddelete_func_obligation_120, ddelete_func_obligation_119.
+  Qed.
+
+  Next Obligation.
+    intros; subst. apply/ltP.
+    by rewrite -Heq_B //= -{1}(add0n (tree_size r)) ltn_add2r tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0.
+    have Hi: i - (llnum + wildcard'0) < wildcard'8.
+    rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
+    by rewrite addnC -Heq_anonymous0.
+    move/eqP/eqnP/eqP: (H0) => H0'. by rewrite leqNgt H0'.
+    rewrite Hi addnBA //=. apply: (leq_ltn_trans (n := (i - (llnum + wildcard'0)))).
+    by rewrite leq0n. exact.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0 => //=.
+    move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0'.
+    rewrite addnBA //= -{2}(dflatten_countK r) daccessK access_leq_count //=. 
+    rewrite dflatten_sizeK. rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
+    by rewrite addnC -Heq_anonymous0. by rewrite leqNgt H0'.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_133, ddelete_func_obligation_132.
+    destruct ddelete_func_obligation_131, ddelete_func_obligation_130 => //=.
+    rewrite H2 H1 delete_catR dflatten_sizeK //= leqNgt.
+    by move/eqP/eqnP/eqP: (H0) => ->.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0.
+    rewrite /eq_rect //=. apply/ltP.
+    rewrite -Heq_B -Heq_l //= -(add0n (tree_size lr + tree_size r)).
+    by rewrite -addnA ltn_add2r tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0.
+    have Hi: i - llnum < wildcard'0 + wildcard'8.
+    rewrite -(ltn_add2r llnum) subnK. by rewrite addnC addnA -Heq_anonymous0.
+    apply: (leq_trans (n := llnum + wildcard'0)). by rewrite leq_addr.
+    rewrite leqNgt. by move/eqP/eqnP/eqP: (H0) => ->.
+    rewrite Hi addnBA //=. by rewrite addnA.
+    apply: (leq_ltn_trans (n := (i - llnum))). by rewrite leq0n.
+    exact.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect //=.
+    move/eqP/eqnP/eqP: (H0) => H0'.
+    have leq_llnum_i: (llnum <= i).
+    apply: (leq_trans (n := llnum + wildcard'0)).
+    by rewrite leq_addr. by rewrite leqNgt H0'.
+    have Hi: i - llnum >= wildcard'0. rewrite -(leq_add2r llnum) subnK.
+    by rewrite addnC leqNgt H0'. apply: (leq_trans (n := (llnum + wildcard'0))).
+    by rewrite leq_addr. by rewrite leqNgt.  
+    rewrite -if_neg -leqNgt -[in RHS]if_neg H0' Hi addnBA. rewrite addnA.
+    have Hi': (i - llnum - wildcard'0 == i - (llnum + wildcard'0)).
+    rewrite -(eqn_add2r wildcard'0) subnK //= -(eqn_add2r llnum) subnK //=.
+    rewrite -addnA [X in _ == _ - X + _]addnC subnK //=.
+    by rewrite leqNgt addnC H0'.  
+    by rewrite (eqP Hi'). rewrite -{2}(dflatten_countK r).
+    apply: (leq_trans (n := count_one (dflatten r))).
+    rewrite dflatten_countK daccess_leq_ones //=.
+    rewrite -(ltn_add2r wildcard'0) subnK //= -(ltn_add2r llnum) subnK //=.
+    by rewrite addnC [X in _ < _ + X]addnC addnA. by rewrite leq_addl.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_145, ddelete_func_obligation_144.
+    destruct ddelete_func_obligation_143, ddelete_func_obligation_142.
+    rewrite H2 H1 //= -Heq_l //= -[in RHS]catA [in RHS]delete_catR.
+    by rewrite dflatten_sizeK.
+    rewrite dflatten_sizeK. apply: (leq_trans (n := llnum + wildcard'0)).
+    by rewrite leq_addr. move/eqP/eqnP/eqP: (H0) => H0'. by rewrite leqNgt H0'.
+  Qed.
+
+  Next Obligation. intros; subst. by destruct cr. Qed.
+
+  Next Obligation.
+    intros; subst. apply/ltP.
+    by rewrite -Heq_B //= -{1}(add0n (tree_size r)) ltn_add2r tree_size_pos.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0.
+    have Hi: i - (llnum + wildcard'0) < wildcard'8.
+    rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
+    by rewrite addnC -Heq_anonymous0. rewrite leqNgt. by move/eqP/eqnP/eqP: (H0).
+    rewrite Hi addnBA //=.
+    apply: (leq_ltn_trans (n := (i - (llnum + wildcard'0)))).
+    by rewrite leq0n. exact.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0 => //=.
+    move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0'.
+    rewrite addnBA //= -{2}(dflatten_countK r) daccessK access_leq_count //=. 
+    rewrite dflatten_sizeK. rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
+    by rewrite addnC -Heq_anonymous0. by rewrite leqNgt H0'.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_154, ddelete_func_obligation_153.
+    destruct ddelete_func_obligation_152, ddelete_func_obligation_151 => //=.
+    rewrite H2 H1 delete_catR dflatten_sizeK //= leqNgt.
+    by move/eqP/eqnP/eqP: (H0) => ->.
+  Qed.
+
+  Next Obligation. intros; subst. by subst wildcard'. Qed.
+
+  Next Obligation. intros; subst. by destruct c. Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var.
+    move/eqP/eqnP/eqP/ltP/ltP/negbTE: H0 => -> //=.
+    by rewrite subn0.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var.
+    rewrite daccessK /access nth_default //=. by rewrite subn0.
+    rewrite dflatten_sizeK leqNgt. by move/eqP/eqnP/eqP: H0.
+  Qed.
+
+  Next Obligation.
+    intros; subst. subst filtered_var. rewrite /eq_rect.
+    destruct ddelete_func_obligation_159, ddelete_func_obligation_158 => //=.
+    rewrite delete_oversize //= dflatten_sizeK leqNgt. by move/eqP/eqnP/eqP: H0.
+  Qed.
+
+  (* 
+   * As far as I have tried, this is as far as we can get.
+   * Due to a suspected bug in Coq, when trying to construct ddelete, Coq 
+   * throws an error (anomaly). 
+   *
+   * I (Xuanrui) have already reported this issue to the Coq developers
+   * (https://github.com/coq/coq/issues/9581).
+   * If the issue is resolved, then we can define ddelete using the fixed 
+   * Coq development version. Before then, this is the best we could do.
+   *) 
+  Next Obligation. intros; subst. by subst wildcard'. Qed.
     
 End delete.
 
