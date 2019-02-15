@@ -941,23 +941,23 @@ Section delete.
     rewrite size_cat. rewrite size_delete.
     by rewrite -subn1 addnBA //= -(eqP w_ok2) wordsize_sqrn_div2_gt0.
     rewrite -(ltn_add2r (size s1)) subnK. by rewrite addnC.
-    move/eqP/eqnP/eqP: H. by rewrite subn_eq0 -leqNgt.
+    move/eqP/eqnP/eqP: n. by rewrite subn_eq0 -leqNgt.
   Qed.
 
   Next Obligation.
     rewrite /count_one count_cat -/count_one. rewrite -count_delete.
     rewrite /access. rewrite nth_cat.
-    case: ifP => H' //=. move: H. by rewrite H'.
+    case: ifP => H' //=. move: n. by rewrite H'.
     rewrite addnBA //= -/access access_leq_count //=.
     rewrite -(ltn_add2r (size s1)) subnK. by rewrite addnC.
-    move/eqP/eqnP/eqP: H. by rewrite subn_eq0 -leqNgt.
+    move/eqP/eqnP/eqP: n. by rewrite subn_eq0 -leqNgt.
   Qed.
 
   Next Obligation.
     rewrite /eq_rect.
     destruct merge_arrays_obligation_9, merge_arrays_obligation_8 => //=.
     rewrite /delete take_cat.
-    move/eqP/eqnP/eqP: H. rewrite subn_eq0. move/negbTE => H.
+    move/eqP/eqnP/eqP: n. rewrite subn_eq0. move/negbTE => H.
     rewrite H //=. rewrite drop_cat.
     move/negbT: (H). rewrite -ltnNge => H'.
     rewrite ltnNge leq_eqVlt H' orbT //= subSn.
@@ -1352,18 +1352,18 @@ Section delete.
     rewrite prednK. rewrite -subn1. by rewrite addnC addnBA //= addnC.
     move/eqP/eqnP: Heq_anonymous6 => <-. apply: wordsize_sqrn_div2_gt0.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H.
+    by move/eqP/eqnP/eqP: n.
     rewrite ltn_neqAle leq_pred andbT //= -eqSS prednK //=. by apply/eqP.
   Qed.
 
   Next Obligation.
     rewrite /delete_last -bool_true /blast -!count_delete.
     rewrite /access nth_cat -Heq_l -Heq_r //= -if_neg.
-    move/eqP/eqnP/eqP: (H) => ->.
+    move/eqP/eqnP/eqP: (n) => ->.
     rewrite addnA subnK; try rewrite addnBA //=;
     rewrite -/access access_leq_count //=.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
     rewrite ltn_neqAle leq_pred andbT //= -eqSS prednK. by apply/eqP.
     apply: leq_trans. apply: wordsize_sqrn_div2_gt0. exact.
   Qed.
@@ -1378,7 +1378,7 @@ Section delete.
     rewrite -cat1s /delete.
     rewrite prednK //= drop_size //= cats0.
     rewrite -cat1s !catA /access //= cats1 -take_nth prednK //= take_size //=.
-    rewrite leqNgt. by move/eqP/eqnP/eqP: H => ->.
+    rewrite leqNgt. by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
@@ -1420,18 +1420,18 @@ Section delete.
     rewrite prednK. rewrite -subn1. by rewrite addnC addnBA //= addnC.
     move/eqP/eqnP: Heq_anonymous6 => <-. apply: wordsize_sqrn_div2_gt0.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H.
+    by move/eqP/eqnP/eqP: n.
     rewrite ltn_neqAle leq_pred andbT //= -eqSS prednK //=. by apply/eqP.
   Qed.
 
   Next Obligation.
     rewrite /delete_last -bool_true /blast -!count_delete.
     rewrite /access nth_cat -Heq_l -Heq_r //= -if_neg.
-    move/eqP/eqnP/eqP: (H) => ->.
+    move/eqP/eqnP/eqP: (n) => ->.
     rewrite addnA subnK; try rewrite addnBA //=;
     rewrite -/access access_leq_count //=.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
     rewrite ltn_neqAle leq_pred andbT //= -eqSS prednK. by apply/eqP.
     apply: leq_trans. apply: wordsize_sqrn_div2_gt0. exact.
   Qed.
@@ -1446,7 +1446,7 @@ Section delete.
     rewrite -cat1s /delete.
     rewrite prednK //= drop_size //= cats0.
     rewrite -cat1s !catA /access //= cats1 -take_nth prednK //= take_size //=.
-    rewrite leqNgt. by move/eqP/eqnP/eqP: H => ->.
+    rewrite leqNgt. by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
@@ -1474,22 +1474,22 @@ Section delete.
     apply: leq_trans. apply: wordsize_sqrn_div2_gt0. exact.
     rewrite -Heq_anonymous5 size_delete. by rewrite -subn1 addnBA.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
     rewrite /access nth_cat -count_delete -Heq_l -Heq_r //= -if_neg.
-    move/eqP/eqnP/eqP: (H) => ->.
+    move/eqP/eqnP/eqP: (n) => ->.
     rewrite /access addnBA //= -/access access_leq_count //=.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
     rewrite /eq_rect.
     destruct delete_from_leaves_obligation_78, delete_from_leaves_obligation_77 => //=.
     rewrite -Heq_l -Heq_r //= delete_catR //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
@@ -1517,56 +1517,56 @@ Section delete.
     apply: leq_trans. apply: wordsize_sqrn_div2_gt0. exact.
     rewrite -Heq_anonymous5 size_delete. by rewrite -subn1 addnBA.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
     rewrite /access nth_cat -count_delete -Heq_l -Heq_r //= -if_neg.
-    move/eqP/eqnP/eqP: (H) => ->.
+    move/eqP/eqnP/eqP: (n) => ->.
     rewrite /access addnBA //= -/access access_leq_count //=.
     rewrite -(ltn_add2l (size arr1)). rewrite subnKC //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
     rewrite /eq_rect.
     destruct delete_from_leaves_obligation_86, delete_from_leaves_obligation_85 => //=.
     rewrite -Heq_l -Heq_r //= delete_catR //= leqNgt.
-    by move/eqP/eqnP/eqP: H => ->.
+    by move/eqP/eqnP/eqP: n => ->.
   Qed.
 
   Next Obligation.
-    move/eqP/eqnP/eqP/ltP/ltP/negbTE: H0 => ->. by rewrite subn0.
+    move/eqP/eqnP/eqP/ltP/ltP/negbTE: n0 => ->. by rewrite subn0.
   Qed.
 
   Next Obligation.
     rewrite /access nth_default. rewrite subn0 //=.
     rewrite size_cat -Heq_l -Heq_r //= leqNgt.
-    by move/eqP/eqnP/eqP: H0 => ->.
+    by move/eqP/eqnP/eqP: n0 => ->.
   Qed.
 
   Next Obligation.
     rewrite /eq_rect.
     destruct delete_from_leaves_obligation_95, delete_from_leaves_obligation_94 => //=.
     rewrite -Heq_l -Heq_r //= delete_oversize //= leqNgt size_cat.
-    by move/eqP/eqnP/eqP: H0 => ->.
+    by move/eqP/eqnP/eqP: n0 => ->.
   Qed.
 
   Next Obligation.
-    move/eqP/eqnP/eqP/ltP/ltP/negbTE: H0 => ->. by rewrite subn0.
+    move/eqP/eqnP/eqP/ltP/ltP/negbTE: n0 => ->. by rewrite subn0.
   Qed.
 
   Next Obligation.
     rewrite /access nth_default. rewrite subn0 //=.
     rewrite size_cat -Heq_l -Heq_r //= leqNgt.
-    by move/eqP/eqnP/eqP: H0 => ->.
+    by move/eqP/eqnP/eqP: n0 => ->.
   Qed.
 
   Next Obligation.
     rewrite /eq_rect.
     destruct delete_from_leaves_obligation_103, delete_from_leaves_obligation_102 => //=.
     rewrite -Heq_l -Heq_r //= delete_oversize //= leqNgt size_cat.
-    by move/eqP/eqnP/eqP: H0 => ->.
+    by move/eqP/eqnP/eqP: n0 => ->.
   Qed.    
 
   Obligation Tactic := idtac.
@@ -2429,8 +2429,8 @@ Section delete.
   Admitted.
 
     
-  Admit Obligations.    
-    
+  Admit Obligations.
+  
     
 End delete.
 

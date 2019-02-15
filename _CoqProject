@@ -1,12 +1,6 @@
 compact_data_structures.v
 rank_select.v
-jacobson_rank_complexity.v
-pred_succ.v
-louds.v
 insert_delete.v
 set_clear.v
-dynamic_redblack.v
-dynamic_dependent.v
-dynamic_dependent_with_deletion.v
--R . compact
+-R . succinct
 
