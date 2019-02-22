@@ -1167,38 +1167,16 @@ Lemma balanceL'_wf (B: deleted_dtree) b c:
 Proof.
   case: B b => B b /= wfB wfb.
    by rewrite dsizeE // donesE // !eq_refl wfB wfb.
-  case: c b wfb => [] [[] /= [[] b [] ? ? ? [] ? ? ?|? [] ? ? ?] /= []|[] /=]; try by rewrite dsizeE // donesE // !eq_refl wfB /=.
-   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
-   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
-   repeat (apply/andP; split => //).
-  
-   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
-   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
-   repeat (apply/andP; split => //).
-  
-   move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ? wfB'.
-   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' /=;
-   repeat (apply/andP; split => //).
-
-   case: b => [[]|] b /= [];
-    try by move=> ? ? ?; move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?;
-    move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2 wfb3;
-    rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 wfb3 /=; repeat (apply/andP; split => //).
-    by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? wfB' wfb1 wfb2;
-    rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
-    repeat (apply/andP; split => //).
    
-   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
-   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
-   repeat (apply/andP; split => //).
-
-   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
-   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
-   repeat (apply/andP; split => //).
-  
-   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ? wfB';
-   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' /=;
-   repeat (apply/andP; split => //).
+  move:c b wfb=>[][[][[][[]?[]???|?][]???|?][]??[[]?[]???|?]|?] wfb /=;
+   try decomp wfb => //;
+   try rewrite !size_cat !count_cat;
+   try rewrite !addnA;
+   try rewrite !catA;
+   try rewrite !size_cat !count_cat;
+   try rewrite !dsizeE //;
+   try rewrite !donesE //;
+   by rewrite !eq_refl wfB //.
 Qed.
 
 Lemma size_shift (x : seq bool) : 
@@ -1296,7 +1274,20 @@ Lemma balanceR'_wf (B: deleted_dtree) b c:
   wf_dtree B ->
   wf_dtree b ->
   wf_dtree (balanceR' c b B).
-Admitted.
+Proof.
+  case: B b => B b /= wfB wfb.
+   by rewrite dsizeE // donesE // !eq_refl wfB wfb.
+   
+   move:c b wfb=>[][[][[]?[]???|?][]??[[]?[]??[[]?[]???|?]|?]|?] wfb /=;
+   try decomp wfb => //;
+   try rewrite !size_cat !count_cat;
+   try rewrite !addnA;
+   try rewrite !catA;
+   try rewrite !size_cat !count_cat;
+   try rewrite !dsizeE //;
+   try rewrite !donesE //;
+   by rewrite !eq_refl wfB //.
+Qed.
 
 Lemma ddel_wf (B : dtree) n i :
   n > 0 ->
