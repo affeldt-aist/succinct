@@ -1504,10 +1504,10 @@ Proof.
     
   -case: c y => // y; move/andP => [] rbl rbr sc;
    move/andP => []; move/eqP => H; move/andP => [] los; move/andP => [] wfl wfr;
-   have scm: i - dsize l < dsize r;
-   try by (rewrite /leq -addn1 -!subnBA; last rewrite positivity //;
-   rewrite -!subnDA addnBA; last rewrite positivity //;
-   rewrite /leq -addn1 -subnBA // in sc; last rewrite !ltn_addr // positivity //).
+   have scm: i - dsize l < dsize r
+    by (rewrite /leq -addn1 -!subnBA; last rewrite positivity //;
+    rewrite -!subnDA addnBA; last rewrite positivity //;
+    rewrite /leq -addn1 -subnBA // in sc; last rewrite !ltn_addr // positivity //).
    move:y0;case:ifP=>// y0 _.
    apply balanceR'_wf => //.
     apply (IHd n) => //{IHd}.
@@ -1526,7 +1526,7 @@ Proof.
     all: try by decomp wfr.
    move=>rbl rbr; rewrite balanceR'_wf // (IHd n) //; try by rewrite neq //.
    rewrite H // -dsizeE //.
-  *move/eqP=>C;move:n_gt0; rewrite C //.
+  -move/eqP=>C;move:n_gt0; rewrite C //.
 Qed.
 
 End delete.
