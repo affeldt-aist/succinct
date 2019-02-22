@@ -807,11 +807,34 @@ Section delete.
     rewrite /= -!maxnSS maxnA !leq_max !/maxn; case: ifP => H;
    [ rewrite [ _.+1 < (_ rl).+3]ltnW // orbT // | rewrite ltnSn // ]. 
   Qed.
+  
+  Lemma hc_pcr'' {ll lr rl rr lc l' dr}:
+    height_of_dtree (rnode (rbnode lc ll lr) (bnode rl rr)) <
+    height_of_dtree (bnode (rnode (leaf l') (rbnode lc ll lr)) (Bnode Black rl dr rr)).
+  Proof.
+    move: lc => /= []; rewrite max0n !maxnSS /= /leq !subSS subn_eq0;
+    rewrite /= -!maxnSS maxnA !leq_max !/maxn;
+    repeat case: ifP;
+    try rewrite leqnn //=;
+    try rewrite leqnSn //=;
+    by (intros; rewrite !orbT).
+  Qed.
 
   Function ddel (B : dtree) (i : nat) { measure height_of_dtree B } : deleted_dtree :=
-    match B  with
+    match B with
     | Bnode Black (Bleaf l) (s,o) (Bleaf r) => delete_leaves Black l r i
     | Bnode Red (Bleaf l) (s,o) (Bleaf r) => delete_leaves Red l r i
+                                                           
+    | Bnode Black (Bnode Red (Bleaf ll) (ls,_) (Bleaf lr)) (s,_) (Bleaf r) => 
+      if i < s
+      then balanceL' Black (delete_leaves Red ll lr i) (Bleaf _ r)
+      else balanceR' Black (Bleaf _ ll) (delete_leaves Red lr r (i - ls))
+                                                           
+    | Bnode Black (Bleaf l) (ls,_) (Bnode Red (Bleaf rl) (rs,_) (Bleaf rr)) => 
+      if i < ls + rs
+      then balanceL' Black (delete_leaves Red l rl i) (Bleaf _ rr)
+      else balanceR' Black (Bleaf _ l) (delete_leaves Red rl rr (i - ls))
+                     
     | Bnode Black (Bnode Black ll (ls,lo) lr) (s,_) (Bnode Red rl (rs,ro) rr) =>
       let l := Bnode Black ll (ls,lo) lr in
       let r := Bnode Red rl (rs,ro) rr in
@@ -827,7 +850,7 @@ Section delete.
     | Bnode c l (s,_) r => 
       if i < s
       then balanceL' c (ddel l i) r
-      else  balanceR' c l (ddel r (i - s))
+      else balanceR' c l (ddel r (i - s))
     (* absurd case *)
     | Bleaf x =>  Stay (leaf (delete x i))
     end.
@@ -835,7 +858,9 @@ Section delete.
   all: intros; subst B; apply/leP; 
   try (apply/eqP; rewrite /= subSS; apply/eqP; try (by apply leq_maxl); by apply leq_maxr); 
   try (apply hc_pcl); try (apply hc_pcr).
-  apply hc_pcl'. apply hc_pcr'.
+  apply hc_pcl'.
+  apply hc_pcr''.
+  apply hc_pcr'.
   Defined.
 
   Lemma ddel0E s o l r i :
@@ -891,6 +916,16 @@ Section delete.
     by rewrite cats0 -cat_rcons -take_nth prednK // take_oversize.
   Qed.
 
+  Lemma summand_leq a b c: a + b <= c -> a <= c.
+  Proof.
+    elim:b a c => [|b IH] a c;first rewrite addn0 //.
+    rewrite addnS => H; move: (ltnW H).
+    apply IH.
+  Qed.
+  
+  Lemma positivity_w x : x >= (w ^ 2)./2 -> 0 < x.
+  Proof. case: x Hw => //; case => // x. case: w Hw => //; case => //. Qed.
+  
   Lemma ddelE (B : dtree) i :
     wf_dtree B -> dflattenn (ddel B i) = delete (dflatten B) i.
   Proof.
@@ -898,10 +933,46 @@ Section delete.
       => //= /andP [/eqP Hs] /andP [_] /andP [wfl wfr].
     + by rewrite /= /ddel delete_leavesE.
     + by rewrite /= /ddel delete_leavesE.
+    + rewrite balanceL'E delete_leavesE //;
+      move: wfl wfr; repeat decompose_rewrite => /=; try by [].
+      rewrite !delete_cat //= !size_cat //=.
+      repeat case:ifP => //=;
+      move:Hs; rewrite size_cat => <-; rewrite e0 //.
+      
+    + rewrite balanceR'E delete_leavesE //;
+      try move: wfl wfr; repeat decompose_rewrite => //=.
+      rewrite !delete_cat //= !size_cat //=.
+      move:y Hs; case: ifP => //; rewrite size_cat=>y _ Hs.
+      move:(Hs)(y)=>->->.
+      case: ifP.
+       rewrite /leq -subSn;
+       last (move:y;rewrite ltnNge Hs; move/negPn; apply summand_leq);
+       rewrite -subnDA subn_eq0 -Hs y //.
+      rewrite subnDA !catA //=.
+      
+    + rewrite balanceL'E delete_leavesE //;
+      move: wfl wfr; repeat decompose_rewrite => /=; try by [].
+      rewrite !delete_cat //=.
+      repeat case: ifP; try by rewrite !catA.
+      move:e0;move/eqP:H1=>->;move:Hs=>-> X Y Z.
+      move:Z; rewrite ltnNge /=; move/negPn=>?.
+      move:X Y; rewrite /leq.
+      rewrite -subSn // !subnDA => -> //.
+      
+    + rewrite balanceR'E delete_leavesE //;
+      try move: wfl wfr; repeat decompose_rewrite => //=.
+      rewrite !delete_cat //=.
+      move:y;case: ifP => //;rewrite ltnNge;move/negPn=>y _.
+      move/eqP:(H1) (Hs) y =>->-> y.
+      repeat case: ifP;
+      try by rewrite !catA;
+      try by rewrite ltnNge (summand_leq y).
+      
     + rewrite balanceL'E IHd; last first.
         move: wfl wfr; repeat decompose_rewrite => /=.
         by rewrite size_cat !dsizeE // count_cat !donesE // !eq_refl.
       by rewrite !catA [RHS]delete_cat size_cat -Hs ltn_addr.
+      
     + case: ifP y => // e0 _.
       by rewrite balanceR'E delete_cat -Hs e0 IHd.
     + by rewrite balanceL'E delete_cat -Hs e0 IHd.
@@ -985,6 +1056,14 @@ move: n c; functional induction (ddel B i) => n c' H.
   case: c' => /= ok; by decomp_ifP ok.
 + rewrite /delete_leaves.
   case: c' => /= ok; by decomp_ifP ok.
++ rewrite /delete_leaves.
+  case: c' => /= ok; by decomp_ifP ok.
++ rewrite /delete_leaves.
+  case: c' => /= ok; by decomp_ifP ok.
++ rewrite /delete_leaves.
+  case: c' => /= ok; by decomp_ifP ok.
++ rewrite /delete_leaves.
+  case: c' => /= ok; by decomp_ifP ok.
 + move=> ok; solveL' IHd ok => //.
   by apply is_redblack_Red_Black.
 + move=> ok; by solveR' IHd ok.
@@ -1012,6 +1091,442 @@ move: n c; functional induction (ddel B i) => n c' H.
   try splitR' lr y IHd ok;
   by rewrite ddel0E /delete_leaves; decomp_ifP ok.
 + by [].
+Qed.
+
+Definition identify_deleted_dtree B :=
+  match B with
+  | Stay b => b
+  | Down b => b
+  end.
+
+Lemma size_pf_leq1 : (w ^ 2)./2 <= ((w ^ 2)./2.-1).*2.+1.
+Proof.
+  have Lem : forall x, x > 1 -> x <= (x.-1).*2.+1.
+   move=> x H.
+   have: (x.-1).*2.+1 == x.*2.-1. elim: x H => //.
+   move/eqP=> ->.
+   case: x H => // w' H.
+   by rewrite -addnn -subn1 -addn1 addnA addnK leq_addr.
+  apply Lem.
+  case: w Hw => //; case => // w' ?.
+  by rewrite -[in _./2]add2n sqrnD -divn2 leq_divRL //.
+Qed.
+
+Lemma trivial_lem x : 0 < x -> 1 < x.*2.
+Proof. case: x => //. Qed.
+  
+Lemma size_pf_ltn1 : ((w ^ 2)./2.-1).*2.+1 < (w ^ 2).*2.
+Proof.
+  rewrite -divn2.
+  have l1: 1 < (w ^ 2). case: w Hw => //; case => //.
+  have Lem1: 0 < w ^ 2 %/ 2.
+   case: w Hw => //; case => // ? ?.
+   rewrite -addn2 sqrnD divnDr; last repeat apply dvdn_mull => //.
+   apply ltn_addr => //.
+   rewrite leq_divRL //.
+   apply ltn_addl => //.
+  have Lem2: 1 < (w ^ 2 %/ 2).*2. by apply trivial_lem.
+  have l2: ((w ^ 2 %/ 2).-1).*2 < (w ^ 2).
+   have l2': (w ^ 2 %/ 2).*2 <= w ^ 2. rewrite -muln2; apply leq_trunc_div => //.
+    apply ltnW.
+    rewrite -addnn -subn1 addnBA // addnC addnBA // !subn1 addnn -subn2 -addn2 subnK //.
+  apply ltnW.
+  move: (@leq_add _ _ _ _ l1 l2).
+  by rewrite add2n addnn.
+Qed.
+
+Lemma double_pos x : 0 < x -> x < x.*2.
+Proof.
+  move=> H.
+  rewrite -addnn.
+  case: x H => // x H.
+  by rewrite -2!addn1 addnAC -!addnA leq_addl.
+Qed.
+
+Lemma trivial_lem2 x : 0 < x -> x %/ 2 < x.
+Proof.
+  rewrite ltn_divLR // => H.
+  rewrite muln2 double_pos //.
+Qed.
+
+Lemma size_pf_ltn2 : w ^ 2 %/ 2 < (w ^ 2).*2.
+Proof.
+  elim: w Hw => //; case => //= w' IH H.
+  rewrite -addnn.
+  apply ltn_addr.
+  apply trivial_lem2.
+  rewrite -addn2 sqrnD ltn_addr // ltn_addl //.
+Qed.
+
+Coercion identify_deleted_dtree : deleted_dtree >-> dtree.
+
+Lemma balanceL'_wf (B: deleted_dtree) b c:
+  wf_dtree B ->
+  wf_dtree b ->
+  wf_dtree (balanceL' c B b).
+Proof.
+  case: B b => B b /= wfB wfb.
+   by rewrite dsizeE // donesE // !eq_refl wfB wfb.
+  case: c b wfb => [] [[] /= [[] b [] ? ? ? [] ? ? ?|? [] ? ? ?] /= []|[] /=]; try by rewrite dsizeE // donesE // !eq_refl wfB /=.
+   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
+   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
+   repeat (apply/andP; split => //).
+  
+   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
+   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
+   repeat (apply/andP; split => //).
+  
+   move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ? wfB'.
+   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' /=;
+   repeat (apply/andP; split => //).
+
+   case: b => [[]|] b /= [];
+    try by move=> ? ? ?; move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?;
+    move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2 wfb3;
+    rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 wfb3 /=; repeat (apply/andP; split => //).
+    by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? wfB' wfb1 wfb2;
+    rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
+    repeat (apply/andP; split => //).
+   
+   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
+   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
+   repeat (apply/andP; split => //).
+
+   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] wfB' wfb1 wfb2;
+   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' wfb1 wfb2 /=;
+   repeat (apply/andP; split => //).
+  
+   by move/andP => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ? wfB';
+   rewrite !size_cat !count_cat !dsizeE // !donesE // !eq_refl wfB wfB' /=;
+   repeat (apply/andP; split => //).
+Qed.
+
+Lemma size_shift (x : seq bool) : 
+  ((w ^ 2)./2 == size x) = false -> 
+  (w ^ 2)./2 <= size x < (w ^ 2).*2 -> 
+  (w ^ 2)./2 <= (size x).-1 < (w ^ 2).*2.
+Proof.
+  move=> wx; move/andP=> [] lo go.
+  have wp : 0 < size x. apply positivity_w => //.
+  apply/andP; split; last (rewrite -addn1 -subn1 subnK // leq_eqVlt go orbT //).
+  by rewrite /leq -subn1 subnBA // addn1 subn_eq0 ltn_neqAle lo wx /=.
+Qed.
+
+Lemma dellvs_wf l r i c:
+  i < size l + size r ->
+  (w ^ 2)./2 <= size l < (w ^ 2).*2 ->
+  (w ^ 2)./2 <= size r < (w ^ 2).*2 ->
+  wf_dtree (delete_leaves c l r i).
+Proof.
+  have Hp : (w ^ 2)./2 > 0 by move: Hw; case w => // -[].
+  rewrite /delete_leaves.
+  repeat case: ifP.
+  *case: r Hp => /=.
+    rewrite ltnNge /leq subn0 => T C; move/eqP: C T => -> //.
+   move => ? l' Hp a b ? sc ? ?; rewrite size_cat size_rcons !size_delete //=;
+   move: a b; move/eqP => a; move/eqP => b; rewrite a -b.
+   rewrite (@ltn_predK i (w ^ 2)./2) // a // -a b //.
+   apply/andP; split; first apply leq_addr.
+   rewrite -addn1 -addnA addn1 -a -b addnn -!muln2 leq_mul2r /=.
+   rewrite -divn2 ltnW // trivial_lem2 //; case: w Hw => //=.
+   
+  *move => wr wl ic sc Hl Hr.
+   rewrite /= !size_rcons !size_delete //; last apply positivity_w.
+   rewrite !eq_refl /=.
+   move/eqP: wl => wl.
+   rewrite -wl (@ltn_predK 0 (w ^ 2)./2) // -!divn2 size_pf_ltn2 leqnn /= !divn2 size_shift //.
+   move/andP:Hr=>[] //.
+
+  *move=> wl ic sc Hl Hr.
+   rewrite /= !eq_refl Hr /= andbT size_delete // size_shift //.
+   
+  *move=> wr wl ic sc Hl Hr.
+   rewrite /= !size_cat // !size_take // !size_drop //.
+   case: ifP => H.
+    rewrite !addnBA //; last rewrite ltn_addl //.
+    apply/andP; split.
+     rewrite /leq -[(_ - size _).+1]addn1 !subnDA addnCA addnC addnK.
+     rewrite subnBA.
+     rewrite addn1 subn_eq0.
+     move/eqP:wl=> <-;move/eqP:wr=> <-.
+     rewrite addnn double_pos //.
+     move/eqP:wl=> <-;rewrite ltn_addr //.
+    rewrite /leq -[(_ - size _).+1]addn1 !subnDA addnCA addnC addnK.
+    move/eqP:wl=> <-;move/eqP:wr=> <-.
+    rewrite subnS subn0 (@ltn_predK 0 ((w ^ 2)./2 + (w ^ 2)./2)) addnn; last rewrite ltnW // trivial_lem //.
+    rewrite subn_eq0 -!muln2 leq_mul2r /= -divn2 ltnW // trivial_lem2 //; last case: w Hw => //.
+   rewrite -[(_ - size _).+1]addn1 !subnDA !addnA addnAC subnBA; last rewrite leqNgt ic //.
+   move: ic H; move/eqP:wl=> <-;move/eqP:wr=> <- ic H.
+   apply/andP; split; first apply leq_addl.
+   move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic.
+   move/negP: H; rewrite ltnNge; move/negPn/negPn; rewrite /leq.
+   rewrite -subnBA // subnS subn0; move/eqP => -> /=; rewrite addn0.
+   rewrite subn_eq0 addnn -!muln2 ltn_mul2r /= -divn2 trivial_lem2 //; case: w Hw => //.
+   
+  *move=> wr wl ic sc Hl Hr.
+   rewrite /= !eq_refl Hl /= size_delete; last first.
+    rewrite /leq -addn1 addnC addnBA.
+    rewrite addnC addn1 -subnDA subn_eq0 //.
+    move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic //.
+   rewrite size_shift //.
+   
+  *move=> wr wl ic sc Hl Hr.
+   rewrite /= !size_delete; last first.
+   -rewrite /leq (@ltn_predK 0 (size l)); first rewrite subnn //.
+    rewrite positivity_w //; move/andP:Hl=>[] //.
+   -move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic.
+    rewrite /leq -addn1 addnC addnBA // addnC addn1 -subnDA subn_eq0 //.
+   rewrite !eq_refl /=.
+   move/eqP:wr Hr=> <- H; rewrite (@ltn_predK 0 (w ^ 2)./2) // H size_shift //.
+
+  *move=> wr wl ic sc Hl Hr.
+   rewrite /= Hl !eq_refl !size_delete /=; first rewrite size_shift //.
+   move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic.
+   rewrite /leq -addn1 addnC addnBA // addnC addn1 -subnDA subn_eq0 //.
+Qed.
+
+Lemma positivity (B: dtree) : wf_dtree B -> dsize B > 0.
+Proof.
+  elim:B=>/= [? l IHl []?? r IHr|?] wf;
+  first rewrite ltn_addr // IHl //; 
+  last apply positivity_w; by decomp wf.
+Qed.
+  
+Lemma balanceR'_wf (B: deleted_dtree) b c:
+  wf_dtree B ->
+  wf_dtree b ->
+  wf_dtree (balanceR' c b B).
+Admitted.
+
+Lemma ddel_wf (B : dtree) n i :
+  n > 0 ->
+  is_redblack B Black n ->
+  i < dsize B ->
+  wf_dtree B ->
+  wf_dtree (ddel B i).
+Proof.
+  have Hp : (w ^ 2)./2 > 0 by move: Hw; case w => // -[].
+  move: n; functional induction (ddel B i) => //= n n_gt0.
+  -move => rbBn sc wfB.
+   rewrite /delete_leaves.
+   repeat case: ifP => //.
+   *move/eqP => wr; move/eqP => wl.
+    move => ? /=; rewrite size_cat size_rcons !size_delete // -wr // -wl addSn addnn; apply/andP; split; first apply size_pf_leq1; apply size_pf_ltn1.
+   
+   *move=> wr; move/eqP => wl.
+    move => ? /=; rewrite size_cat size_rcons !size_delete // -addn1 -subn1 subnK; last rewrite -wl //.
+    repeat (apply/andP; split => //); try rewrite -wl; try by [].
+     +rewrite -divn2 size_pf_ltn2 //.
+     +move/andP: wfB => [] ?; move/andP => [] ?; move/andP => [] ?; move/andP=> [] H ?; move: (H).
+      rewrite leq_eqVlt wr /= size_drop /leq; move/eqP => H'.
+      rewrite -subSKn subnDA -subnS -[in (size _ - _).+1]addn1 -subnDA addnC subnK; last apply positivity_w => //.
+      by rewrite subnDA H' sub0n.
+     +rewrite size_drop size_take.
+      move/andP: wfB => [] ?; move/andP => [] ?; move/andP => [] ?; move/andP=> [] H; move: (positivity_w H) => H' ?.
+      rewrite H' add0n -addn1 subnK //; by apply ltnW.
+      
+   *move=> wl ?.
+    rewrite /= !eq_refl /= size_delete //.
+    repeat (apply/andP => []; split); try by (move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ?).
+     +move/andP: wfB => [] ?; move/andP => [] ?; move/andP => [];move/andP => [] H'; move: (H').
+      rewrite leq_eqVlt wl /leq /= => ? ? ?.
+      rewrite -subn1 subnBA; last apply positivity_w => //.
+      by rewrite addn1.
+     +move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ?.
+      apply ltnW.
+      rewrite -subn1 -2!addn1 subnK; last apply positivity_w => //.
+      by rewrite addn1.
+      
+   *move/eqP => wr; move/eqP => wl ic /=.
+    rewrite /= size_cat size_delete -wr -wl; last first.
+     move: sc; rewrite /leq -subSn.
+     rewrite -wl -wr -subnDA //.
+     move: (leq_total (w ^ 2)./2 i).
+     rewrite wl; move/orP => [] //.
+     rewrite leq_eqVlt ic orbF.
+     move/eqP => -> //.
+    apply/andP; split; first apply leq_addr.
+    rewrite -subn1 addnBA // -addn1 subnK; last apply ltn_addr => //.
+    rewrite -addnn leq_add // -divn2 leq_div //.
+    
+   *move=> wr; move/eqP => wl ic /=.
+    rewrite !eq_refl /= wl /= size_delete; last first.
+     move: sc; rewrite /leq -subSn.
+     rewrite -wl -subnDA //.
+     move: (leq_total (w ^ 2)./2 i).
+     rewrite wl; move/orP => [] //.
+     rewrite leq_eqVlt ic orbF.
+     move/eqP => -> //.
+    repeat (apply/andP => []; split); try by [].
+     rewrite -wl -addnn -divn2 ltn_addr // trivial_lem2 //; case: w Hw => //.
+    move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] H ?.
+    rewrite -wl /leq -subn1 subnBA.
+    move: H; rewrite !subn_eq0 addn1 leq_eqVlt wr //=.
+    apply positivity_w => //.
+    rewrite -addn1 -subn1 subnK; last apply positivity_w => //.
+    move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? H.
+    rewrite leq_eqVlt H orbT //.
+    move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ? //.
+    
+   *move/eqP => wr; move=> wl ic /=.
+    rewrite !eq_refl /= wr /= !size_delete; last first.
+     rewrite /leq (@ltn_predK 0 _ _); last apply positivity_w => //. by rewrite subnn.
+     move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ? //.
+    move: sc; rewrite /leq -subSn.
+    rewrite -subnDA //.
+    move: (leq_total (size l) i).
+    move/orP => [] //.
+    rewrite leq_eqVlt ic orbF.
+    move/eqP => -> //.
+    rewrite !(@ltn_predK 0 _ _); try apply positivity_w.
+    rewrite -!wr.
+    repeat (apply/andP => []; split); try by (move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ?).
+     move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] H ?; move/andP => [] ? ?.
+     rewrite /leq -subn1 subnBA; last apply positivity_w => //.
+     rewrite addn1 subn_eq0 ltn_neqAle wl /= H //.
+     apply ltnW; move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ? //.
+     rewrite -addnn -divn2 ltn_addr // trivial_lem2 //; case: w Hw => //.
+    by rewrite wr.
+    move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ? //.
+     
+   *move=> wr; move=> wl ic /=. 
+    rewrite !eq_refl /= !size_delete; last first.
+     move: sc; rewrite /leq -subSn.
+     rewrite -subnDA //.
+     move: (leq_total (size l) i).
+     move/orP => [] //.
+     rewrite leq_eqVlt ic orbF.
+     move/eqP => -> //.
+    repeat (apply/andP => []; split); try by (move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? ?).
+     move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] H ?.
+     move: (H); rewrite leq_eqVlt wr /= /leq => H'.
+     rewrite -subn1 subnBA; last apply positivity_w => //.
+     rewrite addn1 //.
+    move/andP: wfB => [] ?; move/andP => [] ?; move/andP => []; move/andP => [] ? ?; move/andP => [] ? H.
+    apply ltnW; rewrite (@ltn_predK 0 _ _) //; apply positivity_w => //.
+    
+  -move/andP=>[];move/eqP=>H; by move: H n_gt0 => ->.
+    
+  -move/andP=>[]?? sc.
+   move/andP=>[];rewrite size_cat;move/eqP=>H wfl.
+   apply balanceL'_wf; last by decomp wfl.
+   apply dellvs_wf; decomp wfl; rewrite // -H //.
+    
+  -move/andP=>[]?? sc.
+   move/andP=>[];rewrite size_cat;move/eqP=>H wfl.
+   apply balanceR'_wf; last by decomp wfl.
+   apply dellvs_wf; decomp wfl => //.
+   rewrite /leq -addn1 !subnDA -!subnBA; last rewrite positivity_w //.
+   rewrite -!subnDA !addnA !addnBA; last rewrite positivity_w //.
+   rewrite /leq -addn1 -subnBA in sc; last rewrite !ltn_addr // positivity_w //.
+   rewrite addnC -addnBA addnC // in sc; last rewrite !ltn_addr // positivity_w //.
+    
+  -move/andP=>[]?? sc wfl.
+   apply balanceL'_wf; last by decomp wfl.
+   apply dellvs_wf; decomp wfl => //.
+   move/eqP: H; move/eqP: H3 => <- <- //.
+    
+  -move/andP=>[]?? sc wfl.
+   apply balanceR'_wf; last by decomp wfl.
+   apply dellvs_wf; decomp wfl => //.
+   rewrite /leq -addn1 !subnDA -!subnBA; last rewrite positivity_w //.
+   rewrite -!subnDA !addnA !addnBA; last rewrite positivity_w //.
+   rewrite /leq -addn1 -subnBA in sc; last rewrite !ltn_addr // positivity_w //.
+   rewrite addnA addnC -addnBA addnC // in sc; last rewrite !ltn_addr // positivity_w //.
+    
+  -move/andP => []; move/andP => [] ?; move/andP => []; move/andP => [] n1_gt0 rbll rblr; move/andP => [] rbrl rbrr sc wfB.
+   apply balanceL'_wf;
+   move/andP: wfB => []; move/eqP => H; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] ? ?;
+   move/andP => [] ?; move/andP => [] ?; move/andP => [] ? ? => //.
+   apply (IHd _ n1_gt0).
+    by rewrite /= n1_gt0 rbll rblr rbrl.
+    move: H; rewrite size_cat -!dsizeE //= => H; by apply ltn_addr; rewrite -H.
+    rewrite /= !size_cat !count_cat !dsizeE // !donesE // !eq_refl; repeat (apply/andP; split => //).
+    
+  -move/andP => []; move/andP => [] ?; move/andP => []; move/andP => [] n1_gt0 rbll rblr; move/andP => [] rbrl rbrr sc wfB.
+   apply balanceR'_wf;
+   move/andP: wfB => []; move/eqP => H; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] ? ?;
+   move/andP => [] ?; move/andP => [] ?; move/andP => [] ? ? => //.
+   apply (IHd _ n1_gt0).
+    by rewrite /= rbrl rbrr.
+    move: H sc; rewrite size_cat -!dsizeE //= => H.
+    rewrite H /leq => sc.
+    rewrite -subSn; last first.
+     rewrite -H leqNgt.
+     apply/implyP => H'.
+     by rewrite H' in y.
+    rewrite -subnDA //.
+    repeat (apply/andP; split => //).
+    repeat (apply/andP; split => //).
+     
+ -move/andP => []; move/andP => [] ?; move/andP => [] rbll rblr; move/andP => []; move/andP => [] n1_gt0 rbrl rbrr sc wfB.
+  apply balanceL'_wf;
+  move/andP: wfB => []; move/eqP => H; move/andP => [] ?; move/andP => []; move/andP => [] ?; move/andP => [] ?; move/andP => [] ? ?;
+  move/andP => [] ?; move/andP => [] ?; move/andP => [] ? ? => //.
+  apply (IHd _ n1_gt0).
+   by rewrite /= rbll rblr.
+   move: H; by rewrite size_cat -!dsizeE //= => <-.
+   repeat (apply/andP; split => //).
+   repeat (apply/andP; split => //).
+   
+ -move/andP => []; move/andP => [] ?; move/andP => [] rbll rblr; move/andP => []; move/andP => [] n1_gt0 rbrl rbrr sc wfB.
+  apply balanceR'_wf;
+  move/andP: wfB => []; move/eqP => H'; move/andP => [] ?; move/andP => []; move/andP => []; move/eqP => H; move/andP => [] ?; move/andP => [] ? ?;
+  move/andP => [] ?; move/andP => [] ?; move/andP => [] ? ? => //.
+  apply (IHd _ n1_gt0).
+   by rewrite /= n1_gt0 rblr rbrl rbrr.
+   move: H sc; rewrite -!dsizeE //= => H.
+   rewrite H /leq !addnA -subSn; last first.
+    rewrite !dsizeE // leqNgt.
+    apply/implyP => H''.
+    rewrite size_cat in H'.
+    move: H' (ltn_addr (size (dflatten lr)) H'') => <- H'.
+    by rewrite H' in y.
+   by rewrite -subnDA !addnA //.
+   rewrite /= !dsizeE // !donesE //; repeat (apply/andP; split => //).
+     
+  -case: c y => // y; move/andP => [] rbl rbr sc. 
+   move/andP => []; move/eqP => H; move/andP => [] ?; move/andP => [] wfl wfr.
+   apply balanceL'_wf => //.
+    apply (IHd n) => //.
+    by apply is_redblack_Red_Black.
+    by rewrite dsizeE // -H.
+   move/andP: rbl => [] _ rbl.
+   move/andP => []; move/eqP => H; move/andP => [] los; move/andP => [] wfl wfr.
+   case: n n_gt0 rbl rbr => // n; case neq: n => /= n_gt0.
+    move: l y sc wfl IHd H los => /= [[]//ll[]?? lr|?] //; move: r wfr => [[]//rl[]?? rr|?] //;
+    try move:ll lr =>[[]//|?] [[]//|?] //=;
+    try move:rl rr =>[[]//|?] [[]//|?] //=;
+    rewrite !size_cat //= => wfr _ ? wfl ? H ? _ _;
+    rewrite balanceL'_wf // ddel0E dellvs_wf //; first rewrite -H //;
+    move/andP:wfl=>[]?;move/andP=>[]?;move/andP=>[]?;move/andP=>[]?//.
+   move=>rbl rbr; rewrite balanceL'_wf // (IHd n) //; last rewrite dsizeE // -H //; rewrite neq //.
+    
+  -case: c y => // y; move/andP => [] rbl rbr sc;
+   move/andP => []; move/eqP => H; move/andP => [] los; move/andP => [] wfl wfr;
+   have scm: i - dsize l < dsize r;
+   try by (rewrite /leq -addn1 -!subnBA; last rewrite positivity //;
+   rewrite -!subnDA addnBA; last rewrite positivity //;
+   rewrite /leq -addn1 -subnBA // in sc; last rewrite !ltn_addr // positivity //).
+   move:y0;case:ifP=>// y0 _.
+   apply balanceR'_wf => //.
+    apply (IHd n) => //{IHd}.
+    by apply is_redblack_Red_Black.
+    by rewrite H -dsizeE //.
+   move/andP: rbl => [] _ rbl.
+   
+   case: n n_gt0 rbl rbr => // n; case neq: n => /= n_gt0.
+    move: l y sc wfl IHd H los scm => /= [[]//ll[]?? lr|?] //; move: r wfr => [[]//rl[]?? rr|?] //;
+    try move:ll lr =>[[]//|?] [[]//|?] //=;
+    try move:rl rr =>[[]//|?] [[]//|?] //=;
+    rewrite !size_cat //= => wfr _ sc wfl ? H ? scm  _ _;
+    rewrite balanceR'_wf // ddel0E dellvs_wf //;
+    try by rewrite H //.
+    (* by decomp wfr. *)
+    all: try by decomp wfr.
+   move=>rbl rbr; rewrite balanceR'_wf // (IHd n) //; try by rewrite neq //.
+   rewrite H // -dsizeE //.
+  *move/eqP=>C;move:n_gt0; rewrite C //.
 Qed.
 
 End delete.
