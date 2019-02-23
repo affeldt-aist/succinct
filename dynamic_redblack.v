@@ -1181,13 +1181,41 @@ Qed.
 
 Lemma size_shift (x : seq bool) : 
   ((w ^ 2)./2 == size x) = false -> 
-  (w ^ 2)./2 <= size x < (w ^ 2).*2 -> 
-  (w ^ 2)./2 <= (size x).-1 < (w ^ 2).*2.
+  (w ^ 2)./2 <= size x -> 
+  (w ^ 2)./2 <= (size x).-1.
 Proof.
-  move=> wx; move/andP=> [] lo go.
-  have wp : 0 < size x. apply positivity_w => //.
-  apply/andP; split; last (rewrite -addn1 -subn1 subnK // leq_eqVlt go orbT //).
+  move=>wx lo.
+  have wp: 0 < size x by apply positivity_w => //.
   by rewrite /leq -subn1 subnBA // addn1 subn_eq0 ltn_neqAle lo wx /=.
+  (* apply/andP; split; last (rewrite -addn1 -subn1 subnK // leq_eqVlt go orbT //). *)
+Qed.
+
+Lemma ltn_subLR m n p : 0 < n -> (m < n + p) = (m - p < n).
+Proof.
+  move=>n_gt0.
+  case H:(p <= m); 
+   first rewrite /leq -addn1 addnC subnDA add1n -subnDA addnC subnDA subn_eq0 subSn //.
+  move:H; rewrite leqNgt; move/negPn=>H.
+  rewrite ltn_addl // ltnNge.
+  apply/implyP;case:ifP; first (intros; apply/implyP=>//).
+  move/negPn; move/eqP:(ltnW H)=>->.
+  rewrite leqNgt n_gt0 //.
+Qed.
+
+Lemma wordsize_sqrn_2_gt1 : (w ^ 2)./2 > 1.
+Proof.
+  rewrite /leq.
+  have zt:0 = 0.*2 by rewrite -mul2n muln0.
+  apply/eqP; rewrite [in RHS]zt; apply/eqP.
+  rewrite -!muln2 eqn_mul //; last first.
+   case:w Hw=>//-[]// w' _.
+   rewrite -[w'.+2]addn2 sqrnD -!divn2.
+   rewrite divnDr //; last rewrite dvdn_mull //; last rewrite dvdn_mull //.
+   rewrite divnDr //.
+   rewrite !divn2 /= addnC !addnA addnC !subnDA; by compute.
+  apply/eqP; rewrite divn_small //.
+  rewrite /leq subnS -addn1 addnK -subnS subSS subn_eq0.
+  case:w Hw=>//-[]//.
 Qed.
 
 Lemma dellvs_wf l r i c:
@@ -1196,71 +1224,29 @@ Lemma dellvs_wf l r i c:
   (w ^ 2)./2 <= size r < (w ^ 2).*2 ->
   wf_dtree (delete_leaves c l r i).
 Proof.
-  have Hp : (w ^ 2)./2 > 0 by move: Hw; case w => // -[].
-  rewrite /delete_leaves.
-  repeat case: ifP.
-  *case: r Hp => /=.
-    rewrite ltnNge /leq subn0 => T C; move/eqP: C T => -> //.
-   move => ? l' Hp a b ? sc ? ?; rewrite size_cat size_rcons !size_delete //=;
-   move: a b; move/eqP => a; move/eqP => b; rewrite a -b.
-   rewrite (@ltn_predK i (w ^ 2)./2) // a // -a b //.
-   apply/andP; split; first apply leq_addr.
-   rewrite -addn1 -addnA addn1 -a -b addnn -!muln2 leq_mul2r /=.
-   rewrite -divn2 ltnW // trivial_lem2 //; case: w Hw => //=.
-   
-  *move => wr wl ic sc Hl Hr.
-   rewrite /= !size_rcons !size_delete //; last apply positivity_w.
-   rewrite !eq_refl /=.
-   move/eqP: wl => wl.
-   rewrite -wl (@ltn_predK 0 (w ^ 2)./2) // -!divn2 size_pf_ltn2 leqnn /= !divn2 size_shift //.
-   move/andP:Hr=>[] //.
-
-  *move=> wl ic sc Hl Hr.
-   rewrite /= !eq_refl Hr /= andbT size_delete // size_shift //.
-   
-  *move=> wr wl ic sc Hl Hr.
-   rewrite /= !size_cat // !size_take // !size_drop //.
-   case: ifP => H.
-    rewrite !addnBA //; last rewrite ltn_addl //.
-    apply/andP; split.
-     rewrite /leq -[(_ - size _).+1]addn1 !subnDA addnCA addnC addnK.
-     rewrite subnBA.
-     rewrite addn1 subn_eq0.
-     move/eqP:wl=> <-;move/eqP:wr=> <-.
-     rewrite addnn double_pos //.
-     move/eqP:wl=> <-;rewrite ltn_addr //.
-    rewrite /leq -[(_ - size _).+1]addn1 !subnDA addnCA addnC addnK.
-    move/eqP:wl=> <-;move/eqP:wr=> <-.
-    rewrite subnS subn0 (@ltn_predK 0 ((w ^ 2)./2 + (w ^ 2)./2)) addnn; last rewrite ltnW // trivial_lem //.
-    rewrite subn_eq0 -!muln2 leq_mul2r /= -divn2 ltnW // trivial_lem2 //; last case: w Hw => //.
-   rewrite -[(_ - size _).+1]addn1 !subnDA !addnA addnAC subnBA; last rewrite leqNgt ic //.
-   move: ic H; move/eqP:wl=> <-;move/eqP:wr=> <- ic H.
-   apply/andP; split; first apply leq_addl.
-   move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic.
-   move/negP: H; rewrite ltnNge; move/negPn/negPn; rewrite /leq.
-   rewrite -subnBA // subnS subn0; move/eqP => -> /=; rewrite addn0.
-   rewrite subn_eq0 addnn -!muln2 ltn_mul2r /= -divn2 trivial_lem2 //; case: w Hw => //.
-   
-  *move=> wr wl ic sc Hl Hr.
-   rewrite /= !eq_refl Hl /= size_delete; last first.
-    rewrite /leq -addn1 addnC addnBA.
-    rewrite addnC addn1 -subnDA subn_eq0 //.
-    move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic //.
-   rewrite size_shift //.
-   
-  *move=> wr wl ic sc Hl Hr.
-   rewrite /= !size_delete; last first.
-   -rewrite /leq (@ltn_predK 0 (size l)); first rewrite subnn //.
-    rewrite positivity_w //; move/andP:Hl=>[] //.
-   -move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic.
-    rewrite /leq -addn1 addnC addnBA // addnC addn1 -subnDA subn_eq0 //.
-   rewrite !eq_refl /=.
-   move/eqP:wr Hr=> <- H; rewrite (@ltn_predK 0 (w ^ 2)./2) // H size_shift //.
-
-  *move=> wr wl ic sc Hl Hr.
-   rewrite /= Hl !eq_refl !size_delete /=; first rewrite size_shift //.
-   move/negP: ic; rewrite ltnNge; move/negPn/negPn => ic.
-   rewrite /leq -addn1 addnC addnBA // addnC addn1 -subnDA subn_eq0 //.
+  move=>sc wl wr.
+  have?:(w ^ 2) > 0 by move: Hw; case w => // -[].
+  have?:(w ^ 2)./2 > 0 by move: Hw; case w => // -[].
+  have?:0 < size r by apply positivity_w; move/andP:wr=>[]//.
+  have?:0 < size l by apply positivity_w; move/andP:wl=>[]//.
+  have?:(size l).-1 < size l by rewrite /leq (@ltn_predK 0 _) // subnn //.
+  rewrite /delete_leaves;
+  repeat case: ifP; move=>rc lc /=;
+  try move=>?;
+  try rewrite !eq_refl /=;
+  try rewrite add0n subn1;
+  try rewrite !size_delete //;
+  try rewrite size_cat // !size_delete //;
+  try rewrite !size_rcons !size_delete //;
+  try rewrite size_shift //;
+  try rewrite -ltn_subLR // addnC //;
+  try rewrite [_.-1 < _]ltnW //;
+  try rewrite (@ltn_predK 0 _) //;
+  try (move/eqP:lc=><-; move/eqP:rc=><-);
+  try by decomp wl;
+  try by decomp wr;
+  try by (apply/andP;split; first rewrite leq_addr //;
+   rewrite /leq -addnS (@ltn_predK 0 _) // addnn subn_eq0 -!muln2 leq_mul2r /= -divn2 ltnW // trivial_lem2 //).
 Qed.
 
 Lemma positivity (B: dtree) : wf_dtree B -> dsize B > 0.
@@ -1278,7 +1264,7 @@ Proof.
   case: B b => B b /= wfB wfb.
    by rewrite dsizeE // donesE // !eq_refl wfB wfb.
    
-   move:c b wfb=>[][[][[]?[]???|?][]??[[]?[]??[[]?[]???|?]|?]|?] wfb /=;
+  move:c b wfb=>[][[][[]?[]???|?][]??[[]?[]??[[]?[]???|?]|?]|?] wfb /=;
    try decomp wfb => //;
    try rewrite !size_cat !count_cat;
    try rewrite !addnA;
