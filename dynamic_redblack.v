@@ -920,17 +920,14 @@ Section delete.
     match B with
     | Bnode Black (Bleaf l) (s,o) (Bleaf r) => delete_leaves Black l r i
     | Bnode Red (Bleaf l) (s,o) (Bleaf r) => delete_leaves Red l r i
-                                                           
     | Bnode Black (Bnode Red (Bleaf ll) (ls,_) (Bleaf lr)) (s,_) (Bleaf r) => 
       if i < s
       then balanceL' Black (delete_leaves Red ll lr i) (Bleaf _ r)
       else balanceR' Black (Bleaf _ ll) (delete_leaves Red lr r (i - ls))
-                                                           
     | Bnode Black (Bleaf l) (ls,_) (Bnode Red (Bleaf rl) (rs,_) (Bleaf rr)) => 
       if i < ls + rs
       then balanceL' Black (delete_leaves Red l rl i) (Bleaf _ rr)
       else balanceR' Black (Bleaf _ l) (delete_leaves Red rl rr (i - ls))
-                     
     | Bnode Black (Bnode Black ll (ls,lo) lr) (s,_) (Bnode Red rl (rs,ro) rr) =>
       let l := Bnode Black ll (ls,lo) lr in
       let r := Bnode Red rl (rs,ro) rr in
@@ -1018,11 +1015,6 @@ Section delete.
     rewrite addnS => H; move: (ltnW H).
     apply IH.
   Qed.
-  
-  (*
-  Lemma positivity_w x : x >= (w ^ 2)./2 -> 0 < x.
-  Proof. case: x Hw => //; case => // x. case: w Hw => //; case => //. Qed.
-  *)
   
   Lemma ddelE (B : dtree) i :
     wf_dtree low high B -> dflattenn (ddel B i) = delete (dflatten B) i.
@@ -1230,7 +1222,7 @@ Proof. rewrite leq_eqVlt => -> /= lo; by rewrite -ltnS (ltn_predK lo). Qed.
 Lemma ltn_subLR m n p : 0 < p -> (m - n < p) = (m < n + p).
 Proof. case: p => //= p; by rewrite addnS !ltnS leq_subLR. Qed.
 
-Lemma dellvs_wf l r i c:
+Lemma delete_leaves_wf l r i c:
   i < size l + size r ->
   low <= size l < high ->
   low <= size r < high ->
@@ -1264,18 +1256,18 @@ Lemma ddel_wf (B : dtree) n i :
   wf_dtree_l (ddel B i).
 Proof.
   move: n; functional induction (ddel B i) => n n_gt0.
-  - by move=> _ Hi wf; rewrite dellvs_wf //; decomp wf.
-  - by move=> _ Hi wf; rewrite dellvs_wf //; decomp wf.
+  - by move=> _ Hi wf; rewrite delete_leaves_wf //; decomp wf.
+  - by move=> _ Hi wf; rewrite delete_leaves_wf //; decomp wf.
   - move=> _ _ /= wf.
-    rewrite balanceL'_wf ?dellvs_wf ?(leq_trans e0) //; decomp wf => //.
+    rewrite balanceL'_wf ?delete_leaves_wf ?(leq_trans e0) //; decomp wf => //.
     by rewrite size_cat.
   - move=> _ /= Hi wf.
-    rewrite balanceR'_wf ?dellvs_wf // ?(leq_trans H) //; decomp wf => //.
+    rewrite balanceR'_wf ?delete_leaves_wf // ?(leq_trans H) //; decomp wf => //.
     by rewrite ltn_subLR !(addnA,leq_trans Hlow1,leq_trans H5,leq_addr).
   - move=> _ /= Hi wf.
-    by rewrite balanceL'_wf ?dellvs_wf // ?(leq_trans e0) //; decomp wf.
+    by rewrite balanceL'_wf ?delete_leaves_wf // ?(leq_trans e0) //; decomp wf.
   - move=> _ /= Hi wf.
-    rewrite balanceR'_wf ?dellvs_wf // ?(leq_trans Hi) //; decomp wf => //.
+    rewrite balanceR'_wf ?delete_leaves_wf // ?(leq_trans Hi) //; decomp wf => //.
     by rewrite ltn_subLR // (leq_trans Hlow1) // (leq_trans H5) // leq_addr.
   - move=> Hrb /= Hi wf.
     rewrite balanceL'_wf // ?(IHd n.-1) //; decomp Hrb => //=.
@@ -1307,7 +1299,7 @@ Proof.
       try move:ll lr =>[[]//|?] [[]//|?] //=;
       try move:rl rr =>[[]//|?] [[]//|?] //=.
       rewrite !size_cat // => wfr _ ? wfl ? H ? _ _.
-      rewrite balanceL'_wf // ddel0E dellvs_wf //; first (by rewrite -H);
+      rewrite balanceL'_wf // ddel0E delete_leaves_wf //; first (by rewrite -H);
         by decomp wfl.
     move=>rbl rbr; by rewrite balanceL'_wf // (IHd n) // ?neq // dsizeE' // -H.
   - case: c y => //= y; move/andP => [] rbl rbr sc;
@@ -1321,7 +1313,7 @@ Proof.
       try move:ll lr =>[[]//|?] [[]//|?] //=;
       try move:rl rr =>[[]//|?] [[]//|?] //=.
       rewrite !size_cat // => wfr _ ? wfl ? H ? _ _.
-      rewrite balanceR'_wf //= ddel0E dellvs_wf //; decomp wfr => //.
+      rewrite balanceR'_wf //= ddel0E delete_leaves_wf //; decomp wfr => //.
       by rewrite H ltn_subLR // (leq_trans Hlow1) // (leq_trans H2) // leq_addr.
     move=>rbl rbr; rewrite balanceR'_wf // (IHd n) // ?neq // dsizeE' //.
     by rewrite H ltn_subLR // -!dsizeE' // dsize_gt0.
@@ -1337,7 +1329,7 @@ Proof.
 case: n => [|n].
   case: B => [[]// [[]//???|s1] [n1 o1] [[]//???|s2]|s] //=.
     rewrite ddel0E => _ Hi wf.
-    apply /wf_dtree_dtree' /dellvs_wf => //; by decomp wf.
+    apply /wf_dtree_dtree' /delete_leaves_wf => //; by decomp wf.
   move=> _ Hi Hs; rewrite size_delete //.
   by rewrite (ltn_predK Hi) ltnW.
 case: B => // c l d r rb Hi wf.
