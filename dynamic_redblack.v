@@ -1161,46 +1161,21 @@ Qed.
 Coercion identify_deleted_dtree : deleted_dtree >-> dtree.
 
 Lemma balanceL'_wf (B: deleted_dtree) b c:
-  wf_dtree B ->
-  wf_dtree b ->
-  wf_dtree (balanceL' c B b).
+  wf_dtree B -> wf_dtree b -> wf_dtree (balanceL' c B b).
 Proof.
   case: B b => B b /= wfB wfb.
-   by rewrite dsizeE // donesE // !eq_refl wfB wfb.
-   
+    by rewrite dsizeE // donesE // !eqxx wfB wfb.
   move:c b wfb=>[][[][[][[]?[]???|?][]???|?][]??[[]?[]???|?]|?] wfb /=;
    try decomp wfb => //;
-   try rewrite !size_cat !count_cat;
-   try rewrite !addnA;
-   try rewrite !catA;
-   try rewrite !size_cat !count_cat;
-   try rewrite !dsizeE //;
-   try rewrite !donesE //;
-   by rewrite !eq_refl wfB //.
+   by rewrite !(size_cat,count_cat,addnA,catA,dsizeE,donesE,eqxx,wfB).
 Qed.
 
-Lemma size_shift (x : seq bool) : 
-  ((w ^ 2)./2 == size x) = false -> 
-  (w ^ 2)./2 <= size x -> 
-  (w ^ 2)./2 <= (size x).-1.
-Proof.
-  move=>wx lo.
-  have wp: 0 < size x by apply positivity_w => //.
-  by rewrite /leq -subn1 subnBA // addn1 subn_eq0 ltn_neqAle lo wx /=.
-  (* apply/andP; split; last (rewrite -addn1 -subn1 subnK // leq_eqVlt go orbT //). *)
-Qed.
+Lemma leq_predr (m n : nat) :
+  (m == n) = false -> m <= n -> m <= n.-1.
+Proof. rewrite leq_eqVlt => -> /= lo; by rewrite -ltnS (ltn_predK lo). Qed.
 
-Lemma ltn_subLR m n p : 0 < n -> (m < n + p) = (m - p < n).
-Proof.
-  move=>n_gt0.
-  case H:(p <= m); 
-   first rewrite /leq -addn1 addnC subnDA add1n -subnDA addnC subnDA subn_eq0 subSn //.
-  move:H; rewrite leqNgt; move/negPn=>H.
-  rewrite ltn_addl // ltnNge.
-  apply/implyP;case:ifP; first (intros; apply/implyP=>//).
-  move/negPn; move/eqP:(ltnW H)=>->.
-  rewrite leqNgt n_gt0 //.
-Qed.
+Lemma ltn_subLR m n p : 0 < p -> (m - n < p) = (m < n + p).
+Proof. case: p => //= p; by rewrite addnS !ltnS leq_subLR. Qed.
 
 Lemma wordsize_sqrn_2_gt1 : (w ^ 2)./2 > 1.
 Proof.
@@ -1238,8 +1213,8 @@ Proof.
   try rewrite !size_delete //;
   try rewrite size_cat // !size_delete //;
   try rewrite !size_rcons !size_delete //;
-  try rewrite size_shift //;
-  try rewrite -ltn_subLR // addnC //;
+  try rewrite leq_predr //;
+  try rewrite ltn_subLR // addnC //;
   try rewrite [_.-1 < _]ltnW //;
   try rewrite (@ltn_predK 0 _) //;
   try (move/eqP:lc=><-; move/eqP:rc=><-);
