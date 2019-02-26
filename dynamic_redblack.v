@@ -799,6 +799,9 @@ Section delete.
   Let Hhigh : 1 < high.
   Proof. by rewrite (leq_trans _ Hlow) // (leq_double 1 low). Qed.
   Local Notation wf_dtree' := (wf_dtree' low high).
+  Local Notation wf_dtree_l := (wf_dtree low high).
+  Local Notation donesE' := (@donesE low high).
+  Local Notation dsizeE' := (@dsizeE low high).
 
   Inductive deleted_dtree: Type :=
   | Stay : dtree -> deleted_dtree
@@ -1017,7 +1020,7 @@ Section delete.
   Qed.
   
   Lemma ddelE (B : dtree) i :
-    wf_dtree low high B -> dflattenn (ddel B i) = delete (dflatten B) i.
+    wf_dtree_l B -> dflattenn (ddel B i) = delete (dflatten B) i.
   Proof.
     functional induction (ddel B i)
       => //= /andP [/eqP Hs] /andP [_] /andP [wfl wfr].
@@ -1060,8 +1063,7 @@ Section delete.
       
     + rewrite balanceL'E IHd; last first.
         move: wfl wfr; repeat decompose_rewrite => /=.
-        by rewrite size_cat !(@dsizeE low high) // count_cat
-                   !(@donesE low high) // !eqxx.
+        by rewrite size_cat !dsizeE' // count_cat !donesE' // !eqxx.
       by rewrite !catA [RHS]delete_cat size_cat -Hs ltn_addr.
       
     + case: ifP y => // e0 _.
@@ -1069,7 +1071,7 @@ Section delete.
     + by rewrite balanceL'E delete_cat -Hs e0 IHd.
     + rewrite balanceR'E IHd; last first.
         move: wfl wfr; repeat decompose_rewrite => /=.
-        by rewrite (@dsizeE low high) // (@donesE low high) // !eqxx.
+        by rewrite dsizeE' // donesE' // !eqxx.
       rewrite -!catA // delete_cat.
       case: ifP => H.
         by case: ifP y => //; rewrite Hs size_cat ltn_addr.
@@ -1191,9 +1193,6 @@ Definition identify_deleted_dtree B :=
   end.
 
 Coercion identify_deleted_dtree : deleted_dtree >-> dtree.
-Local Notation wf_dtree_l := (wf_dtree low high).
-Local Notation donesE' := (@donesE low high).
-Local Notation dsizeE' := (@dsizeE low high).
 
 Lemma balanceL'_wf (B: deleted_dtree) b c:
   wf_dtree_l B -> wf_dtree_l b -> wf_dtree_l (balanceL' c B b).
@@ -1248,6 +1247,25 @@ Proof.
   rewrite (leq_trans Hlow1); by decomp wf.
 Qed.
   
+Lemma stay_wfL ll lr r i s:
+  s == size (ll ++ lr) -> i < s ->
+  low <= size ll < high -> low <= size lr < high -> low <= size r < high ->
+  wf_dtree_l (balanceL' Black (delete_leaves Red ll lr i) (Bleaf _ r)).
+Proof.
+  move=> ic ? wfll wflr wfr.
+  by rewrite balanceL'_wf // delete_leaves_wf //= -!size_cat -(eqP ic).
+Qed.
+
+Lemma stay_wfR l rl rr i ls:
+  ls == size l -> i < size l + size rl + size rr ->
+  low <= size l < high -> low <= size rl < high -> low <= size rr < high ->
+  wf_dtree_l (balanceR' Black (Bleaf _ l) (delete_leaves Red rl rr (i - ls))).
+Proof.
+  move=> ic ? wfl wfrl wfrr.
+  rewrite balanceR'_wf // delete_leaves_wf //= ltn_subLR ?addnA ?(eqP ic) //.
+  apply /(leq_trans (leq_trans Hlow1 _) (leq_addr _ _)); by decomp wfrl.
+Qed.
+
 Lemma ddel_wf (B : dtree) n i :
   n > 0 ->
   is_redblack B Black n ->
@@ -1255,40 +1273,28 @@ Lemma ddel_wf (B : dtree) n i :
   wf_dtree_l B ->
   wf_dtree_l (ddel B i).
 Proof.
-  move: n; functional induction (ddel B i) => n n_gt0.
-  - by move=> _ Hi wf; rewrite delete_leaves_wf //; decomp wf.
-  - by move=> _ Hi wf; rewrite delete_leaves_wf //; decomp wf.
-  - move=> _ _ /= wf.
-    rewrite balanceL'_wf ?delete_leaves_wf ?(leq_trans e0) //; decomp wf => //.
-    by rewrite size_cat.
-  - move=> _ /= Hi wf.
-    rewrite balanceR'_wf ?delete_leaves_wf // ?(leq_trans H) //; decomp wf => //.
-    by rewrite ltn_subLR !(addnA,leq_trans Hlow1,leq_trans H5,leq_addr).
-  - move=> _ /= Hi wf.
-    by rewrite balanceL'_wf ?delete_leaves_wf // ?(leq_trans e0) //; decomp wf.
-  - move=> _ /= Hi wf.
-    rewrite balanceR'_wf ?delete_leaves_wf // ?(leq_trans Hi) //; decomp wf => //.
-    by rewrite ltn_subLR // (leq_trans Hlow1) // (leq_trans H5) // leq_addr.
-  - move=> Hrb /= Hi wf.
-    rewrite balanceL'_wf // ?(IHd n.-1) //; decomp Hrb => //=.
+  move: n; functional induction (ddel B i) => n n_gt0 rbB Hi wf.
+  - by rewrite delete_leaves_wf //; decomp wf.
+  - by rewrite delete_leaves_wf //; decomp wf.
+  - apply /stay_wfL; move: e0; by decomp wf.
+  - apply /stay_wfR; by decomp wf.
+  - apply /stay_wfL; move: e0; decomp wf; by rewrite ?size_cat.
+  - apply /stay_wfR; decomp wf; by rewrite -?addnA.
+  - rewrite balanceL'_wf // ?(IHd n.-1) //; decomp rbB => //=.
         rewrite (leq_trans e0) //; decomp wf => //=.
         by rewrite size_cat -!dsizeE' // leq_addr.
       decomp wf; by rewrite !(dsizeE',donesE',size_cat,count_cat,eqxx).
     by decomp wf.
-  - move=> Hrb /= Hi wf.
-    rewrite balanceR'_wf // ?(IHd n.-1) //; decomp Hrb => //=; decomp wf => //.
+  - rewrite balanceR'_wf // ?(IHd n.-1) //; decomp rbB => //=; decomp wf => //.
     rewrite ltn_subLR ?size_cat -?dsizeE' //.
     by rewrite (leq_trans (dsize_gt0 H13)) // leq_addr.
-  - move=> Hrb /= Hi wf.
-    rewrite balanceL'_wf // ?(IHd n.-1) //; decomp Hrb => //=; decomp wf => //.
+  - rewrite balanceL'_wf // ?(IHd n.-1) //; decomp rbB => //=; decomp wf => //.
     by rewrite !dsizeE' // -size_cat -(eqP H5).
-  - move=> Hrb /= Hi wf.
-    rewrite balanceR'_wf // ?(IHd n.-1) //; decomp Hrb => //=; decomp wf => //.
-      rewrite ltn_subLR ?size_cat -?dsizeE' //.
-        by rewrite addnA.
+  - rewrite balanceR'_wf // ?(IHd n.-1) //; decomp rbB => //=; decomp wf => //.
+      rewrite ltn_subLR ?size_cat -?dsizeE' //; first by rewrite addnA.
       by rewrite (leq_trans (dsize_gt0 H10)) // leq_addr.
     by rewrite !(dsizeE',donesE',eqxx).
-  - case: c y => //= y; move/andP => [] rbl rbr sc. 
+  - case: c y rbB Hi wf => //= y; move/andP => [] rbl rbr sc.
       move/andP => [/eqP H] /andP [?] /andP [wfl wfr].
       rewrite balanceL'_wf // (IHd n) // ?is_redblack_Red_Black //.
       by rewrite dsizeE' // -H.
@@ -1302,7 +1308,7 @@ Proof.
       rewrite balanceL'_wf // ddel0E delete_leaves_wf //; first (by rewrite -H);
         by decomp wfl.
     move=>rbl rbr; by rewrite balanceL'_wf // (IHd n) // ?neq // dsizeE' // -H.
-  - case: c y => //= y; move/andP => [] rbl rbr sc;
+  - case: c y rbB Hi wf => //= y; move/andP => [] rbl rbr sc;
       move/andP => [/eqP H] /andP [los] /andP [wfl wfr].
       rewrite balanceR'_wf // (IHd n) // ?is_redblack_Red_Black //.
       by rewrite ltn_subLR // ?H -?dsizeE' // dsize_gt0.
@@ -1317,7 +1323,7 @@ Proof.
       by rewrite H ltn_subLR // (leq_trans Hlow1) // (leq_trans H2) // leq_addr.
     move=>rbl rbr; rewrite balanceR'_wf // (IHd n) // ?neq // dsizeE' //.
     by rewrite H ltn_subLR // -!dsizeE' // dsize_gt0.
-  - by case: n n_gt0.
+  - by case: n n_gt0 rbB.
 Qed.
 
 Lemma ddel_wf' (B : dtree) n i :
