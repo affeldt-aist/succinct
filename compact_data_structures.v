@@ -473,6 +473,10 @@ Lemma mzips1 s : mzip s [::] = s.
 Proof. by case: s. Qed.
 
 Canonical mzip_monoid := Monoid.Law mzipA mzip1s mzips1.
+
+Lemma foldr_bigop C (g : C -> A) cl :
+  foldr (M \o g) e cl = \big[M/e]_(i <- cl) g i.
+Proof. by rewrite BigOp.bigopE. Qed.
 End mzip.
 
 Section lo_traversal_st.
@@ -485,6 +489,10 @@ Fixpoint level_traversal t :=
   [:: f t] :: foldr (mzip_cat \o level_traversal) nil cl.
 
 Definition lo_traversal_st t := flatten (level_traversal t).
+
+Lemma level_traversal_fold t :
+  level_traversal t = foldr (mzip_cat \o level_traversal) nil [:: t].
+Proof. by case: t. Qed.
 
 Lemma level_traversal_eq w :
   ~~ nilp w ->
@@ -509,9 +517,7 @@ Definition lo_traversal_cat t := flatten (level_traversal_cat t [::]).
 Lemma level_traversal_cat_ok t ss :
   mzip_cat (level_traversal t) ss = level_traversal_cat t ss.
 Proof.
-set h := height t.
-have Hh : height t <= h by [].
-clearbody h.
+have [h Hh] : exists h, height t <= h by esplit.
 elim: h t ss Hh => // [|h IH] [a cl] ss.
   by rewrite leqNgt height_gt0.
 move/height_Node => /= Hh.
@@ -541,20 +547,14 @@ Theorem lo_traversal_st_ok (A : eqType) B (f : forest A -> seq B) (t : tree A) :
   lo_traversal f t = flatten (lo_traversal_st g t).
 Proof.
 move=> g.
-rewrite /lo_traversal_st.
-have -> : level_traversal g t =
-          foldr (mzip_cat _ \o level_traversal g) nil [:: t] by case: t.
-rewrite /lo_traversal /lo_traversal'.
+rewrite /lo_traversal_st level_traversal_fold /lo_traversal /lo_traversal'.
 set w := [:: t]; set h := height t.
 have Hh : forall t : tree A, t \in w -> height t <= h.
   by move=> t'; rewrite inE => /eqP ->.
 elim: {t} h w Hh => //= [|h IH] w Hh.
-  case: w Hh => // t w /(_ t).
-  by rewrite mem_head leqNgt height_gt0 => /(_ isT).
+  case: w Hh => // t w /(_ t (mem_head _ _)); by rewrite leqNgt height_gt0.
 rewrite IH.
-  case /boolP: (nilp w) => Hnil.
-    by move/nilP: Hnil => ->.
-  rewrite (level_traversal_eq g Hnil).
+  case /boolP: (nilp w) => [/nilP | /level_traversal_eq] -> //.
   by rewrite flatten_cat [in RHS](map_comp f).
 by move=> t /flattenP [s] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
 Qed.
