@@ -2574,16 +2574,6 @@ Section delete.
     rewrite delete_oversize //= dflatten_sizeK leqNgt. by move/eqP/eqnP/eqP: H0.
   Qed.
 
-  (* 
-   * As far as I have tried, this is as far as we can get.
-   * Due to a suspected bug in Coq, when trying to construct ddelete, Coq 
-   * throws an error (anomaly). 
-   *
-   * I (Xuanrui) have already reported this issue to the Coq developers
-   * (https://github.com/coq/coq/issues/9581).
-   * If the issue is resolved, then we can define ddelete using the fixed 
-   * Coq development version. Before then, this is the best we could do.
-   *) 
   Next Obligation. intros; subst. by subst wildcard'. Qed.
   
 End delete.
