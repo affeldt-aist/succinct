@@ -1,9 +1,5 @@
 * Compact data structures in Coq
 
-*WARNING*: due to a suspected bug in Coq (reported as https://github.com/coq/coq/issues/9581), this code doesn't 
-actually work. Everything works except for ~ddelete~, but attempting to define ~ddelete~ triggers an anomaly 
-in Coq. Before we confirm this issue with Coq developers, we will need to hold on.
-
 A tentative formalization of compact data structures following [1]
 
 [1] Gonzalo Navarro, Compact Data Structures---A Practical Approach, Cambridge University Press, 2016
