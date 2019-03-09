@@ -1961,11 +1961,17 @@ Section delete.
     destruct balleft_obligation_78, balleft_obligation_75 => //=.
     by rewrite -Heq_l -Heq_r //= catA. 
   Qed.
+
+  Definition pos_black c d :=
+    match c with
+    | Black => d > 0
+    | Red => true
+    end.
   
   Program Fixpoint ddelete {num ones d c}
     (B : tree num ones d c)
     (i : nat)
-    (H : if c is Black then d > 0 else true) { measure (tree_size B) } :
+    (H : pos_black c d) { measure (tree_size B) } :
     { B' : del_tree (num - (i < num)) (ones - (daccess B i)) d c |
       dflattend B' = delete (dflatten B) i } :=
     if i < num is true
@@ -2131,15 +2137,15 @@ Section delete.
   Next Obligation.
     intros; subst. rewrite /eq_rect.
     destruct ddelete_func_obligation_6, ddelete_func_obligation_5.
-    destruct ddelete_func_obligation_8 => //=.
+    destruct ddelete_func_obligation_7 => //=.
     subst filtered_var. rewrite /access nth_cat //= -Heq_l //=.
     by rewrite -Heq_anonymous. 
   Qed.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_12, ddelete_func_obligation_11.
-    destruct ddelete_func_obligation_10, ddelete_func_obligation_9 => //=.
+    destruct ddelete_func_obligation_11, ddelete_func_obligation_10.
+    destruct ddelete_func_obligation_9, ddelete_func_obligation_8 => //=.
     move: res H0. rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     by destruct Heq_cl.
   Qed.
@@ -2163,8 +2169,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_19, ddelete_func_obligation_18.
-    destruct ddelete_func_obligation_21, ddelete_func_obligation_20 => //=.
+    destruct ddelete_func_obligation_18, ddelete_func_obligation_17.
+    destruct ddelete_func_obligation_20, ddelete_func_obligation_19 => //=.
     subst filtered_var.
     rewrite H1 //= delete_catL. by rewrite H0.
     by rewrite -Heq_l //= size_cat //= !dflatten_sizeK.
@@ -2177,15 +2183,15 @@ Section delete.
   Next Obligation.
     intros; subst. rewrite /eq_rect.
     destruct ddelete_func_obligation_24, ddelete_func_obligation_23.
-    destruct ddelete_func_obligation_26 => //=.
+    destruct ddelete_func_obligation_25 => //=.
     subst filtered_var. rewrite -if_neg /access nth_cat -Heq_l //= -if_neg.
     move/eqP/eqnP/eqP: (H0) => ->. by rewrite daccessK /access.
   Qed.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_30, ddelete_func_obligation_29.
-    destruct ddelete_func_obligation_28, ddelete_func_obligation_27.
+    destruct ddelete_func_obligation_29, ddelete_func_obligation_28.
+    destruct ddelete_func_obligation_27, ddelete_func_obligation_26.
     move: res H1.  rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     by destruct Heq_cl.
   Qed.
@@ -2214,8 +2220,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_39, ddelete_func_obligation_38.
-    destruct ddelete_func_obligation_37, ddelete_func_obligation_36 => //=.
+    destruct ddelete_func_obligation_38, ddelete_func_obligation_37.
+    destruct ddelete_func_obligation_36, ddelete_func_obligation_35 => //=.
     rewrite H2. subst filtered_var.
     rewrite delete_catR. by rewrite H1 {2}(dflatten_size l).
     rewrite -(dflatten_size l). move/eqP/eqnP/eqP: H0. by rewrite -leqNgt.
@@ -2231,16 +2237,16 @@ Section delete.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_44, ddelete_func_obligation_43.
-    destruct ddelete_func_obligation_46 => //=.
+    destruct ddelete_func_obligation_43, ddelete_func_obligation_42.
+    destruct ddelete_func_obligation_45 => //=.
     subst filtered_var filtered_var0.
     by rewrite daccessK /access nth_cat (dflatten_sizeK l) -Heq_anonymous.
   Qed.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_50, ddelete_func_obligation_49.
-    destruct ddelete_func_obligation_48, ddelete_func_obligation_47.
+    destruct ddelete_func_obligation_49, ddelete_func_obligation_48.
+    destruct ddelete_func_obligation_47, ddelete_func_obligation_46.
     move: res H0. by rewrite /eq_rect.
   Qed.
 
@@ -2272,8 +2278,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
-    destruct ddelete_func_obligation_64, ddelete_func_obligation_63.
-    destruct ddelete_func_obligation_62, ddelete_func_obligation_61 => //=.
+    destruct ddelete_func_obligation_63, ddelete_func_obligation_62.
+    destruct ddelete_func_obligation_61, ddelete_func_obligation_60 => //=.
     move: Heq_wildcard'2 lres lres' Heq_lres H0.
     rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     destruct Heq_wildcard'2 => lres lres' Heq_lres.
@@ -2303,8 +2309,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect.
-    destruct ddelete_func_obligation_76, ddelete_func_obligation_75.
-    destruct ddelete_func_obligation_74, ddelete_func_obligation_73 => //=.
+    destruct ddelete_func_obligation_75, ddelete_func_obligation_74.
+    destruct ddelete_func_obligation_73, ddelete_func_obligation_72 => //=.
     rewrite H1 H0 delete_catL //=. rewrite dflatten_sizeK. by subst filtered_var.
   Qed.
 
@@ -2321,7 +2327,7 @@ Section delete.
     apply: (leq_trans (n := lnum)) => //=. by rewrite leq_addr.
     rewrite Hi addnC addnBA //=.
     by rewrite addnCA addnA [X in _ = _ + X - _]addnC addnA.
-    apply: (leq_ltn_trans (n := i)). by rewrite leq0n. exact.  
+    apply: (leq_ltn_trans (n := i)). by rewrite leq0n. exact.
   Qed.
 
   Next Obligation.
@@ -2336,10 +2342,9 @@ Section delete.
   Qed.
 
   Next Obligation.
-    intros; subst. subst filtered_var.
-    rewrite /eq_rect.
-    destruct ddelete_func_obligation_89, ddelete_func_obligation_88.
-    destruct ddelete_func_obligation_87, ddelete_func_obligation_86 => //=.
+    intros; subst. subst filtered_var. rewrite /eq_rect.
+    destruct ddelete_func_obligation_88, ddelete_func_obligation_87.
+    destruct ddelete_func_obligation_86, ddelete_func_obligation_85 => //=.
     rewrite H1 H0 /eq_rect //= -Heq_r //=.
     by rewrite !delete_catL ?catA //= dflatten_sizeK.
   Qed.
@@ -2371,8 +2376,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var. rewrite /eq_rect.
-    destruct ddelete_func_obligation_98, ddelete_func_obligation_97.
-    destruct ddelete_func_obligation_96, ddelete_func_obligation_95 => //=.
+    destruct ddelete_func_obligation_97, ddelete_func_obligation_96.
+    destruct ddelete_func_obligation_95, ddelete_func_obligation_94 => //=.
     by rewrite H1 H0 delete_catL //= dflatten_sizeK -Heq_anonymous.
   Qed.
 
@@ -2387,10 +2392,9 @@ Section delete.
   Qed.
 
   Next Obligation.
-    intros; subst. subst filtered_var filtered_var0.
-    rewrite /eq_rect.
-    destruct ddelete_func_obligation_104, ddelete_func_obligation_103.
-    destruct ddelete_func_obligation_106 => //=.
+    intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
+    destruct ddelete_func_obligation_103, ddelete_func_obligation_102.
+    destruct ddelete_func_obligation_105 => //=.
     move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0' //=.
     rewrite daccessK. move: Heq_r r'0 H1 r' Heq_r'.
     rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
@@ -2407,8 +2411,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
-    destruct ddelete_func_obligation_112, ddelete_func_obligation_111.
-    destruct ddelete_func_obligation_110, ddelete_func_obligation_109 => //=.
+    destruct ddelete_func_obligation_111, ddelete_func_obligation_110.
+    destruct ddelete_func_obligation_109, ddelete_func_obligation_108 => //=.
     move: Heq_r r'0 H1 r' Heq_r'.
     rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     destruct Heq_wildcard'2 => //= Heq_r r'0 H1 r' Heq_r'.
@@ -2431,8 +2435,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
-    destruct ddelete_func_obligation_122, ddelete_func_obligation_121.
-    by destruct ddelete_func_obligation_120, ddelete_func_obligation_119.
+    destruct ddelete_func_obligation_121, ddelete_func_obligation_120.
+    by destruct ddelete_func_obligation_119, ddelete_func_obligation_118.
   Qed.
 
   Next Obligation.
@@ -2460,8 +2464,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
-    destruct ddelete_func_obligation_133, ddelete_func_obligation_132.
-    destruct ddelete_func_obligation_131, ddelete_func_obligation_130 => //=.
+    destruct ddelete_func_obligation_132, ddelete_func_obligation_131.
+    destruct ddelete_func_obligation_130, ddelete_func_obligation_129 => //=.
     rewrite H2 H1 delete_catR dflatten_sizeK //= leqNgt.
     by move/eqP/eqnP/eqP: (H0) => ->.
   Qed.
@@ -2507,8 +2511,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
-    destruct ddelete_func_obligation_145, ddelete_func_obligation_144.
-    destruct ddelete_func_obligation_143, ddelete_func_obligation_142.
+    destruct ddelete_func_obligation_144, ddelete_func_obligation_143.
+    destruct ddelete_func_obligation_142, ddelete_func_obligation_141.
     rewrite H2 H1 //= -Heq_l //= -[in RHS]catA [in RHS]delete_catR.
     by rewrite dflatten_sizeK.
     rewrite dflatten_sizeK. apply: (leq_trans (n := llnum + wildcard'0)).
@@ -2542,8 +2546,8 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
-    destruct ddelete_func_obligation_154, ddelete_func_obligation_153.
-    destruct ddelete_func_obligation_152, ddelete_func_obligation_151 => //=.
+    destruct ddelete_func_obligation_153, ddelete_func_obligation_152.
+    destruct ddelete_func_obligation_151, ddelete_func_obligation_150 => //=.
     rewrite H2 H1 delete_catR dflatten_sizeK //= leqNgt.
     by move/eqP/eqnP/eqP: (H0) => ->.
   Qed.
@@ -2566,7 +2570,7 @@ Section delete.
 
   Next Obligation.
     intros; subst. subst filtered_var. rewrite /eq_rect.
-    destruct ddelete_func_obligation_159, ddelete_func_obligation_158 => //=.
+    destruct ddelete_func_obligation_158, ddelete_func_obligation_157 => //=.
     rewrite delete_oversize //= dflatten_sizeK leqNgt. by move/eqP/eqnP/eqP: H0.
   Qed.
 
@@ -2581,7 +2585,7 @@ Section delete.
    * Coq development version. Before then, this is the best we could do.
    *) 
   Next Obligation. intros; subst. by subst wildcard'. Qed.
-    
+  
 End delete.
 
 End dynamic_dependent.
