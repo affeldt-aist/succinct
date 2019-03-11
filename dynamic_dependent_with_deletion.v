@@ -9,44 +9,25 @@ Tactic Notation "remember_eq" constr(expr) ident(vname) ident(eqname) := case (e
 
 Section dynamic_dependent.
 
+(* NB: same code in dynamic_dependent_program.v *)
 Variable w : nat.
 Hypothesis wordsize_gt1: w > 1.
 
 Lemma wordsize_gt0 : w > 0.
-Proof. apply ltnW. exact wordsize_gt1. Qed.
+Proof. exact/ltnW/wordsize_gt1. Qed.
 
-Lemma wordsize_neq0: w != 0.
-Proof. rewrite -lt0n. exact wordsize_gt0. Qed.
-
-Lemma wordsize_sqrn_gt2 : w ^ 2 > 2.
-Proof.
-  case_eq w => n. move: wordsize_neq0. by rewrite n.
-  case_eq n => n' H. move/eqP: (ltn_eqF wordsize_gt1). by rewrite H.
-  move => H'.
-  rewrite -[n'.+2]addn2 sqrnD -!mulnn !muln2 -!addnn add2n addnC !addnA.
-  apply/eqP.
-  rewrite addnC subnDA.
-  by compute.
-Qed.
+Lemma wordsize_neq0 : w != 0.
+Proof. rewrite -lt0n; exact wordsize_gt0. Qed.
 
 Lemma wordsize_sqrn_gt0 : w ^ 2 > 0.
-Proof. exact: (ltnW (ltnW wordsize_sqrn_gt2)). Qed.
+Proof. by rewrite sqrn_gt0 lt0n wordsize_neq0. Qed.
 
-Lemma wordsize_sqrn_div2_neq0 : (w ^ 2 %/ 2 <> 0).
+Lemma wordsize_sqrn_gt2 : w ^ 2 > 2.
+Proof. by move: wordsize_gt1; case: w => // -[//|] []. Qed.
+
+Lemma wordsize_sqrn_div2_neq0 : w ^ 2 %/ 2 <> 0.
 Proof.
-  case_eq w => n. move: wordsize_neq0. by rewrite n.
-  move => H1 H2.
-  move: (divn_eq (n.+1 ^ 2) 2).
-  rewrite H2 mul0n add0n.
-  case_eq n => [H3|n']. rewrite H3 in H1. move/eqP: (ltn_eqF wordsize_gt1). by rewrite H1.
-  move => H3 H4.
-  rewrite -H3 -H1 in H4.
-  have H5 : (0 < 2) => //.
-  rewrite -(ltn_mod (w ^ 2) 2) -H4 in H5.
-  move: wordsize_sqrn_gt2.
-  rewrite ltnNge.
-  move: (ltnW H5) => H6.
-  by rewrite H6 /=.
+by move/eqP; rewrite gtn_eqF // divn_gt0 // (ltn_trans _ wordsize_sqrn_gt2).
 Qed.
 
 Section insert.

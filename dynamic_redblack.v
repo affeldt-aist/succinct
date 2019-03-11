@@ -1012,12 +1012,8 @@ Section delete.
     by rewrite cats0 -cat_rcons -take_nth prednK // take_oversize.
   Qed.
 
-  Lemma summand_leq a b c: a + b <= c -> a <= c.
-  Proof.
-    elim:b a c => [|b IH] a c;first rewrite addn0 //.
-    rewrite addnS => H; move: (ltnW H).
-    apply IH.
-  Qed.
+Let summand_leq a b c : a + b <= c -> a <= c.
+Proof. by apply: leq_trans; rewrite leq_addr. Qed.
   
   Lemma ddelE (B : dtree) i :
     wf_dtree_l B -> dflattenn (ddel B i) = delete (dflatten B) i.
