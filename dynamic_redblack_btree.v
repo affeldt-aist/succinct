@@ -1167,11 +1167,7 @@ Proof.
 Qed.
 
 Lemma summand_leq a b c: a + b <= c -> a <= c.
-Proof.
-  elim:b a c => [|b IH] a c;first rewrite addn0 //.
-  rewrite addnS => H; move: (ltnW H).
-  apply IH.
-Qed.
+Proof. by apply: leq_trans; rewrite leq_addr. Qed.
   
 Lemma ltn_subLR m n p : 0 < p -> (m - n < p) = (m < n + p).
 Proof. case: p => //= p; by rewrite addnS !ltnS leq_subLR. Qed.
