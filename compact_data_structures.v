@@ -235,7 +235,8 @@ Variable A : Type.
 Inductive tree := Node : A -> seq tree -> tree.
 (* a leaf is a node with an empty list *)
 
-Lemma tree_ind2 (P : tree -> Prop) :
+(* induction principle assuming only Type *)
+Lemma tree_ind_type (P : tree -> Prop) :
   (forall a l, foldr (fun t => and (P t)) True l -> P (Node a l)) ->
   forall t, P t.
 Proof.
@@ -367,7 +368,7 @@ Fixpoint decode_tree (t : GenTree.tree A) : option (tree A) :=
 
 Lemma pcancel_tree : pcancel encode_tree decode_tree.
 Proof.
-elim/tree_ind2 => a [//|b s /= [-> H2 /=]]; congr (Some (Node _ (_ :: _))).
+elim/tree_ind_type => a [//|b s /= [-> H2 /=]]; congr (Some (Node _ (_ :: _))).
 elim: s H2 => // c s IH /= [-> K2 /=]; by rewrite IH.
 Qed.
 
@@ -375,6 +376,7 @@ End encode_decode_gentree.
 
 Definition tree_eqMixin (A : eqType) := PcanEqMixin (@pcancel_tree A).
 Canonical tree_eqType (A : eqType) := Eval hnf in EqType _ (@tree_eqMixin A).
+
 Definition tree_choiceMixin (A : choiceType) := PcanChoiceMixin (@pcancel_tree A).
 Canonical tree_choiceType (A : choiceType) :=
   Eval hnf in ChoiceType _ (@tree_choiceMixin A).
@@ -392,11 +394,12 @@ elim: l tl => // a b IH; rewrite inE => /orP[/eqP ->|/IH].
 rewrite big_cons leq_max => ->; by rewrite orbT.
 Qed.
 
-Lemma tree_ind3 (A : eqType) (P : tree A -> Prop) :
+(* induction principle using eqType (and therefore \in) *)
+Lemma tree_ind_eqType (A : eqType) (P : tree A -> Prop) :
   (forall a l, (forall x, x \in l -> P x) -> P (Node a l)) ->
   forall t, P t.
 Proof.
-move=> H; apply tree_ind2 => a s IH; apply H.
+move=> H; apply tree_ind_type => a s IH; apply H.
 elim: s IH => // b s IH /= [Pb K] t.
 by rewrite in_cons => /orP[/eqP -> //|]; apply IH.
 Qed.

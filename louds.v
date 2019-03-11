@@ -45,7 +45,7 @@ Definition LOUDS (t : tree A) :=
 Lemma size_LOUDS t : size (LOUDS t) = (number_of_nodes t).*2.-1.
 Proof.
 rewrite /LOUDS.
-elim/tree_ind2: t => a l IH /=.
+elim/tree_ind_eqType: t => a l IH /=.
 rewrite size_cat size_node_description addSn; congr S.
 rewrite -doubleE foldr_bigop.
 rewrite (@big_morph nat (seq (seq (seq bool)))
@@ -53,15 +53,12 @@ rewrite (@big_morph nat (seq (seq (seq bool)))
   elim => // x xs IHx [] //= y ys.
   by rewrite !flatten_cat !size_cat IHx !addnA (addnAC (size (flatten x))).
 rewrite big_seq_cond /=.
-rewrite (eq_bigr (fun t => (number_of_nodes t).*2.-1)) /=.
-  rewrite -big_seq_cond -sum1_size -big_split /=.
-  rewrite size_flatten /shape -map_comp sumnE big_map -muln2 big_distrl /=.
-  apply eq_bigr => -[??] _.
-  by rewrite add1n prednK ?muln2.
-move=> i /andP [Hi _].
-elim: l IH Hi => //= t l IH [Ht Hl].
-rewrite inE => /orP [/eqP -> // | Hi].
-by rewrite IH.
+rewrite (eq_bigr (fun t => (number_of_nodes t).*2.-1)) /=; last first.
+  by move=> i /andP [Hi _]; rewrite IH.
+rewrite -big_seq_cond -sum1_size -big_split /=.
+rewrite size_flatten /shape -map_comp sumnE big_map -muln2 big_distrl /=.
+apply eq_bigr => -[??] _.
+by rewrite add1n prednK ?muln2.
 Qed.
 
 End louds_encoding.
