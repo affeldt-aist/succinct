@@ -435,26 +435,21 @@ End forest.
 Section level_order_traversal.
 
 Variables (A B : Type).
+Variable (f : tree A -> B).
 
 (* n to be instantiated with max of map height l *)
-Fixpoint lo_traversal''
-  (f : forest A -> seq B) n (l : forest A) :=
+Fixpoint lo_traversal' n (l : forest A) :=
   if n is n'.+1 then
-    f l ++
-    lo_traversal'' f n' (children_of_forest l)
+    map f l ++ lo_traversal' n' (children_of_forest l)
   else
     [::].
-
-Variable (f : forest A -> seq B).
-
-Definition lo_traversal' n (l : forest A) :=
-  lo_traversal'' (flatten \o map f \o @children_of_forest' _) n l.
 
 Definition lo_traversal t := lo_traversal' (height t) [:: t].
 
 End level_order_traversal.
 
 Section mzip.
+Import Monoid.Theory.
 Variable (A : Type) (e : A) (M : Monoid.law e).
 
 Fixpoint mzip (l r : seq A) {struct l} :=
@@ -466,7 +461,7 @@ Fixpoint mzip (l r : seq A) {struct l} :=
 Lemma mzipA : associative mzip.
 Proof.
 elim => [|lh lt IH] [|rh rt] [|sh st] //=.
-by rewrite IH Monoid.Theory.mulmA.
+by rewrite IH mulmA.
 Qed.
 
 Lemma mzip1s s : mzip [::] s = s.
@@ -476,6 +471,15 @@ Lemma mzips1 s : mzip s [::] = s.
 Proof. by case: s. Qed.
 
 Canonical mzip_monoid := Monoid.Law mzipA mzip1s mzips1.
+
+Lemma flatten_mzipC h s1 s2 :
+  foldr M e (mzip (h :: s1) s2) = M h (foldr M e (mzip s2 s1)).
+Proof.
+elim: s2 h s1 => // h2 s2 IH h1 s1 /=.
+rewrite -mulmA; congr (M h1).
+case: s1 => //= {h1}h1 s1.
+rewrite -mulmA -{}IH; by case: s2.
+Qed.
 
 Lemma foldr_bigop C (g : C -> A) cl :
   foldr (M \o g) e cl = \big[M/e]_(i <- cl) g i.
@@ -493,17 +497,41 @@ Fixpoint level_traversal t :=
 
 Definition lo_traversal_st t := flatten (level_traversal t).
 
-Lemma level_traversal_fold t :
-  level_traversal t = foldr (mzip_cat \o level_traversal) nil [:: t].
+Definition forest_traversal cl :=
+  foldr (mzip_cat \o level_traversal) nil cl.
+
+Lemma level_traversal_forest t :
+  level_traversal t = forest_traversal [:: t].
 Proof. by case: t. Qed.
+
+Lemma level_traversal_bigop t :
+  level_traversal t =
+  [:: f t] :: \big[mzip_cat/nil]_(i <- children_of_node t) level_traversal i.
+Proof. rewrite -foldr_bigop; by case: t. Qed.
 
 Lemma level_traversal_eq w :
   ~~ nilp w ->
-  foldr (mzip_cat \o level_traversal) nil w =
-  map f w :: foldr (mzip_cat \o level_traversal) nil (children_of_forest w).
+  forest_traversal w = map f w :: forest_traversal (children_of_forest w).
 Proof.
 elim: w => //= -[a cl] [|t w'] IH // _.
   by rewrite /children_of_forest /= cats0.
+set w := t :: w' in IH *.
+move/(_ isT): (IH) => ->.
+rewrite /forest_traversal children_of_forest_cons /= foldr_cat /=.
+rewrite -!(foldr_map level_traversal mzip_cat).
+by rewrite foldr1_mulr.
+Qed.
+
+Lemma level_traversal_eq' st w :
+  ~~ nilp w ->
+  foldr (mzip_cat \o level_traversal) st w =
+  (map f w ++ head nil st) ::
+  foldr (mzip_cat \o level_traversal) (behead st) (children_of_forest w).
+Proof.
+elim: w => //= -[a cl] [|t w'] IH // _.
+  rewrite /children_of_forest /=.
+  case: {IH} st => [|h st]; rewrite !cats0 //=.
+  by rewrite -foldr_map foldr1_mulr foldr_map.
 set w := t :: w' in IH *.
 move/(_ isT): (IH) => ->.
 rewrite children_of_forest_cons /= foldr_cat /=.
@@ -545,40 +573,19 @@ Goal lo_traversal_cat (@label_of_node _)
 by [].
 Abort.
 
-Theorem lo_traversal_st_ok (A : eqType) B (f : forest A -> seq B) (t : tree A) :
-  let g x := f (children_of_node x) in
-  lo_traversal f t = flatten (lo_traversal_st g t).
+Theorem lo_traversal_st_ok (A : eqType) B (f : tree A -> B) (t : tree A) :
+  lo_traversal f t = lo_traversal_st f t.
 Proof.
-move=> g.
-rewrite /lo_traversal_st level_traversal_fold /lo_traversal /lo_traversal'.
+rewrite /lo_traversal_st level_traversal_forest /lo_traversal.
 set w := [:: t]; set h := height t.
 have Hh : forall t : tree A, t \in w -> height t <= h.
   by move=> t'; rewrite inE => /eqP ->.
 elim: {t} h w Hh => //= [|h IH] w Hh.
   case: w Hh => // t w /(_ t (mem_head _ _)); by rewrite leqNgt height_gt0.
 rewrite IH.
-  case /boolP: (nilp w) => [/nilP | /level_traversal_eq] -> //.
-  by rewrite flatten_cat [in RHS](map_comp f).
+  by case /boolP: (nilp w) => [/nilP | /level_traversal_eq] ->.
 by move=> t /flattenP [s] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
 Qed.
-
-(* alternative definition of the number of nodes *)
-Section nodes2.
-
-Variable A : Type.
-
-Definition lo_traversal2 B (f : seq A -> seq B) n l :=
-  lo_traversal'' (f \o @labels_of_forest _) n l.
-
-Definition nodes2 (t : tree A) : seq A :=
-  lo_traversal2 id (height t) [:: t].
-
-Definition number_of_nodes2 (t : tree A) := size (nodes2 t).
-
-Lemma number_of_nodes2_gt0 (t : tree A) : 0 < number_of_nodes2 t.
-Proof. by case: t. Qed.
-
-End nodes2.
 
 Section forest_eqType.
 
@@ -597,6 +604,7 @@ case: t Ht => v' l' /height_Node Hh.
 by apply/allP.
 Qed.
 
+(*
 Lemma level_order_forest_traversal'_nil (B : Type)
   (f : forest A -> seq B) (n : nat) (Hf0 : f [::] = [::]) :
   lo_traversal'' f n [::] = [::].
@@ -632,6 +640,7 @@ move=> -> H.
 rewrite -cat1s level_order_forest_traversal'_cat //.
 by rewrite children_of_forest_cons cats0.
 Qed.
+*)
 
 Lemma size_children_of_node_forest (t : tree A) l : t \in l ->
   size (children_of_node t) <= size (children_of_forest l).
@@ -894,31 +903,19 @@ Proof.
   by rewrite /qsize /= map_cat sumn_cat addnC ltn_add2r number_of_nodes_Node.
 Qed.
 
-Lemma bfs_level_order_forest_traversal' a q n :
-  all (fun x => n >= height x) q ->
-  bfs a q = foldl f a (lo_traversal'' (@labels_of_forest A) n q).
+Lemma bfs_level_order_forest_traversal' a q :
+  bfs a q = foldl f a (flatten (forest_traversal (@label_of_node A) q)).
 Proof.
-  apply bfs_ind => {a q}.
-    move=> a _ _ _.
-    by case: n => [|n /=]; last rewrite level_order_forest_traversal'_nil.
-  move=> a q t q' Hq v ts Ht IH H.
-  rewrite (level_order_forest_traversal'_cons (v':=v) (l':=ts)).
-          rewrite /= -IH.
-            by [].
-          clear IH.
-          move: H.
-          rewrite -cat1s 2!all_cat andbC => /andP [] ->.
-          rewrite andTb all_seq1.
-          case: n => [|n]; first by [].
-          move/height_Node => H.
-          apply/allP => x Hx.
-          apply leqW.
-          by apply H.
-        by [].
-      move=> x y.
-      by rewrite /labels_of_forest map_cat.
-    by [].
-  by [].
+  apply bfs_ind => {a q} // a q t q' Hq v ts Ht -> /=.
+  case/boolP: (nilp q') => Hq'.
+    by rewrite (nilP Hq').
+  rewrite (level_traversal_eq _ Hq') /=; congr foldl.
+  rewrite /forest_traversal foldr_cat.
+  set fts := foldr _ _ ts.
+  rewrite (level_traversal_eq' _ _ Hq') /= -catA; congr cat.
+  case: fts => // h fts.
+  rewrite [LHS]/= -!(foldr_map (level_traversal _) (mzip (cat_monoid A))).
+  by rewrite -foldr1_mulr /flatten flatten_mzipC.
 Qed.
 
 End bfs.

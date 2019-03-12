@@ -200,7 +200,7 @@ Qed.
 Theorem lo_traversal_lt_ok (t : tree A) p :
   size p >= height t -> lo_traversal_st f t = lo_traversal_lt [:: t] p.
 Proof.
-rewrite /lo_traversal_st level_traversal_fold => /lo_traversal_lt_max -> {p}.
+rewrite /lo_traversal_st level_traversal_forest => /lo_traversal_lt_max -> {p}.
 set w := [:: t]; set h := height t.
 have Hh : forall t, t \in w -> height t <= h.
   by move=> t'; rewrite inE => /eqP ->.
