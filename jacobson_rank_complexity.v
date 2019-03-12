@@ -1,6 +1,6 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-Require Import Omega Reals Rpower Fourier.
+Require Import Omega Reals Rpower Lra.
 Require Import compact_data_structures rank_select.
 
 (** * Space complexity of the rank algorithm *)
@@ -15,11 +15,12 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Local Open Scope R_scope.
 
 Coercion INR : nat >-> R.
 Coercion IZR : Z >-> R.
 
-(* TODO: merge with inftheo/Rssr? *)
+(* TODO: merge with infotheo/ssrR.v? *)
 Section R_ext.
 
 Definition floor (r : R) : Z := Int_part r.
@@ -29,7 +30,7 @@ Proof.
 move=> x1.
 rewrite /floor.
 case: (base_Int_part r) => H1 H2.
-apply/lt_IZR; by fourier.
+apply/lt_IZR; lra.
 Qed.
 
 Lemma Rle_floor (r : R) : (floor r <= r)%R.
@@ -39,7 +40,7 @@ Lemma Zle0_floor (r : R) : (0 <= r)%R -> (0 <= floor r)%Z.
 Proof.
 rewrite /floor => r0.
 case: (base_Int_part r) => _ H.
-have {H}H : (Int_part r > -1)%R by fourier.
+have {H}H : (Int_part r > -1)%R by lra.
 move: H; move/lt_IZR => H; omega.
 Qed.
 
@@ -48,24 +49,24 @@ Proof.
 move=> x1.
 rewrite /floor.
 case: (base_Int_part r) => H1 H2.
-apply/lt_IZR; fourier.
+apply/lt_IZR; lra.
 Qed.
 
 Lemma Rlt_floor r : (r < floor r + 1)%R.
-Proof. case: (base_Int_part r) => _ ?; rewrite /floor; fourier. Qed.
+Proof. case: (base_Int_part r) => _ ?; rewrite /floor; lra. Qed.
 
 Lemma Nat_pow_Rpower x : INR (expn 2 x) = Rpower 2 x.
 Proof.
-elim: x => [| x IH]; first by rewrite Rpower_O //; fourier.
+elim: x => [| x IH]; first by rewrite Rpower_O //; lra.
 rewrite expnS.
-rewrite -(addn1 x) [in RHS]plus_INR Rpower_plus -IH Rpower_1; last by fourier.
+rewrite -(addn1 x) [in RHS]plus_INR Rpower_plus -IH Rpower_1; last by lra.
 by rewrite Rmult_comm mult_INR.
 Qed.
 
 End R_ext.
 
 Definition log r := ln r / ln 2.
-(* NB: from infotheo's log2.v *)
+(* NB: proofs can be found in logb.v in https://github.com/affeldt-aist/infotheo/ *)
 Axiom ln_2_neq0 : ln 2 <> 0.
 Axiom log_1 : log 1 = 0.
 Axiom log_2 : log 2 = 1.
@@ -75,7 +76,7 @@ Axiom log_mult : (forall x y, 0 < x -> 0 < y -> log (x * y) = log x + log y)%R.
 
 Section nat2ulst_ext.
 
-(* NB: from Seplog's listbit_correct.v *)
+(* NB: proofs can be found in listbit_correct.v in https://github.com/affeldt-aist/seplog/ *)
 Axiom nat2ulst : nat -> seq bool.
 Axiom nat2ulst_length : forall z m, (z < expn 2 m)%nat -> size (nat2ulst z) = m.
 
@@ -100,9 +101,9 @@ move=> Hs Hn.
 rewrite INR_IZR_INZ.
 set f := floor _.
 have Hf : (0 <= f)%Z.
-  apply/Zle0_floor/(Rle_trans _ (log M)); last by fourier.
+  apply/Zle0_floor/(Rle_trans _ (log M)); last by lra.
   rewrite -log_1.
-  apply log_increasing_le; first by fourier.
+  apply log_increasing_le; first by lra.
   rewrite (_ : 1%R = INR 1) //; by apply/le_INR/leP.
 have -> : f = Z.of_nat (Z.abs_nat f) by rewrite Zabs2Nat.id_abs Z.abs_eq.
 rewrite (_ : 1%R = Z.of_nat 1) //.
@@ -118,12 +119,12 @@ rewrite (@nat2ulst_length _ (Z.abs_nat f + 1)); last first.
     rewrite Nat_pow_Rpower INR_IZR_INZ // inj_plus Zabs2Nat.id_abs Z.abs_eq //.
     rewrite [in X in _ = Rpower _ X](_ : 1%R = Z.of_nat 1) //.
     by rewrite plus_IZR.
-  apply Rpower_lt; first by fourier.
+  apply Rpower_lt; first lra.
   exact: Rlt_floor.
 by rewrite plusE.
 Qed.
 
-(* TODO: comes from infoteo's Rbigop *)
+(* NB: comes from infotheo's Rbigop.v *)
 Canonical Structure mulR_muloid := Monoid.MulLaw Rmult_0_l Rmult_0_r.
 Canonical Structure addR_monoid := Monoid.Law (fun a b c => sym_eq (Rplus_assoc a b c)) Rplus_0_l Rplus_0_r.
 Canonical Structure addR_comoid := Monoid.ComLaw Rplus_comm.
@@ -201,7 +202,7 @@ have k0 : (0 < k)%nat.
   apply/ltP/Zabs_nat_lt; split => //.
   apply Zlt0_floor.
   rewrite -log_2.
-  apply log_increasing_le; first by fourier.
+  apply log_increasing_le; first lra.
   rewrite (_ : 2%R = INR 2) //.
   apply/le_INR/leP.
   by apply: ltn_trans Hs.
@@ -209,16 +210,16 @@ have logn2 : (2 <= log n)%R.
   rewrite (_ : 2%R = log (2 * 2)); last first.
     rewrite log_mult.
     by rewrite log_2.
-    by fourier.
-    by fourier.
-  apply log_increasing_le; first by fourier.
+    lra.
+    lra.
+  apply log_increasing_le; first lra.
   rewrite (_ : 2 * 2 = INR 4)%R.
   by apply/le_INR/leP.
   rewrite /INR; field.
 have sz20 : (0 < sz2)%nat.
   rewrite /sz2 /k (_ : O = Z.abs_nat 0) //.
   apply/ltP/Zabs_nat_lt; split => //.
-  apply Zlt0_floor; fourier.
+  apply Zlt0_floor; lra.
 have k_pred : k.-1.+1 = k by rewrite prednK.
 rewrite (@size_bits_of_nats_for_R (floor (log sz1) + 1)); last first.
   move=> x /= Hx.

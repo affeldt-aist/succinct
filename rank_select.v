@@ -1,18 +1,22 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-
 Require Import compact_data_structures.
 
 (** A formalization of the rank and select functions *)
 
 (** OUTLINE
+  0. Section incremental
   1. Section rank_def
   2. Section rank_prop
   3. Section binary_rank
   4. Section select_def
   5. Section select_prop
-  6. Section jacobson_rank_directories.
-  7. Section jacobson_rank_algorithm.
+  6. Module rank_select_test
+  7. Section jacobson_rank_directories.
+       Section first_level_dir
+       Section second_level_dir
+       Section storage_dir
+  8. Section jacobson_rank_algorithm.
  *)
 
 Set Implicit Arguments.
@@ -295,7 +299,8 @@ Section select_prop.
 
 Variables (T : eqType) (b : T).
 
-Lemma SelectK n (s : n.-tuple T) (j : nat) : j <= count_mem b s -> Rank b (Select b j s) s = j.
+Lemma SelectK n (s : n.-tuple T) (j : nat) :
+  j <= count_mem b s -> Rank b (Select b j s) s = j.
 Proof.
 move=> js.
 rewrite /Select; case: ex_minnP => m.

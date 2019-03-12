@@ -1,14 +1,16 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-
 Require Import compact_data_structures rank_select pred_succ.
 
 (** * A formalization of LOUDS trees *)
 
-(* OUTLINE:
+(** OUTLINE:
   0. Section louds_encoding
-  1. Section size_louds
-  2. Section position: LOUDS_children, LOUDS_child and LOUDS_parent w/ proofs
+  1. Section position
+       Section lo_traversal
+       Definition LOUDS_child/Theorem LOUDS_childE
+       Definition LOUDS_parent/Theorem LOUDS_parentE
+       Definition LOUDS_children/Theorem LOUDS_childrenE
 *)
 
 Set Implicit Arguments.
@@ -90,8 +92,6 @@ Proof. by rewrite /nodeselect /= select0. Qed.
 
 End nodeselect.
 *)
-
-Require Import Wf_nat.
 
 Section position.
 
@@ -428,7 +428,7 @@ rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
 rewrite take_children_position ?(valid_position_rcons HV) //.
 rewrite /rank /node_description -cats1 -catA takel_cat.
   by apply /count_memPn /negP => /mem_take /nseqP /andP.
-by rewrite size_nseq valid_position_children. 
+by rewrite size_nseq valid_position_children.
 Qed.
 
 Lemma LOUDS_index_leq_count_mem_false t p p' x :

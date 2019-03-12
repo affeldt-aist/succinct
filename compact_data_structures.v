@@ -6,13 +6,18 @@ Require FunctionalExtensionality Wf_nat Recdef.
 
 (** OUTLINE
   0. Section seq_ext
-  1. Module idx, Section mapping, Section idx_prop
-  2. Definition tacc
-  3. Section tree
-      Section encode_decode_gentree.
-      Section forest.
-  4. Section binary_search.
-  5. Section bfs.
+  1. definition of the type of indices [1,n]
+     Module idx, Section mapping, Section idx_prop, Definition tacc
+  2. Section tree
+  3. Section valid_position.
+  4. Section encode_decode_gentree.
+  5. Section forest.
+  6. Section level_order_traversal.
+  7. Section mzip.
+  8. Section lo_traversal_st.
+  9. Section forest_eqType.
+  10. Section binary_search.
+  11. Section bfs.
  *)
 
 Set Implicit Arguments.
@@ -24,7 +29,7 @@ Section seq_ext.
 Variable T : Type.
 Implicit Type s : seq T.
 
-Lemma take_take: forall s a b, a <= b -> take a (take b s) = take a s.
+Lemma take_take : forall s a b, a <= b -> take a (take b s) = take a s.
 Proof. by elim => // h t H [*|a[//|b] ab]; rewrite ?take0 // !take_cons H. Qed.
 
 Lemma take_nseq B m n (a : B) : take m (nseq n a) = nseq (minn m n) a.
@@ -434,8 +439,7 @@ End forest.
 
 Section level_order_traversal.
 
-Variables (A B : Type).
-Variable (f : tree A -> B).
+Variables (A B : Type) (f : tree A -> B).
 
 (* n to be instantiated with max of map height l *)
 Fixpoint lo_traversal' n (l : forest A) :=
