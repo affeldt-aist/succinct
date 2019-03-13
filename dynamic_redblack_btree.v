@@ -872,7 +872,7 @@ Variable right_index : nat -> D -> nat.
 Variable delete_leaf : A -> nat -> A.
 Variable delete_leaves : color -> A -> A -> nat -> deleted_btree.
 
-Function bdel B (i : nat) { struct B } : deleted_btree :=
+Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
   match B with
   | Bnode c (Bleaf l) d (Bleaf r) => delete_leaves c l r i
   | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr)) d (Bleaf r) => 
@@ -955,49 +955,27 @@ Ltac splitR' t y IHd ok :=
 Ltac decomp_ifP ok :=
   repeat case: ifP => ?; decomp ok.
 
+Ltac force d H IHl IHr :=
+ rewrite /=;
+ try case:ifP=>?;
+ try rewrite !(balanceL'_Red_nearly_is_redblack,
+              balanceR'_Red_nearly_is_redblack);
+ try rewrite !(balanceL'_Black_nearly_is_redblack,
+              balanceR'_Black_nearly_is_redblack);
+ try rewrite !(IHl,
+               IHr,
+               Hdelete_leaves (d:=d));
+ by decomp H.
+
 Lemma bdel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (bdel B i) c n.
 Proof.
-case Hn: (n == 0).
-  rewrite (eqP Hn).
-  case: B c => [[] // l d r | s] //= [] // /andP[].
-  rewrite bdel_equation; case: l r => [[]//|ls] [[]//|rs] rbl rbr.
-  by apply (Hdelete_leaves (d:=d)).
-move/neq0_lt0n: Hn.
-move: n c; functional induction (bdel B i) => n c' H //.
-+ apply Hdelete_leaves.
-+ move=> Hrb. 
-  rewrite balanceL'_Black_nearly_is_redblack // ?(Hdelete_leaves (d:=ld));
-    by decomp_ifP Hrb.
-+ move=> Hrb. 
-  rewrite balanceR'_Black_nearly_is_redblack // ?(Hdelete_leaves (d:=ld));
-    by decomp_ifP Hrb.
-+ move=> Hrb. 
-  rewrite balanceL'_Black_nearly_is_redblack // ?(Hdelete_leaves (d:=ld));
-    by decomp_ifP Hrb.
-+ move=> Hrb. 
-  rewrite balanceR'_Black_nearly_is_redblack // ?(Hdelete_leaves (d:=ld));
-    by decomp_ifP Hrb.
-+ move: c c' l r y IHd =>
-    [] [] // [[] ll ld lr |?] [[] // rl rd rr|?] //= y IHd;
-  first (by rewrite !andbF);
-  try (case/andP => C /eqP H'; case/andP: C; by rewrite H' ltnn /=);
-  move => ok;
-  first (by rewrite balanceL'_Red_nearly_is_redblack // ?IHd //; decomp ok);
-  splitL' ll y IHd ok;
-  splitL' lr y IHd ok;
-  apply balanceL'_Black_nearly_is_redblack => //;
-  try apply (Hdelete_leaves (d:=ld)); by decomp ok.
-+ move: c c' l r y IHd =>
-    [] [] // [[] ll ld lr |?] [[] // rl rd rr|?] //= y IHd;
-  try (by rewrite !andbF);
-  try (case/andP => /eqP ->; by rewrite ltnn /=);
-  move => ok;
-  first (by rewrite balanceR'_Red_nearly_is_redblack // ?IHd //; decomp ok);
-  splitR' rl y IHd ok;
-  splitR' rr y IHd ok;
-  apply balanceR'_Black_nearly_is_redblack => //;
-  try apply (Hdelete_leaves (d:=rd)); by decomp ok.
+elim: B c i n => [[] l IHl d r IHr []|?] i n H;
+try by [];
+case: l IHl H => [[][[]???|?]?[[]???|?]|?] IHl H;
+try (force d H IHl IHr);
+case: r IHr H => [[][[]???|?]?[[]???|?]|?] IHr H;
+try (force d H IHl IHr).
 Qed.
 
 End delete.
@@ -1060,11 +1038,8 @@ Proof. apply /bdel_is_nearly_redblack' /delete_leaves_nearly_redblack'. Qed.
 Lemma ddel0E s o l r i :
   ddel (Bnode Red (leaf l) (s,o) (leaf r)) i = delete_leaves Red l r i.
 Proof.
-  move Heq : (Bnode Red _ _ _) => B; 
-  functional induction (ddel B i) => //=;
-  move: Heq => /=; rewrite /delete_leaves;
-  try (by move => Heq; case: Heq y => <- <- ? <-; case c => //).
-  by case => -> -> ? ->. 
+  move Heq : (Bnode Red _ _ _) => B.
+  by case: B Heq => [[]//???|?] <-.
 Qed.
 
 Definition dflattenn tr :=
@@ -1124,6 +1099,71 @@ Proof. case: p => //= p; by rewrite addnS !ltnS leq_subLR. Qed.
 Lemma ddelE (B : dtree) i :
   wf_dtree_l B -> dflattenn (ddel B i) = delete (dflatten B) i.
 Proof.
+ case:B => [c l d r|B] wfB.
+ have: dflattenn (ddel (Bnode c l d r) i) = delete (dflatten (Bnode c l d r)) i.
+ rewrite delete_cat //.
+ case:ifP.
+ case:d wfB=>??.
+ move:c=>[]/= wfB.
+ elim:l wfB=>[?? IHll ??|?]/=.
+ 
+ case:ifP.
+ case:c.
+ 
+ decomp wfB.
+ 
+ rewrite -dsizeE'.
+ decomp
+ 
+ elim: B i => [[] l IHl [??] r IHr|?] i H.
+ rewrite -IHl.
+ rewrite -IHr.
+ case: l IHl H => [[][[]?[??]?|?][??][[]?[??]?|?]|?] IHl H; decomp H.
+ 
+ rewrite /=.
+ rewrite !delete_cat // !size_cat // => IHl H.
+ move: IHl; rewrite /= -!dsizeE'; decomp H.
+ repeat case:ifP => //=.
+ intros.
+ move: IHl=>/=.
+ 
+ rewrite !delete_cat.
+ 
+    move:Hs; rewrite size_cat => <-; by rewrite e0.
+    
+ case: ifP;
+ rewrite /lt_index.
+ rewrite balanceL'E IHl.
+ rewrite delete_cat.
+ case: ifP=>//.
+ move:H.
+ rewrite /=.
+    
+ rewrite 
+ rewrite -dsizeE.
+ 
+ move=>Hc.
+ 
+ 
+ move:Hc.
+ 
+ 
+case: r IHr H => 
+ rewrite /=.
+ 
+
+dflattenn (ddel (Bnode c l d r) i)
+ 
+ rewrite /=.
+rewrite /=.
+ rewrite /=.
+ 
+ rewrite IHl.
+try by [];
+try (force d H IHl IHr);
+case: r IHr H => [[][[]???|?]?[[]???|?]|?] IHr H;
+try (force d H IHl IHr).
+  intros.
   functional induction (ddel B i);
     try (destruct d0 as [nums0 ones0]);
     try rewrite /lt_index /= in e0;
