@@ -102,48 +102,45 @@ Section lo_traversal.
 Variable B : Type.
 Variable f : tree A -> B.
 
-Fixpoint lo_traversal_lt (wood : forest A) (p : seq nat) : seq B :=
-  match p, wood with
-  | nil, _ => nil
-  | _, nil => nil
-  | n :: p', t :: wood' =>
-    let: Node _ cl := t in
-    map f wood ++ map f (take n cl)
-        ++ lo_traversal_lt (drop n cl ++
-                                 children_of_forest (wood' ++ take n cl)) p'
+Fixpoint lo_traversal_lt (w : forest A) (p : seq nat) : seq B :=
+  match p, w with
+  | nil, _ | _, nil => nil
+  | n :: p', t :: w' =>
+    let cl := children_of_node t in
+    map f (w ++ take n cl) ++
+    lo_traversal_lt (drop n cl ++ children_of_forest (w' ++ take n cl)) p'
   end.
 
-Fixpoint lo_traversal_res (wood : forest A) (p : seq nat) : forest A :=
-  match p, wood with
-  | nil, _ => wood
+Fixpoint lo_traversal_res (w : forest A) (p : seq nat) : forest A :=
+  match p, w with
+  | nil, _ => w
   | _, nil => nil
-  | n :: p', t :: wood' =>
-    let: Node _ cl := t in
-    lo_traversal_res (drop n cl ++ children_of_forest (wood' ++ take n cl)) p'
+  | n :: p', t :: w' =>
+    let cl := children_of_node t in
+    lo_traversal_res (drop n cl ++ children_of_forest (w' ++ take n cl)) p'
   end.
 
-Lemma lo_traversal_lt_cat wood p1 p2 :
-  lo_traversal_lt wood (p1 ++ p2) =
-  lo_traversal_lt wood p1 ++ lo_traversal_lt (lo_traversal_res wood p1) p2.
+Lemma lo_traversal_lt_cat w p1 p2 :
+  lo_traversal_lt w (p1 ++ p2) =
+  lo_traversal_lt w p1 ++ lo_traversal_lt (lo_traversal_res w p1) p2.
 Proof.
-elim: p1 wood => //= n l IH [|[a cl] wood].
+elim: p1 w => //= n l IH [|t w].
   by case: p2 {IH}.
 by rewrite IH !catA.
 Qed.
 
-Lemma lo_traversal_lt_cons wood n p :
-  lo_traversal_lt wood (n :: p) =
-  lo_traversal_lt wood [:: n]
-                  ++ lo_traversal_lt (lo_traversal_res wood [:: n]) p.
-Proof. exact (lo_traversal_lt_cat wood [:: n] p). Qed.
+Lemma lo_traversal_lt_cons w n p :
+  lo_traversal_lt w (n :: p) =
+  lo_traversal_lt w [:: n] ++ lo_traversal_lt (lo_traversal_res w [:: n]) p.
+Proof. exact (lo_traversal_lt_cat w [:: n] p). Qed.
 
 Lemma lo_traversal_lt_cons0 w p :
   lo_traversal_lt w (0 :: p) =
   map f w ++ lo_traversal_lt (children_of_forest w) p.
 Proof.
-case: w => [|[a cl] w] //=.
+case: w => [|t w] //=.
   by case: p.
-congr (_ :: _ ++ _).
+rewrite map_cat -catA; congr (_ :: _ ++ _).
 by rewrite take0 drop0 cats0.
 Qed.
 
@@ -177,7 +174,7 @@ case: r => [|[a cl] r] in Hh *.
     move: (Hh t'); rewrite cats0 => /(_ Ht').
     by rewrite -(nodeK t') => /height_Node/(_ _ Ht).
   by rewrite ltnW // ltnS.
-rewrite /= map_cat -catA.
+rewrite /= !map_cat -!catA.
 congr (_ :: _ ++ _).
 rewrite catA -map_cat (children_of_forest_cat l) children_of_forest_cons /=.
 rewrite -[in cl ++ _](cat_take_drop n cl) !children_of_forest_cat -!catA.
@@ -333,9 +330,9 @@ rewrite /LOUDS_position /LOUDS_lt.
 elim: p w => // [|n p IH].
   move=> [|? ?]; by rewrite /LOUDS_index /= select0.
 move=> [|[a cl] w] HV //=.
-rewrite !catA -map_cat map_comp -/(children_of_forest' (w ++ take n cl)).
+rewrite map_comp -/(children_of_forest' (w ++ take n cl)).
 rewrite /LOUDS_index /= !size_cat size_node_description !size_map.
-rewrite -(add1n (size w + _)) select_addn.
+rewrite size_cat -addnA -(add1n (size w + _)) select_addn.
 rewrite count_cat count_mem_false_node_description /=.
 rewrite select_cat count_mem_false_node_description /=.
 rewrite select_false_node_description.
@@ -360,10 +357,10 @@ Proof.
 rewrite /LOUDS_position /LOUDS_lt /LOUDS_index.
 elim: p w => [|i p IH] [|[a cl] w] HV //=.
   move: HV => /= /andP [Hi _].
-  rewrite size_cat !cats0 add0n /= !size_map -addSn size_take Hi.
+  rewrite map_cat !cats0 size_cat add0n /= !size_map -addSn size_take Hi.
   rewrite rank_cat size_node_description ltnS (ltnW Hi).
   by rewrite rank_true_node_description // ltnW.
-rewrite !catA -!map_cat map_comp -/(children_of_forest' (w ++ take i cl)).
+rewrite map_comp -/(children_of_forest' (w ++ take i cl)).
 rewrite !size_cat !size_map size_cat -addnA -addSn.
 congr addn.
 rewrite -addnA rank_addn rank_cat ltnn rank_size //.
@@ -437,7 +434,7 @@ Lemma LOUDS_index_leq_count_mem_false t p p' x :
 Proof.
 rewrite /LOUDS_index /LOUDS_lt.
 elim: {p} (rcons p x) [:: t] => // n p IH [|[a cl] w] //=.
-rewrite !catA -!map_cat size_cat size_map.
+rewrite size_cat size_map.
 rewrite count_cat count_mem_false_node_description.
 rewrite flatten_cat count_cat map_comp.
 rewrite count_mem_false_flatten_node_description size_map add1n ltnS.
@@ -476,7 +473,7 @@ Lemma rank_false_last_LOUDS_position w n sz :
 Proof.
 rewrite /LOUDS_position /LOUDS_lt /=.
 case: w => // [[a cl] w].
-rewrite cats0 -map_cat.
+rewrite cats0.
 elim/last_ind: ((_ :: w) ++ _) => // a' cl' _.
 rewrite map_rcons -cats1 flatten_cat size_cat /= cats0.
 rewrite size_node_description !addnS => -[] ->.
@@ -543,7 +540,7 @@ rewrite /LOUDS_children succ_drop; last first.
   rewrite /LOUDS_position /B cat_rcons LOUDS_lt_cat.
   rewrite size_cat -[X in X < _]addn0 ltn_add2l.
   move: (@size_lo_traversal [:: t] _ HV).
-  case: (lo_traversal_res _ _) => //= [[a cl] w] _.
+  case: (lo_traversal_res _ _) => //= [t' w] _.
   by rewrite /LOUDS_lt /= size_cat size_node_description addSn.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
 rewrite take_children_position // select_cat.
