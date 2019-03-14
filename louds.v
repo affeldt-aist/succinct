@@ -23,6 +23,7 @@ Variable A : eqType.
 Implicit Types l : forest A.
 
 Definition node_description l := rcons (nseq (size l) true) false.
+Definition children_description t := node_description (children_of_node t).
 
 Lemma size_node_description l : size (node_description l) = (size l).+1.
 Proof. by rewrite size_rcons size_nseq. Qed.
@@ -41,8 +42,7 @@ rewrite /node_description -cats1 count_cat addn0; apply/eqP.
 by rewrite -[X in _ == X](size_nseq _ true) -all_count all_nseq orbT.
 Qed.
 
-Definition LOUDS (t : tree A) :=
-  flatten (lo_traversal_st (node_description \o @children_of_node _) t).
+Definition LOUDS t := flatten (lo_traversal_st children_description t).
 
 Lemma size_LOUDS t : size (LOUDS t) = (number_of_nodes t).*2.-1.
 Proof.
@@ -224,10 +224,8 @@ case Hd: (drop n cl).
 by move: HV; rewrite -(addn0 n) -nth_drop Hd.
 Qed.
 
-Definition children_description := @node_description A \o @children_of_node A.
-
 Definition LOUDS_lt w p :=
-  flatten (lo_traversal_lt children_description w p).
+  flatten (lo_traversal_lt (@children_description A) w p).
 
 Eval compute in LOUDS_lt
   [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (0::0::0::nil).
@@ -552,3 +550,23 @@ Definition LOUDS_childrank (B : bitseq) (v : nat) : nat :=
   j - pred false B j.
 
 End position.
+
+Section example.
+
+Definition t : tree nat := Node 1
+  [:: Node 2 [:: Node 5 [::]; Node 6 [::]];
+      Node 3 [::];
+      Node 4 [:: Node 7 [::];
+                 Node 8 [:: Node 10 [::]];
+                 Node 9 [::]]].
+
+Lemma LOUDS_t : LOUDS (Node 0 [:: t]) =
+  [:: true; false; true; true; true; false;
+      true; true; false; false; true; true; true; false;
+      false; false; false; true; false; false; false].
+by [].
+Qed.
+
+Definition p8 := [:: 2; 1].
+Eval compute in LOUDS_position [:: Node 0 [:: t]] [:: 0 & p8].
+End example.
