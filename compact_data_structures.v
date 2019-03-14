@@ -496,8 +496,7 @@ Variables (A : eqType) (B : Type) (f : tree A -> B).
 Definition mzip_cat := mzip_monoid (cat_monoid B).
 
 Fixpoint level_traversal t :=
-  let: Node a cl := t in
-  [:: f t] :: foldr (mzip_cat \o level_traversal) nil cl.
+  [:: f t] :: foldr (mzip_cat \o level_traversal) nil (children_of_node t).
 
 Definition lo_traversal_st t := flatten (level_traversal t).
 
@@ -522,8 +521,7 @@ elim: w => //= -[a cl] [|t w'] IH // _.
 set w := t :: w' in IH *.
 move/(_ isT): (IH) => ->.
 rewrite /forest_traversal children_of_forest_cons /= foldr_cat /=.
-rewrite -!(foldr_map level_traversal mzip_cat).
-by rewrite foldr1_mulr.
+by rewrite -!(foldr_map level_traversal) foldr1_mulr.
 Qed.
 
 Lemma level_traversal_eq' st w :
@@ -558,8 +556,8 @@ by move=> t /flattenP [s] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
 Qed.
 
 Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
-  let: Node a cl := t in
-  (f t :: head nil ss) :: foldr level_traversal_cat (behead ss) cl.
+  (f t :: head nil ss) ::
+  foldr level_traversal_cat (behead ss) (children_of_node t).
 
 Definition lo_traversal_cat t := flatten (level_traversal_cat t [::]).
 
