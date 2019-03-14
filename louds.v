@@ -49,7 +49,7 @@ Proof.
 rewrite /LOUDS.
 elim/tree_ind_eqType: t => a l IH /=.
 rewrite size_cat size_node_description addSn; congr S.
-rewrite -doubleE foldr_bigop.
+rewrite -doubleE foldr_big_eq.
 rewrite (@big_morph nat (seq (seq (seq bool)))
          (fun i => size (flatten (flatten i))) 0 addn nil) //; first last.
   elim => // x xs IHx [] //= y ys.
