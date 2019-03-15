@@ -874,16 +874,15 @@ Variable delete_leaves : color -> A -> A -> nat -> deleted_btree.
 Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
   match B with
   | Bnode c (Bleaf l) d (Bleaf r) => delete_leaves c l r i
-  | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr)) d (Bleaf r) =>
+  | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr) as l) d (Bleaf r) =>
     if lt_index i d
-    then balanceL' Black (delete_leaves Red ll lr i) (Bleaf _ r)
+    then balanceL' Black (bdel l i) (Bleaf _ r)
     else balanceR' Black (Bleaf _ ll)
                    (delete_leaves Red lr r (right_index i ld))
-  | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) rd (Bleaf rr)) =>
+  | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) rd (Bleaf rr) as r) =>
     if lt_index (right_index i ld) rd
     then balanceL' Black (delete_leaves Red l rl i) (Bleaf _ rr)
-    else balanceR' Black (Bleaf _ l)
-                   (delete_leaves Red rl rr (right_index i ld))
+    else balanceR' Black (Bleaf _ l) (bdel r (right_index i ld))
   | Bnode c l d r => 
     if lt_index i d
     then balanceL' c (bdel l i) r
