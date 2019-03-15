@@ -1236,9 +1236,9 @@ Ltac force H rb Hi IHl IHr :=
  || rewrite ?ltn_addr // -dsizeE' // dsize_gt0 //
  || move:Hi; rewrite /= ?dsizeE' // ?ltn_subLR // ?addnA //);
  intros;
+ decomp rb;
  rewrite ?ltn_addl // ?(leq_trans Hlow1) //;
  rewrite ?donesE' // ?count_cat ?addnA ?eqxx //=;
- decomp rb;
  rewrite //= ?andbF //=.
 
 Lemma ddel_wf (B : dtree) n i :
