@@ -874,16 +874,16 @@ Variable delete_leaves : color -> A -> A -> nat -> deleted_btree.
 Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
   match B with
   | Bnode c (Bleaf l) d (Bleaf r) => delete_leaves c l r i
-  | Bnode c (Bnode lc (Bleaf ll) ld (Bleaf lr)) d (Bleaf r) => 
+  | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr)) d (Bleaf r) =>
     if lt_index i d
-    then balanceL' Black (delete_leaves lc ll lr i) (Bleaf _ r)
+    then balanceL' Black (delete_leaves Red ll lr i) (Bleaf _ r)
     else balanceR' Black (Bleaf _ ll)
-                   (delete_leaves lc lr r (right_index i ld))
-  | Bnode c (Bleaf l) ld (Bnode rc (Bleaf rl) rd (Bleaf rr)) => 
+                   (delete_leaves Red lr r (right_index i ld))
+  | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) rd (Bleaf rr)) =>
     if lt_index (right_index i ld) rd
-    then balanceL' Black (delete_leaves rc l rl i) (Bleaf _ rr)
+    then balanceL' Black (delete_leaves Red l rl i) (Bleaf _ rr)
     else balanceR' Black (Bleaf _ l)
-                   (delete_leaves rc rl rr (right_index i ld))
+                   (delete_leaves Red rl rr (right_index i ld))
   | Bnode c l d r => 
     if lt_index i d
     then balanceL' c (bdel l i) r
@@ -962,7 +962,7 @@ Ltac force d H IHl IHr :=
            balanceL'_Black_nearly_is_redblack,
            balanceR'_Black_nearly_is_redblack,
            IHl, IHr, Hdelete_leaves (d:=d));
- by decomp H.
+ decomp H.
 
 Lemma bdel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (bdel B i) c n.
@@ -971,12 +971,12 @@ Proof.
 (* case: c B=>[][[][[]???|?]d[[]???|?]?|?] //=. *)
 (* rewrite (Hdelete_leaves (d:=d)) //. *)
 (* elim: B c i n' n eqn => [[] l IHl d r IHr []|?] i n' n eqn H //; *)
-elim: B c i n => [[] l IHl d r IHr []|?] i n H //;
-case: l IHl H => [[][[]???|?]?[[]???|?]|?] IHl H;
-try (force d H IHl IHr);
-case: r IHr H => [[][[]???|?]?[[]???|?]|?] IHr H;
-try case:n H=>//n H;
-force d H IHl IHr.
+elim: B c i n => // c l IHl d r IHr p i n H //.
+time (case: p c l IHl H => [] []// [[]//[[]//???|?]?[[]//???|?]|?] IHl H;
+try (by force d H IHl IHr);
+case: r IHr H => [[]//[[]//???|?]?[[]//???|?]|?] IHr H;
+try case: n H=> // n H;
+by force d H IHl IHr).
 Qed.
 
 End delete.
