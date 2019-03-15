@@ -1238,7 +1238,8 @@ Ltac force H rb Hi IHl IHr :=
  intros;
  rewrite ?ltn_addl // ?(leq_trans Hlow1) //;
  rewrite ?donesE' // ?count_cat ?addnA ?eqxx //=;
- decomp rb.
+ decomp rb;
+ rewrite //= ?andbF //=.
 
 Lemma ddel_wf (B : dtree) n i :
   0 < n ->
@@ -1253,11 +1254,7 @@ Proof.
   case:l Hi rbB IHl wfB=>//=[[][[][[]?[??]?|?][??][[]?[??]?|?]|?][??][[]?[??]?|?]|?] Hi rbB IHl wfB;
   try by (force wfB rbB Hi IHl IHr);
   case:r Hi rbB IHr wfB=>[[] rl [??] rr|?] Hi rbB IHr wfB;
-  try by (force wfB rbB Hi IHl IHr).
-  
-  all: try by (case:rbB Hi wfB; rewrite //= ?andbF //=).
-  force wfB Hi IHl IHr.
-  decomp rbB.
+  force wfB rbB Hi IHl IHr.
 Qed.
 
 Lemma ddel_wf' (B : dtree) n i :
