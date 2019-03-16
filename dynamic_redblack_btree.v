@@ -1170,18 +1170,12 @@ Proof.
   by rewrite {1}(eqP lc) (eqP rc).
 Qed.
 
-Lemma dsize_gt0 (B: dtree) : wf_dtree_l B -> dsize B > 0.
+Lemma dsize_gt0 (B: dtree) : wf_dtree_l B -> size (dflatten B) > 0.
 Proof.
   move: B; apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s wf] /=.
-    by rewrite ltn_addr.
+    by rewrite size_cat ltn_addr.
   rewrite (leq_trans Hlow1); by decomp wf.
 Qed.
-
-Lemma dsize_gt0' (B: dtree) : wf_dtree_l B -> size (dflatten B) > 0.
-Proof. move=>?; rewrite -dsizeE' // dsize_gt0 //. Qed.
-
-Lemma summand_leq a b c: a <= b -> a <= b + c.
-Proof. rewrite /leq subnDA. move/eqP=>->. rewrite sub0n //. Qed.
 
 Lemma ddel_wf (B : dtree) n i :
   0 < n ->
@@ -1200,7 +1194,7 @@ Proof.
             IHl n, IHr n, delete_leaves_wf, ltn_subLR); 
   move:rbB wfB Hi Hc; 
   repeat (decompose_rewrite; rewrite /= ?size_cat) => //;
-  rewrite ?(ltn_addr, dsize_gt0', leq_trans Hlow1) //=.
+  rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1) //=.
   
  +case:n Hn rbB => [//|[//|n]] Hn rbB.
   *case:l r Hi rbB IHl IHr wfB =>
@@ -1220,7 +1214,7 @@ Proof.
             IHl n.+1, IHr n.+1, delete_leaves_wf, ltn_subLR) //;
    move:rbB wfB Hi Hc; 
    repeat (decompose_rewrite; rewrite /= ?size_cat) => //;
-   rewrite ?(ltn_addr, dsize_gt0', leq_trans Hlow1) //=.
+   rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1) //=.
 Qed.
 
 Lemma ddel_wf' (B : dtree) n i :
