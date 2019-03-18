@@ -955,10 +955,10 @@ Lemma bdel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (bdel B i) c n.
 Proof.
 elim: B c i n => // c l IHl d r IHr p i n H //.
-case: p c l IHl H => [] []// [[]//[[]//???|?]?[[]//???|?]|?] IHl H;
-try (by close_branch d H IHl IHr);
-case: r IHr H => [[]//[[]//???|?]?[[]//???|?]|?] IHr H;
-by close_branch d H IHl IHr.
+time (case: p c l IHl H => [] []// [[]//[[]//???|?]?[[]//???|?]|?] IHl H;
+  try (by close_branch d H IHl IHr);
+  case: r IHr H => [[]//[[]//???|?]?[[]//???|?]|?] IHr H;
+  by close_branch d H IHl IHr).
 Qed.
 
 End delete.
@@ -1083,14 +1083,16 @@ Lemma ddel_cat c l a b r i :
   then dflattenn (ddel l i) ++ dflatten r
   else dflatten l ++ dflattenn (ddel r (i - a)).
 Proof.
-  rewrite /= /lt_index /right_index /=;
-  case:ifP=>Hc wfB; case:c l r wfB =>
-   [] [[] [??[??]?|?] [??] [??[??]?|?]|?] // [[] [??[??]?|?] [??] [??[??]?|?]|?] wfB;
-  try case:ifP;
-  rewrite ?(balanceL'E, balanceR'E, delete_cat, delete_from_leavesE, ltn_subLR, leq_trans Hlow1);
-  move:wfB Hc; rewrite ?size_cat;
-  repeat (decompose_rewrite; try by rewrite ltn_addr //) => //=.
-  all: rewrite ?(subnDA, catA) //.
+  rewrite /= /lt_index /right_index /=.
+  time (case: ifP => Hc; case: c l r =>
+      [] [[]// [??[??]?|?] [??] [??[??]?|?]|?]
+      [[] [??[??]?|?] [??] [??[??]?|?]|?] wfB //;
+    try case:ifP;
+    rewrite ?(balanceL'E, balanceR'E, delete_cat, delete_from_leavesE,
+              ltn_subLR, leq_trans Hlow1) //;
+    move:wfB Hc; rewrite ?size_cat;
+    do! (decompose_rewrite; try by rewrite ltn_addr) => //=).
+  all: by rewrite ?(subnDA, catA).
 Qed.
 
 Lemma ddelE (B : dtree) i :
@@ -1144,7 +1146,7 @@ Lemma delete_from_leaves_wf l r i c:
   low <= size r < high ->
   wf_dtree_l (delete_from_leaves c l r i).
 Proof.
-  move=>sc /andP [wll wlh] /andP [wrl wrh].
+  move=> sc /andP [wll wlh] /andP [wrl wrh].
   have szl: 0 < size l by apply (leq_trans Hlow1).
   have szr: 0 < size r by apply (leq_trans Hlow1).
   have szlp: (size l).-1 < size l by rewrite prednK // subnn.
@@ -1173,35 +1175,39 @@ Lemma ddel_wf (B : dtree) n i :
 Proof.
   move => Hn Hi rbB wfB; rewrite dsizeE' // in Hi; move: Hn Hi rbB wfB.
   rewrite /= /lt_index /right_index /=.
-  elim:B n i => [[] l IHl [??] r IHr|?] n i Hn Hi rbB wfB /=;
-   last by move/eqP:rbB Hn=>/=->.
- +case:ifP => Hc;
-  case:l r Hi rbB IHl IHr wfB => [[]?[??]?|?] [[]?[??]?|?] Hi rbB IHl IHr wfB;
-  rewrite ?(balanceL'_wf, balanceR'_wf,
-            IHl n, IHr n, delete_from_leaves_wf, ltn_subLR);
-  move:rbB wfB Hi Hc;
-  repeat (decompose_rewrite; rewrite /= ?size_cat) => //;
-  rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1) //=.
+  elim: B n i => [[] l IHl [??] r IHr|?] n i Hn Hi rbB wfB /=;
+    last by move/eqP: rbB Hn => /= ->.
+  + case: ifP => Hc;
+    case: l r Hi rbB IHl IHr wfB =>
+        [[]?[??]?|?] [[]?[??]?|?]// Hi rbB IHl IHr wfB;
+    rewrite ?(balanceL'_wf, balanceR'_wf,
+              IHl n, IHr n, delete_from_leaves_wf, ltn_subLR) //;
+    move: rbB wfB Hi Hc;
+    do! (decompose_rewrite; rewrite /= ?size_cat) => //;
+    rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1) //=.
 
- +case:n Hn rbB => [//|[//|n]] Hn rbB.
-  *case:l r Hi rbB IHl IHr wfB =>
-   [[] [[]//=|?] [??] [[]//=|?]|?] [[] [[]//=|?] [??] [[]//=|?]|?] Hi rbB IHl IHr wfB;
-   try case:ifP=>Hc; rewrite ?(balanceL'_wf, balanceR'_wf, delete_from_leaves_wf) //;
-   try move:Hc; move:wfB rbB Hi; repeat (decompose_rewrite; rewrite /= ?size_cat) => //.
-   -rewrite ltn_subLR // ltn_addr // (leq_trans Hlow1) //.
-   -rewrite ltn_subLR ?addnA // ltn_addr // (leq_trans Hlow1) //.
-   -rewrite -ltn_subLR // (leq_trans Hlow1) //.
-   -rewrite ltn_subLR // ltn_addr // (leq_trans Hlow1) //.
-  *case:l r Hi rbB IHl IHr wfB =>
-   [[] ll [??] lr|?] [[]?[??]?|?] Hi rbB IHl IHr wfB;
-    last rewrite delete_from_leaves_wf //;
-   case:ifP => Hc;
-   try case:ll lr IHl rbB wfB Hi => [[]???|?] [[]???|?] IHl rbB wfB Hi;
-   rewrite ?(balanceL'_wf, balanceR'_wf,
-            IHl n.+1, IHr n.+1, delete_from_leaves_wf, ltn_subLR) //;
-   move:rbB wfB Hi Hc;
-   repeat (decompose_rewrite; rewrite /= ?size_cat) => //;
-   rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1) //=.
+  + case: n Hn rbB => [//|[//|n]] Hn rbB.
+  * case: l r Hi rbB IHl IHr wfB =>
+        [[] [[]//|?] [??] [[]//|?]|?] [[] [[]//|?] [??] [[]|?]|?] //=
+        Hi rbB IHl IHr wfB;
+      try case: ifP => Hc;
+      rewrite ?(balanceL'_wf, balanceR'_wf, delete_from_leaves_wf) //;
+      try move: Hc; move: wfB rbB Hi;
+      do! (decompose_rewrite; rewrite /= ?size_cat //).
+    - by rewrite ltn_subLR // ltn_addr // (leq_trans Hlow1).
+    - by rewrite ltn_subLR ?addnA // ltn_addr // (leq_trans Hlow1).
+    - by rewrite -ltn_subLR // (leq_trans Hlow1).
+    - by rewrite ltn_subLR // ltn_addr // (leq_trans Hlow1).
+  * time (case:l r Hi rbB IHl IHr wfB =>
+        [[] ll [??] lr|?] [[]?[??]?|?] Hi rbB IHl IHr wfB;
+      last rewrite delete_from_leaves_wf //;
+      case: ifP => Hc //;
+      try case: ll lr IHl rbB wfB Hi => [[]???|?] [[]???|?] // IHl rbB wfB Hi;
+      rewrite ?(balanceL'_wf, balanceR'_wf,
+                IHl n.+1, IHr n.+1, delete_from_leaves_wf, ltn_subLR) //;
+      move: rbB wfB Hi Hc;
+      do! (decompose_rewrite; rewrite /= ?size_cat) => //;
+      by rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1)).
 Qed.
 
 Lemma ddel_wf' (B : dtree) n i :
