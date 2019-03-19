@@ -224,27 +224,30 @@ case Hd: (drop n cl).
 by move: HV; rewrite -(addn0 n) -nth_drop Hd.
 Qed.
 
+Definition lo_index w p := size (lo_traversal_lt id w p).
+
 Definition LOUDS_lt w p :=
   flatten (lo_traversal_lt (@children_description A) w p).
 
-Eval compute in LOUDS_lt
-  [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (0::0::0::nil).
+Section tests.
+Let tA := [:: Node dA [:: Node dA [:: Node dA [::]];
+                          Node dA [::]]].
 
-Eval compute in LOUDS_lt
-  [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (0::nil).
+Goal lo_index tA [:: 1] = 2. by []. Abort.
 
-Eval compute in LOUDS_lt
-  [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (0::1::nil).
+Goal LOUDS_lt tA [:: 0;0;0] = [:: true; true; false; true; false; false; false].
+by []. Abort.
 
-Eval compute in LOUDS_lt
-  [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (1::nil).
+Goal LOUDS_lt tA [:: 0] = [:: true; true; false]. by []. Abort.
+
+Goal LOUDS_lt tA [:: 1] = [:: true; true; false; true; false]. by []. Abort.
+
+Goal LOUDS_lt tA [:: 0; 1] = [:: true; true; false; true; false; false; false].
+by []. Abort.
+
+End tests.
 
 Definition LOUDS_position w p := size (LOUDS_lt w p).
-
-Definition LOUDS_index w p := size (lo_traversal_lt id w p).
-
-Eval compute in LOUDS_index
-  [:: Node dA [:: Node dA [:: Node dA [::]]; Node dA [::]]] (1::nil).
 
 Theorem LOUDS_lt_ok t p :
   size p >= height t -> LOUDS t = LOUDS_lt [:: t] p.
@@ -322,14 +325,14 @@ Qed.
 
 Lemma LOUDS_position_select w p p' :
   valid_position (head dummy w) p ->
-  LOUDS_position w p = select false (LOUDS_index w p) (LOUDS_lt w (p ++ p')).
+  LOUDS_position w p = select false (lo_index w p) (LOUDS_lt w (p ++ p')).
 Proof.
 rewrite /LOUDS_position /LOUDS_lt.
 elim: p w => // [|n p IH].
-  move=> [|? ?]; by rewrite /LOUDS_index /= select0.
+  move=> [|? ?]; by rewrite /lo_index /= select0.
 move=> [|[a cl] w] HV //=.
 rewrite map_comp -/(children_of_forest' (w ++ take n cl)).
-rewrite /LOUDS_index /= !size_cat size_node_description !size_map.
+rewrite /lo_index /= !size_cat size_node_description !size_map.
 rewrite size_cat -addnA -(add1n (size w + _)) select_addn.
 rewrite count_cat count_mem_false_node_description /=.
 rewrite select_cat count_mem_false_node_description /=.
@@ -347,12 +350,12 @@ rewrite size_flatten_node_description size_cat -size_cat.
 by rewrite take_size drop_size_cat // size_flatten_node_description.
 Qed.
 
-Theorem LOUDS_index_rank w p p' n :
+Theorem lo_index_rank w p p' n :
   valid_position (head dummy w) (rcons p n) ->
-  LOUDS_index w (rcons p n) =
+  lo_index w (rcons p n) =
   size w + rank true (LOUDS_position w p + n) (LOUDS_lt w (rcons p n ++ p')).
 Proof.
-rewrite /LOUDS_position /LOUDS_lt /LOUDS_index.
+rewrite /LOUDS_position /LOUDS_lt /lo_index.
 elim: p w => [|i p IH] [|[a cl] w] HV //=.
   move: HV => /= /andP [Hi _].
   rewrite map_cat !cats0 size_cat add0n /= !size_map -addSn size_take Hi.
@@ -386,7 +389,7 @@ Theorem LOUDS_childE (t : tree A) (p p' : seq nat) x :
   LOUDS_child B (LOUDS_position [:: t] p) x = LOUDS_position [:: t] (rcons p x).
 Proof.
 rewrite /LOUDS_child => HV.
-rewrite -add1n (_ : 1 = size [::t]) // -LOUDS_index_rank //.
+rewrite -add1n (_ : 1 = size [::t]) // -lo_index_rank //.
 by rewrite (@LOUDS_position_select _ _ p') ?cats0.
 Qed.
 
@@ -426,11 +429,11 @@ rewrite /rank /node_description -cats1 -catA takel_cat.
 by rewrite size_nseq valid_position_children.
 Qed.
 
-Lemma LOUDS_index_leq_count_mem_false t p p' x :
-  LOUDS_index [:: t] (rcons p x) <=
+Lemma lo_index_leq_count_mem_false t p p' x :
+  lo_index [:: t] (rcons p x) <=
   (count_mem false) (LOUDS_lt [:: t] (rcons p x ++ p')).
 Proof.
-rewrite /LOUDS_index /LOUDS_lt.
+rewrite /lo_index /LOUDS_lt.
 elim: {p} (rcons p x) [:: t] => // n p IH [|[a cl] w] //=.
 rewrite size_cat size_map.
 rewrite count_cat count_mem_false_node_description.
@@ -517,8 +520,8 @@ Theorem LOUDS_parentE (t : tree A) p p' x :
 Proof.
 move=> B HV.
 rewrite {}/B /LOUDS_parent (LOUDS_position_select p') //.
-rewrite selectK; last by apply LOUDS_index_leq_count_mem_false.
-rewrite (LOUDS_index_rank p') // add1n.
+rewrite selectK; last by apply lo_index_leq_count_mem_false.
+rewrite (lo_index_rank p') // add1n.
 rewrite nth_brankK; last by apply nth_LOUDS_position.
 rewrite -addnS pred_same_of_rank; last by apply rank_false_LOUDS_position.
 by apply pred_false_LOUDS_position.
