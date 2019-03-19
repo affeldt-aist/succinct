@@ -401,11 +401,9 @@ Local Notation dsizeE := (@dsizeE low high).
 
 Definition dins_leaf s b i :=
   let s' := insert1 s b i in
-  if size s + 1 == high
-  then let n  := (size s') %/ 2 in
-       let sl := take n s' in
-       let sr := drop n s' in
-       Bnode Red (Bleaf _ sl) (size sl, count_mem true sl) (Bleaf _ sr)
+  if size s + 1 == high then
+    let n  := size s' %/ 2 in let sl := take n s' in let sr := drop n s' in
+    Bnode Red (Bleaf _ sl) (size sl, count_mem true sl) (Bleaf _ sr)
   else Bleaf _ s'.
 
 Definition lt_index i (d : nat * nat) := i < fst d.

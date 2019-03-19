@@ -532,19 +532,19 @@ Definition LOUDS_children (B : bitseq) (v : nat) : nat :=
   succ false B v.+1 - v.+1.
 
 Theorem LOUDS_childrenE (t : tree A) (p p' : seq nat) :
-  let B := LOUDS_lt [:: t] (rcons p 0 ++ p') in
+  let B := LOUDS_lt [:: t] (p ++ 0 :: p') in
   valid_position t p ->
   children t p = LOUDS_children B (LOUDS_position [:: t] p).
 Proof.
 move=> B HV.
 rewrite /LOUDS_children succ_drop; last first.
-  rewrite /LOUDS_position /B cat_rcons LOUDS_lt_cat.
+  rewrite /LOUDS_position /B LOUDS_lt_cat.
   rewrite size_cat -[X in X < _]addn0 ltn_add2l.
   move: (@size_lo_traversal [:: t] _ HV).
   case: (lo_traversal_res _ _) => //= [t' w] _.
   by rewrite /LOUDS_lt /= size_cat size_node_description addSn.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
-rewrite take_children_position // select_cat.
+rewrite /B -cat_rcons take_children_position // select_cat.
 by rewrite count_mem_false_node_description select_false_node_description.
 Qed.
 
