@@ -942,12 +942,21 @@ Qed.
 Ltac close_branch d H IHl IHr :=
  rewrite /=;
  try case:ifP=>?;
- rewrite ?(balanceL'_Red_nearly_is_redblack,
+ repeat (apply balanceL'_Red_nearly_is_redblack ||
+         apply balanceL'_Red_nearly_is_redblack ||
+         apply balanceR'_Red_nearly_is_redblack ||
+         apply balanceL'_Black_nearly_is_redblack ||
+         apply balanceR'_Black_nearly_is_redblack ||
+         apply IHl ||
+         apply IHr ||
+         apply (Hdelete_from_leaves (d:=d)));
+ decomp H.
+(* rewrite ?(balanceL'_Red_nearly_is_redblack,
            balanceR'_Red_nearly_is_redblack,
            balanceL'_Black_nearly_is_redblack,
            balanceR'_Black_nearly_is_redblack,
            IHl, IHr, Hdelete_from_leaves (d:=d));
- decomp H.
+ decomp H.*)
 
 Lemma bdel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (bdel B i) c n.
@@ -957,6 +966,8 @@ time (case: p c l IHl H => [] []// [[]//[[]//???|?]?[[]//???|?]|?] IHl H;
   try (by close_branch d H IHl IHr);
   case: r IHr H => [[]//[[]//???|?]?[[]//???|?]|?] IHr H;
   by close_branch d H IHl IHr).
+(* with the previous version: Tactic call ran for 153.673 secs (153.3u,0.148s) (success) *)
+(* Tactic call ran for 73.885 secs (73.528u,0.164s) (success) *)
 Qed.
 
 End delete.
