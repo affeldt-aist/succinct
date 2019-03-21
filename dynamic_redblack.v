@@ -865,7 +865,7 @@ Definition balanceR' col l (r : deleted_btree) : deleted_btree :=
 
 Variable lt_index : nat -> D -> bool.
 Variable right_index : nat -> D -> nat.
-Variable delete : A -> nat -> A.
+Variable delete_leaf : A -> nat -> A.
 Variable delete_from_leaves : color -> A -> A -> nat -> deleted_btree.
 
 Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
@@ -884,7 +884,7 @@ Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
     if lt_index i d
     then balanceL' c (bdel l i) r
     else balanceR' c l (bdel r (right_index i d))
-  | Bleaf x =>  Stay (leaf (delete x i))
+  | Bleaf x =>  Stay (leaf (delete_leaf x i))
   end.
 
 Definition is_nearly_redblack' tr c bh :=
