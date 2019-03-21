@@ -1044,15 +1044,15 @@ Lemma balanceL'E c l r :
   dflattenn (balanceL' c l r) = dflattenn l ++ dflatten r.
 Proof. 
   move: l => [] ?; case c; case r => [] [] // [] //= [] [] [] /=; 
-  intros; rewrite //= -!catA //= -!catA //. 
+  intros; by rewrite //= -!catA //= -!catA.
 Qed.
 
 Lemma balanceR'E c l r :
   dflattenn (balanceR' c l r) = dflatten l ++ dflattenn r.
 Proof.
   move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; 
-  try case c'; try case c''; try (intros; rewrite //= -!catA //= -!catA //=);
-  move => ? ? [] x; first case x; intros; rewrite //= -!catA //= -!catA //=.
+  try case c'; try case c''; try (intros; by rewrite //= -!catA //= -!catA);
+  move => ? ? [] x; first case x; intros; by rewrite //= -!catA //= -!catA.
 Qed.
 
 Lemma delete_cat {arr arr' : seq bool} {i} :
@@ -1100,8 +1100,10 @@ Proof.
     rewrite ?(balanceL'E, balanceR'E, delete_cat, delete_from_leavesE,
               ltn_subLR, leq_trans Hlow1) //;
     move:wfB Hc; rewrite ?size_cat;
-    do! (decompose_rewrite; try by rewrite ltn_addr) => //=).
-  all: by rewrite ?(subnDA, catA).
+    do! decompose_rewrite => //=).
+    (* 94s => 54s by delaying ltn_addr *)
+  all: rewrite ?(subnDA, catA) //.
+  by rewrite ltn_addr in H10.
 Qed.
 
 Lemma ddelE (B : dtree) i :
@@ -1214,7 +1216,7 @@ Proof.
       rewrite ?(balanceL'_wf, balanceR'_wf,
                 IHl n.+1, IHr n.+1, delete_from_leaves_wf, ltn_subLR) //;
       move: rbB wfB Hi Hc;
-      do! (decompose_rewrite; rewrite /= ?size_cat) => //;
+      do! (decompose_rewrite; rewrite //= ?size_cat); (* 66s => 59s by //= *)
       by rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1)).
 Qed.
 
