@@ -111,18 +111,18 @@ Fixpoint lo_traversal_lt (w : forest A) (p : seq nat) : seq B :=
     lo_traversal_lt (drop n cl ++ children_of_forest (w' ++ take n cl)) p'
   end.
 
-Fixpoint lo_traversal_res (w : forest A) (p : seq nat) : forest A :=
+Fixpoint lo_fringe (w : forest A) (p : seq nat) : forest A :=
   match p, w with
   | nil, _ => w
   | _, nil => nil
   | n :: p', t :: w' =>
     let cl := children_of_node t in
-    lo_traversal_res (drop n cl ++ children_of_forest (w' ++ take n cl)) p'
+    lo_fringe (drop n cl ++ children_of_forest (w' ++ take n cl)) p'
   end.
 
 Lemma lo_traversal_lt_cat w p1 p2 :
   lo_traversal_lt w (p1 ++ p2) =
-  lo_traversal_lt w p1 ++ lo_traversal_lt (lo_traversal_res w p1) p2.
+  lo_traversal_lt w p1 ++ lo_traversal_lt (lo_fringe w p1) p2.
 Proof.
 elim: p1 w => //= n l IH [|t w].
   by case: p2 {IH}.
@@ -131,7 +131,7 @@ Qed.
 
 Lemma lo_traversal_lt_cons w n p :
   lo_traversal_lt w (n :: p) =
-  lo_traversal_lt w [:: n] ++ lo_traversal_lt (lo_traversal_res w [:: n]) p.
+  lo_traversal_lt w [:: n] ++ lo_traversal_lt (lo_fringe w [:: n]) p.
 Proof. exact (lo_traversal_lt_cat w [:: n] p). Qed.
 
 Lemma lo_traversal_lt_cons0 w p :
@@ -214,7 +214,7 @@ Notation dummy := (Node dA [::]).
 
 Lemma size_lo_traversal w p :
   valid_position (Node dA w) (0 :: p) ->
-  size (lo_traversal_res w p) > 0.
+  size (lo_fringe w p) > 0.
 Proof.
 elim: p w => [|n p IH] [|[a cl] w] //= /andP [Hn HV].
 rewrite IH //= size_cat.
@@ -255,17 +255,17 @@ Proof. by rewrite /LOUDS /LOUDS_lt => /lo_traversal_lt_ok ->. Qed.
 
 Lemma LOUDS_lt_cons w n p :
   LOUDS_lt w (n :: p) =
-  LOUDS_lt w [:: n] ++ LOUDS_lt (lo_traversal_res w [:: n]) p.
+  LOUDS_lt w [:: n] ++ LOUDS_lt (lo_fringe w [:: n]) p.
 Proof. by rewrite /LOUDS_lt lo_traversal_lt_cons flatten_cat. Qed.
 
 Lemma LOUDS_lt_cat w p1 p2 :
   LOUDS_lt w (p1 ++ p2) =
-  LOUDS_lt w p1 ++ LOUDS_lt (lo_traversal_res w p1) p2.
+  LOUDS_lt w p1 ++ LOUDS_lt (lo_fringe w p1) p2.
 Proof. by rewrite /LOUDS_lt lo_traversal_lt_cat flatten_cat. Qed.
 
 Lemma LOUDS_position_cons w n p :
   LOUDS_position w (n :: p) =
-  LOUDS_position w [:: n] + LOUDS_position (lo_traversal_res w [:: n]) p.
+  LOUDS_position w [:: n] + LOUDS_position (lo_fringe w [:: n]) p.
 Proof. by rewrite /LOUDS_position LOUDS_lt_cons size_cat. Qed.
 
 Lemma nth_head_drop (T : eqType) (dT : T) n s :
@@ -541,7 +541,7 @@ rewrite /LOUDS_children succ_drop; last first.
   rewrite /LOUDS_position /B LOUDS_lt_cat.
   rewrite size_cat -[X in X < _]addn0 ltn_add2l.
   move: (@size_lo_traversal [:: t] _ HV).
-  case: (lo_traversal_res _ _) => //= [t' w] _.
+  case: (lo_fringe _ _) => //= [t' w] _.
   by rewrite /LOUDS_lt /= size_cat size_node_description addSn.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
 rewrite /B -cat_rcons take_children_position // select_cat.
