@@ -418,10 +418,9 @@ Lemma dins_leaf_is_redblack a b i : is_redblack (dins_leaf a b i) Black 0.
 Proof. rewrite /dins_leaf; by case: ifP. Qed.
 
 (* Red-blackness invariant *)
-Lemma dinsert_is_redblack B b i n :
-  is_redblack B Red n ->
-  is_redblack (dinsert B b i) Red (n + is_red (dins B b i)).
-Proof. apply /binsert_is_redblack /dins_leaf_is_redblack. Qed.
+Corollary dinsert_is_redblack B b i n :
+  is_redblack B Red n -> exists n', is_redblack (dinsert B b i) Red n'.
+Proof. apply /binsert_is_redblack' /dins_leaf_is_redblack. Qed.
 
 (* Correctness of balance *)
 
@@ -1034,6 +1033,13 @@ Definition dtree_of_deleted_dtree (B : deleted_dtree) : dtree :=
 Coercion dtree_of_deleted_dtree : deleted_dtree >-> dtree.
 
 Definition ddelete (B : dtree) i : dtree := (ddel B i : deleted_dtree).
+
+Corollary ddelete_is_redblack B i n :
+  is_redblack B Red n -> exists n', is_redblack (ddelete B i) Red n'.
+Proof.
+rewrite /ddelete => /(ddel_is_nearly_redblack' i).
+case: ddel => B' /= rb; eexists; by apply: rb.
+Qed.
 
 (* Correctness lemmas *)
 
