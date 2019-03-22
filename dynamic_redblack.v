@@ -1025,6 +1025,16 @@ Lemma ddel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (ddel B i) c n.
 Proof. apply /bdel_is_nearly_redblack' /delete_from_leaves_nearly_redblack'. Qed.
 
+(* Forget Stay/Down *)
+Definition dtree_of_deleted_dtree (B : deleted_dtree) : dtree :=
+  match B with
+  | Stay b => b
+  | Down b => b
+  end.
+Coercion dtree_of_deleted_dtree : deleted_dtree >-> dtree.
+
+Definition ddelete (B : dtree) i : dtree := (ddel B i : deleted_dtree).
+
 (* Correctness lemmas *)
 
 Lemma ddel0E s o l r i :
@@ -1117,15 +1127,15 @@ Proof.
  by rewrite /=.
 Qed.
 
+Lemma ddeleteE B i :
+  wf_dtree' B -> dflatten (ddelete B i) = delete (dflatten B) i.
+Proof.
+case: B => // c l d r wfB.
+rewrite -ddelE // /ddelete.
+by case: ddel.
+Qed.
+
 (* Well-formedness *)
-
-Definition dtree_of_deleted_dtree (B : deleted_dtree) : dtree :=
-  match B with
-  | Stay b => b
-  | Down b => b
-  end.
-
-Coercion dtree_of_deleted_dtree : deleted_dtree >-> dtree.
 
 Lemma balanceL'_wf (B: deleted_dtree) b c:
   wf_dtree_l B -> wf_dtree_l b -> wf_dtree_l (balanceL' c B b).
@@ -1220,11 +1230,11 @@ Proof.
       by rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1)).
 Qed.
 
-Lemma ddel_wf' (B : dtree) n i :
+Lemma ddelete_wf (B : dtree) n i :
   is_redblack B Black n ->
   i < dsize B ->
   wf_dtree' B ->
-  wf_dtree' ((ddel B i : deleted_dtree) : dtree).
+  wf_dtree' (ddelete B i).
 Proof.
 case: n => [|n].
   case: B => [[]// [[]//???|s1] [n1 o1] [[]//???|s2]|s] //=.
