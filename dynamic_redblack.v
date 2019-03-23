@@ -1017,7 +1017,8 @@ Proof.
   case: c c' => /= -[]; repeat case: ifP => ?; repeat decompose_rewrite => //=.
 Qed.
 
-Notation ddel := (bdel mkD lt_index right_index (@delete _) delete_from_leaves).
+Notation ddel := (bdel mkD lt_index right_index (@delete _) delete_from_leaves
+                  : btree (nat * nat) (seq bool) -> nat -> deleted_dtree).
 
 (* Red-blackness invariant *)
 Lemma ddel_is_nearly_redblack' B i n c :
@@ -1050,21 +1051,15 @@ Proof.
   by case: B Heq => [[]//???|?] <-.
 Qed.
 
-Definition dflattenn tr :=
-  match tr with
-  | Stay t => dflatten t
-  | Down t => dflatten t
-  end.
-
-Lemma balanceL'E c l r :
-  dflattenn (balanceL' c l r) = dflattenn l ++ dflatten r.
+Lemma balanceL'E c (l : deleted_dtree) r :
+  dflatten (balanceL' c l r) = dflatten l ++ dflatten r.
 Proof. 
   move: l => [] ?; case c; case r => [] [] // [] //= [] [] [] /=; 
   intros; by rewrite //= -!catA //= -!catA.
 Qed.
 
-Lemma balanceR'E c l r :
-  dflattenn (balanceR' c l r) = dflatten l ++ dflattenn r.
+Lemma balanceR'E c l (r : deleted_dtree) :
+  dflatten (balanceR' c l r) = dflatten l ++ dflatten r.
 Proof.
   move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; 
   try case c'; try case c''; try (intros; by rewrite //= -!catA //= -!catA);
@@ -1085,7 +1080,7 @@ Qed.
 
 Lemma delete_from_leavesE c l r i :
   low <= size l < high -> low <= size r < high ->
-  dflattenn (delete_from_leaves c l r i) = delete (l ++ r) i.
+  dflatten (delete_from_leaves c l r i) = delete (l ++ r) i.
 Proof.
   rewrite /delete_from_leaves delete_cat.
   case: ifP; case: ifP => //; case: ifP => //;
@@ -1103,10 +1098,10 @@ Proof. case: p => //= p; by rewrite addnS !ltnS leq_subLR. Qed.
 
 Lemma ddel_cat c l a b r i :
   wf_dtree_l (Bnode c l (a, b) r) ->
-  dflattenn (ddel (Bnode c l (a, b) r) i) =
+  dflatten (ddel (Bnode c l (a, b) r) i) =
   if i < a
-  then dflattenn (ddel l i) ++ dflatten r
-  else dflatten l ++ dflattenn (ddel r (i - a)).
+  then dflatten (ddel l i) ++ dflatten r
+  else dflatten l ++ dflatten (ddel r (i - a)).
 Proof.
   rewrite /= /lt_index /right_index /=.
   time (case: ifP => Hc; case: c l r =>
@@ -1123,7 +1118,7 @@ Proof.
 Qed.
 
 Lemma ddelE (B : dtree) i :
-  wf_dtree_l B -> dflattenn (ddel B i) = delete (dflatten B) i.
+  wf_dtree_l B -> dflatten (ddel B i) = delete (dflatten B) i.
 Proof.
  elim:B i => [c l IHl [??] r IHr|B] i wfB.
  rewrite delete_cat.
@@ -1138,7 +1133,6 @@ Lemma ddeleteE B i :
 Proof.
 case: B => // c l d r wfB.
 rewrite -ddelE // /ddelete.
-by case: ddel.
 Qed.
 
 (* Well-formedness *)
@@ -1198,7 +1192,7 @@ Lemma ddel_wf (B : dtree) n i :
   i < dsize B ->
   is_redblack B Black n ->
   wf_dtree_l B ->
-  wf_dtree_l (ddel B i : deleted_dtree).
+  wf_dtree_l (ddel B i).
 Proof.
   move => Hn Hi rbB wfB; rewrite dsizeE' // in Hi; move: Hn Hi rbB wfB.
   rewrite /= /lt_index /right_index /=.
