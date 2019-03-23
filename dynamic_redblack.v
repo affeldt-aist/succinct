@@ -1253,3 +1253,31 @@ by apply /wf_dtree_dtree' /(@ddel_wf _ n.+1).
 Qed.
 
 End ddelete.
+
+Section example.
+Definition t : dtree :=
+  Bnode Black
+        (Bleaf _ [:: true; false; false])
+        (3, 1)
+        (Bnode Red (Bleaf _ [:: true; false; true]) (3, 2)
+                   (Bleaf _ [:: true; true; true; true])).
+Lemma drank_t : drank t 10 == 7. Proof. by []. Qed.
+Lemma dselect1_t : dselect_1 t 7 == 10. Proof. by []. Qed.
+Lemma dselect0_t : dselect_0 t 3 == 5. Proof. by []. Qed.
+Lemma dinsert_t :
+  dinsert 5 (* upper bound *) t false 9 ==
+  Bnode Black
+        (Bnode Black (Bleaf _ [:: true; false; false])
+               (3, 1) (Bleaf _ [:: true; false; true]))
+        (6, 3)
+        (Bnode Black (Bleaf _ [:: true; true])
+               (2, 2) (Bleaf _ [:: true; false; true])).
+Proof. by []. Qed.
+Lemma ddelete_t :
+  ddelete 3 (* lower bound *) t 2 ==
+  Bnode Black
+        (Bleaf _ [:: true; false; true; false; true])
+        (5, 3)
+        (Bleaf _ [:: true; true; true; true]).
+Proof. by []. Qed.
+End example.
