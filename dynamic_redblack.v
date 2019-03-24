@@ -822,21 +822,21 @@ Definition balanceL' col (l : deleted_btree) r : deleted_btree :=
   match l with
   | Stay l => Stay (rbnode col l r)
   | Down l =>
-    match col,r with
+    match col, r with
     | _, Bnode Black (Bnode Red rll _ rlr) _ rr =>
       Stay (rbnode col (bnode l rll) (bnode rlr rr))
     | Red, Bnode Black (Bleaf _ as rl) _ rr
     | Red, Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
       Stay (bnode (rnode l rl) rr)
-    | Black,Bnode Red (Bnode Black (Bnode Black _ _ _ as rll) _ rlr) _ rr
-    | Black,Bnode Red (Bnode Black (Bleaf _ as rll) _ rlr) _ rr =>
+    | Black, Bnode Red (Bnode Black (Bnode Black _ _ _ as rll) _ rlr) _ rr
+    | Black, Bnode Red (Bnode Black (Bleaf _ as rll) _ rlr) _ rr =>
       Stay (bnode (bnode (rnode l rll) rlr) rr)
-    | Black,Bnode Red (Bnode Black (Bnode Red rlll _ rllr) _ rlr) _ rr =>
+    | Black, Bnode Red (Bnode Black (Bnode Red rlll _ rllr) _ rlr) _ rr =>
       Stay (bnode (bnode l rlll) (rnode (bnode rllr rlr) rr))
-    | Black,Bnode Black (Bleaf _ as rl) _ rr
-    | Black,Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
+    | Black, Bnode Black (Bleaf _ as rl) _ rr
+    | Black, Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
       Down (bnode (rnode l rl) rr)
-    | _,_ => Stay (rbnode col l r)
+    | _, _ => Stay (rbnode col l r)
     end
   end.
   
@@ -844,21 +844,21 @@ Definition balanceR' col l (r : deleted_btree) : deleted_btree :=
   match r with
   | Stay r => Stay (rbnode col l r)
   | Down r =>
-    match col,l with
+    match col, l with
     | _, Bnode Black ll _ (Bnode Red lrl _ lrr) =>
       Stay (rbnode col (bnode ll lrl) (bnode lrr r))
-    | Red,Bnode Black ll _ (Bleaf _ as lr)
-    | Red,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
+    | Red, Bnode Black ll _ (Bleaf _ as lr)
+    | Red, Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
       Stay (bnode ll (rnode lr r))
-    | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Black _ _ _ as lrr))
-    | Black,Bnode Red ll _ (Bnode Black lrl _ (Bleaf _ as lrr)) =>
+    | Black, Bnode Red ll _ (Bnode Black lrl _ (Bnode Black _ _ _ as lrr))
+    | Black, Bnode Red ll _ (Bnode Black lrl _ (Bleaf _ as lrr)) =>
       Stay (bnode ll (bnode lrl (rnode lrr r)))
-    | Black,Bnode Red ll _ (Bnode Black lrl _ (Bnode Red lrrl _ lrrr)) =>
+    | Black, Bnode Red ll _ (Bnode Black lrl _ (Bnode Red lrrl _ lrrr)) =>
       Stay (bnode (rnode ll (bnode lrl lrrl)) (bnode lrrr r))
-    | Black,Bnode Black ll _ (Bleaf _ as lr)
-    | Black,Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
+    | Black, Bnode Black ll _ (Bleaf _ as lr)
+    | Black, Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
       Down (bnode ll (rnode lr r))
-    | _,_ => Stay (rbnode col l r)
+    | _, _ => Stay (rbnode col l r)
     end
   end.
 
@@ -883,7 +883,7 @@ Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
     if lt_index i d
     then balanceL' c (bdel l i) r
     else balanceR' c l (bdel r (right_index i d))
-  | Bleaf x =>  Stay (leaf (delete_leaf x i))
+  | Bleaf x => Stay (leaf (delete_leaf x i))
   end.
 
 Definition is_nearly_redblack' tr c bh :=
@@ -950,12 +950,6 @@ Ltac close_branch d H IHl IHr :=
          apply IHr ||
          apply (Hdelete_from_leaves (d:=d)));
  decomp H.
-(* rewrite ?(balanceL'_Red_nearly_is_redblack,
-           balanceR'_Red_nearly_is_redblack,
-           balanceL'_Black_nearly_is_redblack,
-           balanceR'_Black_nearly_is_redblack,
-           IHl, IHr, Hdelete_from_leaves (d:=d));
- decomp H.*)
 
 Lemma bdel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (bdel B i) c n.
@@ -965,8 +959,7 @@ time (case: p c l IHl H => [] []// [[]//[[]//???|?]?[[]//???|?]|?] IHl H;
   try (by close_branch d H IHl IHr);
   case: r IHr H => [[]//[[]//???|?]?[[]//???|?]|?] IHr H;
   by close_branch d H IHl IHr).
-(* with the previous version: Tactic call ran for 153.673 secs (153.3u,0.148s) (success) *)
-(* Tactic call ran for 73.885 secs (73.528u,0.164s) (success) *)
+(* rewrite ? -> repeat apply || : 153s -> 73s *)
 Qed.
 
 End delete.
@@ -991,21 +984,21 @@ Local Notation balanceR' c B b := (balanceR' mkD c B b : deleted_dtree).
 Definition delete_from_leaves (p : color) l r (i : nat) : deleted_dtree :=
   if i < size l
   then match low == size l, low == size r with
-       | true,true =>
+       | true, true =>
          Down (leaf ((rcons (delete l i) (access r 0)) ++ (delete r 0)))
-       | true,false => 
+       | true, false =>
          Stay (rbnode p (leaf (rcons (delete l i) (access r 0)))
                           (leaf (delete r 0)))
-       | false,_ => 
+       | false, _ =>
          Stay (rbnode p (leaf (delete l i)) (leaf r))
        end
   else match low == size l, low == size r with
-       | true,true =>
+       | true, true =>
          Down (leaf (l ++ (delete r (i - (size l)))))
-       | false,true => 
+       | false, true =>
          Stay (rbnode p (leaf (delete l (size l).-1))
                    (leaf (access l (size l).-1 :: delete r (i - size l))))
-       | _,false => 
+       | _, false =>
          Stay (rbnode p (leaf l) (leaf (delete r (i - size l))))
        end.
 
@@ -1253,19 +1246,25 @@ Definition t : dtree :=
   Bnode Black
         (Bleaf _ [:: true; false; false])
         (3, 1)
-        (Bnode Red (Bleaf _ [:: true; false; true]) (3, 2)
-                   (Bleaf _ [:: true; true; true; true])).
+        (Bnode Red
+               (Bleaf _ [:: true; false; true])
+               (3, 2)
+               (Bleaf _ [:: true; true; true; true])).
 Lemma drank_t : drank t 10 == 7. Proof. by []. Qed.
 Lemma dselect1_t : dselect_1 t 7 == 10. Proof. by []. Qed.
 Lemma dselect0_t : dselect_0 t 3 == 5. Proof. by []. Qed.
 Lemma dinsert_t :
   dinsert 5 (* upper bound *) t false 9 ==
   Bnode Black
-        (Bnode Black (Bleaf _ [:: true; false; false])
-               (3, 1) (Bleaf _ [:: true; false; true]))
+        (Bnode Black
+               (Bleaf _ [:: true; false; false])
+               (3, 1)
+               (Bleaf _ [:: true; false; true]))
         (6, 3)
-        (Bnode Black (Bleaf _ [:: true; true])
-               (2, 2) (Bleaf _ [:: true; false; true])).
+        (Bnode Black
+               (Bleaf _ [:: true; true])
+               (2, 2)
+               (Bleaf _ [:: true; false; true])).
 Proof. by []. Qed.
 Lemma ddelete_t :
   ddelete 3 (* lower bound *) t 2 ==
