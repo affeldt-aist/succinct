@@ -1000,7 +1000,7 @@ Definition deleted_dtree := deleted_btree (nat * nat) (seq bool).
 Local Notation balanceL' c B b := (balanceL' mkD c B b : deleted_dtree).
 Local Notation balanceR' c B b := (balanceR' mkD c B b : deleted_dtree).
 
-Fixpoint delete_from_leaves (B : dtree) (i : nat) : deleted_dtree :=
+Fixpoint delete_from_leaves_rec (B : dtree) (i : nat) : deleted_dtree :=
   match B with
     Bleaf s => Stay (leaf (delete s i))
   | Bnode p (Bleaf l) _ (Bleaf r) =>
@@ -1026,32 +1026,35 @@ Fixpoint delete_from_leaves (B : dtree) (i : nat) : deleted_dtree :=
   | Bnode p (Bleaf ls as l) _ (Bnode _ _ _ _ as r) =>
     if i < size ls then
       if low == size ls then
-        let r' := delete_from_leaves r 0 in
+        let r' := delete_from_leaves_rec r 0 in
         Stay (rbnode p (leaf (rcons (delete ls i) (daccess r 0))) r')
       else
         Stay (rbnode p (leaf (delete ls i)) r)
     else
-      let: r' := delete_from_leaves r (i - size ls)  in
+      let: r' := delete_from_leaves_rec r (i - size ls)  in
       Stay (rbnode p l r')
   | Bnode p (Bnode _ _ _ _ as l) (num, _) (Bleaf rs as r) =>
     if i < num then
-      let: l' := delete_from_leaves l i  in
+      let: l' := delete_from_leaves_rec l i  in
       Stay (rbnode p l' r)
     else
       if low == size rs then
-        let l' := delete_from_leaves l num.-1 in
+        let l' := delete_from_leaves_rec l num.-1 in
         Stay (rbnode p l' (leaf (daccess l num.-1 :: delete rs (i - num))))
       else
         Stay (rbnode p l (leaf (delete rs (i - num))))
   | Bnode p l (num, _) r =>
-    if i < num then Stay (rbnode p (delete_from_leaves l i) r)
-               else Stay (rbnode p l (delete_from_leaves r (i-num)))
+    if i < num then Stay (rbnode p (delete_from_leaves_rec l i) r)
+               else Stay (rbnode p l (delete_from_leaves_rec r (i-num)))
   end.
+
+Definition delete_from_leaves := locked delete_from_leaves_rec.
 
 Lemma delete_from_leaves_nearly_redblack' B i c' n :
   has_child_leaf B -> is_redblack B c' n ->
   is_nearly_redblack' (delete_from_leaves B i) c' n.
 Proof.
+  rewrite /delete_from_leaves -lock.
   time (case: n c' B => [|[|n]] [] [[]// [[]// [[]//???|?][??][[]//???|?] |?]
                         [??] [[]// [[]//???|?][??][[]//???|?] |?] | ?] => //=;
   do! case: ifP => ?;
@@ -1104,12 +1107,12 @@ Proof.
   by rewrite catA subSn // leqNgt H1.
 Qed.
 
-Lemma delete_from_leaves2E c l n o r i :
+Lemma delete_from_leaves_recE c l n o r i :
   low <= size l < high -> low <= size r < high ->
-  dflatten (delete_from_leaves (Bnode c (Bleaf _ l) (n,o) (Bleaf _ r)) i) =
+  dflatten (delete_from_leaves_rec (Bnode c (Bleaf _ l) (n,o) (Bleaf _ r)) i) =
   delete (l ++ r) i.
 Proof.
-  rewrite /delete_from_leaves delete_cat /=.
+  rewrite delete_cat /=.
   case: ifP; case: ifP => //; case: ifP => //;
     try rewrite /delete /= take0 drop1 cat0s cat_rcons -!catA.
       case r => //= /eqP -> /eqP <-; by rewrite ltn0.
@@ -1132,11 +1135,23 @@ Qed.
 Lemma insert1_after (T : eqType) s (b : T) : insert1 s b (size s) = rcons s b.
 Proof. by rewrite /insert1 /insert drop_size take_size cats0 cats1. Qed.
 
+Lemma insert1_before (T : eqType) s (b : T) : insert1 s b 0 = b :: s.
+Proof. by rewrite /insert1 /insert drop0 take0. Qed.
+
+Lemma dsize_low B : wf_dtree_l B -> dsize B >= low.
+Proof.
+move: B.
+apply: (@dtree_ind low high) => [c l r n o Hn Ho [wfl wfr] IHl IHr | s] /=.
+  by apply /(leq_trans (@leq_addr low _)) /leq_add.
+by move/andP => [].
+Qed.
+
 Lemma delete_from_leavesE B i :
-  wf_dtree 0 high B ->
+  wf_dtree_l B ->
   dflatten (delete_from_leaves B i) = delete (dflatten B) i.
 Proof.
-move=> wf; move: B wf i; apply: (@dtree_ind 0 high)
+rewrite /delete_from_leaves -lock => wf.
+move: B wf i; apply: (@dtree_ind low high)
   => // c [cl ll ld lr|ls] [cr rl rd rr|rs] n o Hn Ho [wfl wfr] IHl IHr i.
 + move: (IHl i) (IHr (i-n)) => /=; case: ifP => /= [H -> _| H _ ->];
     by rewrite [RHS]delete_cat -Hn H.
@@ -1146,29 +1161,48 @@ move=> wf; move: B wf i; apply: (@dtree_ind 0 high)
   move: (IHl n.-1) => /= ->.
   move: (daccessE wfl n.-1) => /= ->.
   rewrite -cat_rcons.
+  have Hn0: 0 < n.
+    rewrite Hn -(dsizeE wfl).
+    by apply /(leq_trans Hlow1) /dsize_low.
   rewrite -[in RHS](@insert1_delete (dflatten ll ++ _) n.-1).
     rewrite -insert1_after size_delete.
       by rewrite -Hn.
-Abort.
+    by rewrite -Hn -{2}(prednK Hn0) ltnS leqnn.
+  by rewrite -Hn -{2}(prednK Hn0) ltnS leqnn.
++ move: (IHr (i-size ls)) => /=; case: ifP => /= [H _ | H ->];
+    rewrite [RHS]delete_cat H //.
+  case: ifP => Hls //=.
+  move: (IHr 0) => /= ->.
+  move: (daccessE wfr 0) => /= ->.
+  have Hn0: 0 < n.
+    rewrite Hn -(dsizeE wfl).
+    by apply /(leq_trans Hlow1) /dsize_low.
+  rewrite cat_rcons.
+  rewrite -[in RHS](@insert1_delete (dflatten rl ++ _) 0).
+    by rewrite -insert1_before.
+  rewrite -(dsizeE wfr).
+  by apply /(leq_trans Hlow1) /dsize_low.
++ by apply delete_from_leaves_recE.
+Qed.
   
 Lemma ltn_subLR m n p : 0 < p -> (m - n < p) = (m < n + p).
 Proof. case: p => //= p; by rewrite addnS !ltnS leq_subLR. Qed.
 
 Lemma ddel_cat c l a b r i :
   wf_dtree_l (Bnode c l (a, b) r) ->
-  dflattenn (ddel (Bnode c l (a, b) r) i) =
+  dflatten (ddel (Bnode c l (a, b) r) i) =
   if i < a
-  then dflattenn (ddel l i) ++ dflatten r
-  else dflatten l ++ dflattenn (ddel r (i - a)).
+  then dflatten (ddel l i) ++ dflatten r
+  else dflatten l ++ dflatten (ddel r (i - a)).
 Proof.
   rewrite /= /lt_index /right_index /=.
   time (case: ifP => Hc; case: c l r =>
-      [] [[]// [??[??]?|?] [??] [??[??]?|?]|?]
-      [[] [??[??]?|?] [??] [??[??]?|?]|?] wfB //;
+      [] [[] ? [??] ?|?]
+      [[] ? [??] ?|?] wfB //;
     try case:ifP;
     rewrite ?(balanceL'E, balanceR'E, delete_cat, delete_from_leavesE,
               ltn_subLR, leq_trans Hlow1) //;
-    move:wfB Hc; rewrite ?size_cat;
+    move:wfB Hc; rewrite ?size_cat -/dflatten;
     do! decompose_rewrite => //=).
     (* 94s => 54s by delaying ltn_addr *)
   all: rewrite ?(subnDA, catA) //.
