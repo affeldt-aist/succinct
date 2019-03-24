@@ -1050,13 +1050,6 @@ Qed.
 
 (* Correctness lemmas *)
 
-Lemma ddel0E s o l r i :
-  ddel (Bnode Red (leaf l) (s,o) (leaf r)) i = delete_from_leaves Red l r i.
-Proof.
-  move Heq : (Bnode Red _ _ _) => B.
-  by case: B Heq => [[]//???|?] <-.
-Qed.
-
 Lemma balanceL'E c (l : deleted_dtree) r :
   dflatten (balanceL' c l r) = dflatten l ++ dflatten r.
 Proof. 
