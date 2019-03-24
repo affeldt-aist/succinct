@@ -1,7 +1,20 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-
 Require Import compact_data_structures rank_select insert_delete set_clear Recdef.
+
+(** * A formalization of succinct dynamic bit vectors *)
+
+(** OUTLINE:
+  0. Section btree
+  1. Section dtree
+       Definition daccess, drank, dselect_1 and dselect_0.
+  2. Section insert
+  3. Section dinsert
+  4. Section set_clear
+  5. Section delete
+  6. Section ddelete
+  7. Section example
+*)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
