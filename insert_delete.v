@@ -113,12 +113,20 @@ Section insert_delete.
     rewrite cats0 //=. by rewrite leqNgt Hif.
   Qed.
     
-
   Lemma delete_catR s i t : i >= size s ->
     delete (s ++ t) i = s ++ delete t (i - size s).
   Proof.
     move => H. rewrite /delete take_cat ltnNge H //= drop_cat ltnNge.
     by rewrite leqW //= catA subSn.
+  Qed.
+  
+  Lemma delete_cat s t i:
+    delete (s ++ t) i =
+    if i < size s then delete s i ++ t
+                  else s ++ delete t (i - size s).
+  Proof.
+    case:ifP => H; first by apply delete_catL.
+    by rewrite delete_catR // leqNgt H.
   Qed.
     
 End insert_delete.

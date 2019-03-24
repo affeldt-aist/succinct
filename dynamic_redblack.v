@@ -1065,18 +1065,6 @@ Proof.
   move => ? ? [] x; first case x; intros; by rewrite //= -!catA //= -!catA.
 Qed.
 
-Lemma delete_cat {arr arr' : seq bool} {i} :
-  delete (arr ++ arr') i =
-  if i < size arr then delete arr i ++ arr'
-                  else arr ++ delete arr' (i - size arr).
-Proof.
-  rewrite /delete take_cat -catA drop_cat.
-  case: ifP => H1; case: ifP => // H2; try (move: (ltnW H2); by rewrite H1).
-    have H3 : i.+1 = size arr; first by apply/eqP; rewrite eqn_leq H1 leqNgt H2.
-    by rewrite H3 subnn drop0 drop_oversize.
-  by rewrite catA subSn // leqNgt H1.
-Qed.
-
 Lemma delete_from_leavesE c l r i :
   low <= size l < high -> low <= size r < high ->
   dflatten (delete_from_leaves c l r i) = delete (l ++ r) i.
