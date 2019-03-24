@@ -951,6 +951,8 @@ Proof.
   repeat decompose_rewrite; by rewrite // !is_redblack_Red_Black. 
 Qed.
   
+(* This tactic is not necessary,
+   but if it is removed, proof becomes more slower. *)
 Ltac close_branch d H IHl IHr :=
  rewrite /=;
  try case:ifP=>?;
