@@ -1,6 +1,6 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-Require Import compact_data_structures rank_select insert_delete set_clear Recdef.
+Require Import compact_data_structures rank_select insert_delete set_clear.
 
 (** * A formalization of succinct dynamic bit vectors *)
 
@@ -757,7 +757,8 @@ Lemma dones_dbitclear (B : dtree) i :
 Proof.
   rewrite /dbitclear.
   move=> wf Hsize; move: B wf i Hsize.
-  apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi | s Hs i Hi].
+  apply: dtree_ind => //=
+    [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi | s Hs i Hi].
   rewrite -(dsizeE wfl) //.
   case: ifP => Hil.
   case_eq (bclear l i) => l' b Hbclear /=.
@@ -1033,7 +1034,9 @@ Notation ddel := (bdel mkD lt_index right_index (@delete _) delete_from_leaves
 (* Red-blackness invariant *)
 Lemma ddel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (ddel B i) c n.
-Proof. apply /bdel_is_nearly_redblack' /delete_from_leaves_nearly_redblack'. Qed.
+Proof.
+  apply /bdel_is_nearly_redblack' /delete_from_leaves_nearly_redblack'.
+Qed.
 
 (* Forget Stay/Down *)
 Definition dtree_of_deleted_dtree (B : deleted_dtree) : dtree :=
@@ -1172,9 +1175,9 @@ Qed.
 
 Lemma dsize_gt0 (B: dtree) : wf_dtree_l B -> size (dflatten B) > 0.
 Proof.
-  move: B; apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s wf] /=.
-    by rewrite size_cat ltn_addr.
-  rewrite (leq_trans Hlow1); by decomp wf.
+move: B; apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s wf] /=.
+  by rewrite size_cat ltn_addr.
+rewrite (leq_trans Hlow1); by decomp wf.
 Qed.
 
 Lemma ddel_wf (B : dtree) n i :
