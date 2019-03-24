@@ -73,9 +73,11 @@ Proof. elim t => [? l H1 ? r H2 /=|a //=]; by rewrite H1 H2 !eq_refl. Qed.
 Lemma eq_dtree_iff t1 t2 : t1 = t2 <-> eq_btree t1 t2.
 Proof.
   split => [->|]; first by rewrite eq_dtree_refl.
-  move: t1 t2; elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;
+  move: t1 t2;
+    elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;
   last by move/eqP => /= ->.
-  move/andP: H; case; move/andP; case; move/andP; case; move/eqP => ->; move/eqP => -> H1 H2.
+  move/andP: H; case; move/andP; case;
+    move/andP; case; move/eqP => ->; move/eqP => -> H1 H2.
   by rewrite (lH1 _ H1) (rH1 _ H2).
 Qed.
 
