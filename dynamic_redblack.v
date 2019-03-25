@@ -243,57 +243,69 @@ End dtree.
 Section insert.
 
 Variables D A : Type.
-Variable mkD : btree D A -> D.
+Variable addD : D -> D -> D.
+Variable subD : D -> D -> D.
 
-Definition balance col (l r : btree D A) : btree D A :=
+Definition balance col (l r : btree D A) dl : btree D A :=
   match col with
-  | Red => Bnode Red l (mkD l) r
+  | Red => Bnode Red l dl r
   | Black => match l, r with
-             | Bnode Red (Bnode Red a _ b) _ c, d
-             | Bnode Red a _ (Bnode Red b _ c), d
-             | a, Bnode Red (Bnode Red b _ c) _ d
-             | a, Bnode Red b _ (Bnode Red c _ d) =>
-               let l := Bnode Black a (mkD a) b in
-               Bnode Red l (mkD l) (Bnode Black c (mkD c) d)
-             | _, _ => Bnode Black l (mkD l) r
+             | Bnode Red (Bnode Red a da b) dab c, d =>
+               Bnode Red (Bnode Black a da b) dab
+                         (Bnode Black c (subD dl dab) d)
+             | Bnode Red a da (Bnode Red b db c), d =>
+               Bnode Red (Bnode Black a da b) (addD da db)
+                         (Bnode Black c (subD (subD dl da) db) d)
+             | a, Bnode Red (Bnode Red b db c) dbc d =>
+               Bnode Red (Bnode Black a dl b) (addD dl db)
+                         (Bnode Black c (subD dbc db) d)
+             | a, Bnode Red b db (Bnode Red c dc d) =>
+               Bnode Red (Bnode Black a dl b) (addD dl db)
+                         (Bnode Black c dc d)
+             | _, _ => Bnode Black l dl r
              end
   end.
 
-Definition balanceL col (l r : btree D A) : btree D A :=
+Definition balanceL col (l r : btree D A) dl : btree D A :=
   match col with
-  | Red => Bnode Red l (mkD l) r
+  | Red => Bnode Red l dl r
   | Black => match l with
-             | Bnode Red (Bnode Red a _ b) _ c
-             | Bnode Red a _ (Bnode Red b _ c) =>
-               let l := Bnode Black a (mkD a) b in
-               Bnode Red l (mkD l) (Bnode Black c (mkD c) r)
-             | _ => Bnode Black l (mkD l) r
+             | Bnode Red (Bnode Red a da b) dab c =>
+               Bnode Red (Bnode Black a da b) dab
+                         (Bnode Black c (subD dl dab) r)
+             | Bnode Red a da (Bnode Red b db c) =>
+               Bnode Red (Bnode Black a da b) (addD da db)
+                         (Bnode Black c (subD (subD dl da) db) r)
+             | _ => Bnode Black l dl r
              end
   end.
 
-Definition balanceR col (l r : btree D A) : btree D A :=
+Definition balanceR col (l r : btree D A) dl : btree D A :=
   match col with
-  | Red => Bnode Red l (mkD l) r
+  | Red => Bnode Red l dl r
   | Black => match r with
-             | Bnode Red (Bnode Red b _ c) _ d
-             | Bnode Red b _ (Bnode Red c _ d) =>
-               let lb := Bnode Black l (mkD l) b in
-               Bnode Red lb (mkD lb) (Bnode Black c (mkD c) d)
-             | _ => Bnode Black l (mkD l) r
+             | Bnode Red (Bnode Red b db c) dbc d =>
+               Bnode Red (Bnode Black l dl b) (addD dl db)
+                         (Bnode Black c (subD dbc db) d)
+             | Bnode Red b db (Bnode Red c dc d) =>
+               Bnode Red (Bnode Black l dl b) (addD dl db)
+                         (Bnode Black c dc d)
+             | _ => Bnode Black l dl r
              end
   end.
 
 Variable bins_leaf : A -> bool -> nat -> btree D A.
 Variable lt_index : nat -> D -> bool.
 Variable right_index : nat -> D -> nat.
+Variable insD : D -> bool -> D.
 
 Fixpoint bins (B : btree D A) b i : btree D A :=
   match B with
   | Bleaf s => bins_leaf s b i
   | Bnode c l d r =>
       if lt_index i d
-      then balanceL c (bins l b i) r
-      else balanceR c l (bins r b (right_index i d))
+      then balanceL c (bins l b i) r (insD d b)
+      else balanceR c l (bins r b (right_index i d)) d
     end.
 
 Definition binsert (B : btree D A) b i : btree D A :=
@@ -336,18 +348,18 @@ Lemma is_redblack_Red_Black B n :
   is_redblack B Red n -> is_redblack B Black n.
 Proof. by case: B => /= [[]|]. Qed.
 
-Lemma balanceL_Black_nearly_is_redblack l r n :
+Lemma balanceL_Black_nearly_is_redblack l r n b :
   nearly_redblack l n -> is_redblack r Black n ->
-  is_redblack (balanceL Black l r) Black n.+1.
+  is_redblack (balanceL Black l r b) Black n.+1.
 Proof.
   case: l => [[[[] lll ? llr|?] ? [[] lrl ? lrr|?]|ll ? lr]|?] /=;
     repeat decompose_rewrite => //;
     by rewrite !is_redblack_Red_Black -?(eqP H1).
 Qed.
 
-Lemma balanceR_Black_nearly_is_redblack l r n :
+Lemma balanceR_Black_nearly_is_redblack l r n b :
   nearly_redblack r n -> is_redblack l Black n ->
-  is_redblack (balanceR Black l r) Black n.+1.
+  is_redblack (balanceR Black l r b) Black n.+1.
 Proof.
   case: r => [[[[] rll ? rlr|?] ? [[] rrl ? rrr|?]|rl ? rr]|?] /=;
     repeat decompose_rewrite => //;
@@ -406,10 +418,11 @@ Variables low high : nat.  (* (w ^ 2)./2 and (w ^ 2).*2 *)
 Hypothesis Hlow : low.*2 <= high.
 Hypothesis Hhigh : 1 < high.
 
-Definition mkD l := (dsize l, dones l).
-Local Notation balance := (balance mkD).
-Local Notation balanceL := (balanceL mkD).
-Local Notation balanceR := (balanceR mkD).
+Definition addD d1 d2 := (d1.1 + d2.1, d1.2 + d2.2).
+Definition subD d1 d2 := (d1.1 - d2.1, d1.2 - d2.2).
+Local Notation balance := (balance addD subD).
+Local Notation balanceL := (balanceL addD subD).
+Local Notation balanceR := (balanceR addD subD).
 Local Notation wf_dtree_l := (wf_dtree low high).
 Local Notation donesE := (@donesE low high).
 Local Notation dsizeE := (@dsizeE low high).
@@ -418,16 +431,17 @@ Definition dins_leaf s b i :=
   let s' := insert1 s b i in
   if size s + 1 == high then
     let n  := size s' %/ 2 in let sl := take n s' in let sr := drop n s' in
-    Bnode Red (Bleaf _ sl) (size sl, count_mem true sl) (Bleaf _ sr)
+    Bnode Red (Bleaf _ sl) (n, count_mem true sl) (Bleaf _ sr)
   else Bleaf _ s'.
 
 Definition lt_index i (d : nat * nat) := i < fst d.
 Definition right_index i (d : nat * nat) := i - fst d.
+Definition insD (d : nat * nat) b := (d.1.+1, d.2+b).
 
 Definition dins : dtree -> bool -> nat -> dtree :=
-  bins mkD dins_leaf lt_index right_index.
+  bins addD subD dins_leaf lt_index right_index insD.
 Definition dinsert : dtree -> bool -> nat -> dtree :=
-  binsert mkD dins_leaf lt_index right_index.
+  binsert addD subD dins_leaf lt_index right_index insD.
 
 Lemma dins_leaf_is_redblack a b i : is_redblack (dins_leaf a b i) Black 0.
 Proof. rewrite /dins_leaf; by case: ifP. Qed.
@@ -443,7 +457,7 @@ Lemma dflatten_node c l d r :
   dflatten (Bnode c l d r) = dflatten l ++ dflatten r.
 Proof. by []. Qed.
 
-Lemma balanceE c l r : dflatten (balance c l r) = dflatten l ++ dflatten r.
+Lemma balanceE c l r d : dflatten (balance c l r d) = dflatten l ++ dflatten r.
 Proof.
   rewrite /balance. case: c. exact: dflatten_node.
   case: l => [[[[] lll llD llr|llA] lD [[] lrl lrD lrr|lrA]|ll lD lr]|lA] /=;
@@ -451,43 +465,21 @@ Proof.
     try done; by rewrite !catA.
 Qed.
 
-Lemma balanceLE c l r : dflatten (balanceL c l r) = dflatten l ++ dflatten r.
+Lemma balanceLE c l r d: dflatten (balanceL c l r d) = dflatten l ++ dflatten r.
 Proof.
   rewrite /balanceL. case: c. exact: dflatten_node.
   case: l => [[[[] lll llD llr|llA] lD [[] lrl lrD lrr|lrA]|ll lD lr]|lA] //=;
     by rewrite !catA.
 Qed.
 
-Lemma balanceRE c l r : dflatten (balanceR c l r) = dflatten l ++ dflatten r.
+Lemma balanceRE c l r d: dflatten (balanceR c l r d) = dflatten l ++ dflatten r.
 Proof.
   rewrite /balanceR. case: c. exact: dflatten_node.
   case: r => [[[[] rll rlD rlr|rlA] rD [[] rrl rrD rrr|rrA]|rl rD rr]|rA] //=;
     by rewrite !catA.
 Qed.
 
-(* Well-foundedness lemmas
- * Show that dinsert always returns a well-founded tree
- *)
-
-Lemma balanceL_wf c (l r : dtree) :
-  wf_dtree_l l -> wf_dtree_l r -> wf_dtree_l (balanceL c l r).
-Proof.
-  case: c => /= wfl wfr.
-    by rewrite wfl wfr !(dsizeE,donesE,eqxx).
-  case: l wfl => [[[[] ? [??] ?|?] [??] [[] ? [??] ?|?] | ? [??] ?]|?] /=;
-    rewrite wfr; repeat decompose_rewrite;
-    by rewrite ?(dsizeE,donesE,size_cat,count_cat,eqxx).
-Qed.
-
-Lemma balanceR_wf c (l r : dtree) :
-  wf_dtree_l l -> wf_dtree_l r -> wf_dtree_l (balanceR c l r).
-Proof.
-  case: c => /= wfl wfr.
-    by rewrite wfl wfr ?(dsizeE,donesE,eqxx).
-  case: r wfr => [[[[] ? [??] ?|?] [??] [[] ? [??] ?|?] | ? [??] ?] | ?] /=;
-    rewrite wfl; repeat decompose_rewrite;
-    by rewrite ?(dsizeE,donesE,size_cat,count_cat,eqxx).
-Qed.
+(* Correctness of dinsert *)
 
 Definition wf_dtree' t :=
   if t is Bleaf s then size s < high else wf_dtree_l t.
@@ -504,6 +496,57 @@ Qed.
 Lemma wf_dtree'_node c l d r :
   wf_dtree' (Bnode c l d r) = wf_dtree low high (Bnode c l d r). 
 Proof. by []. Qed.
+
+Lemma dins_leafE s b i :
+  size s < high -> dflatten (dins_leaf s b i) = insert1 s b i.
+Proof.
+  rewrite /dins /dins_leaf. case: ifP => Hi Hs //.
+  by rewrite dflatten_node /dflatten cat_take_drop.
+Qed.
+
+Lemma dinsE (B : dtree) b i :
+  wf_dtree_l B -> dflatten (dins B b i) = insert1 (dflatten B) b i.
+Proof.
+  move => wf; move: B wf b i. apply: dtree_ind => //.
+  + move => c l r num ones Hnum Hones _ IHl IHr /= b i.
+    case: ifPn => ?.
+     - by rewrite balanceLE IHl /insert1 insert_catL -?Hnum.
+     - by rewrite balanceRE IHr /insert1 insert_catR -?Hnum // leqNgt.
+  + move => s /andP [_] Hs b i /=.
+    by rewrite dins_leafE.
+Qed.
+
+Lemma dinsertE (B : dtree) b i :
+  wf_dtree' B -> dflatten (dinsert B b i) = insert1 (dflatten B) b i.
+Proof.
+  case: B => [c l d r | s] wf.
+    rewrite /dinsert -(dinsE b i) /binsert /dins //; by case: bins.
+  rewrite /dinsert /binsert /dins -dins_leafE /=; by case: dins_leaf.
+Qed.
+
+(* Well-foundedness lemmas
+ * Show that dinsert always returns a well-founded tree
+ *)
+
+Lemma balanceL_wf c (l r : dtree) d :
+  wf_dtree_l (Bnode c l d r) -> wf_dtree_l (balanceL c l r d).
+Proof.
+  case: c d => /= -[n o] /andP[Hn] /andP[Ho] /andP[wfl wfr].
+    by rewrite wfl wfr Hn Ho.
+  case: l wfl Hn Ho => [[[[] ? [??] ?|?] [??] [[] ? [??] ?|?] | ? [??] ?]|?] /=;
+    rewrite wfr; repeat decompose_rewrite;
+    by rewrite ?(size_cat,count_cat,addKn,eqxx).
+Qed.
+
+Lemma balanceR_wf c (l r : dtree) d :
+   wf_dtree_l (Bnode c l d r) -> wf_dtree_l (balanceR c l r d).
+Proof.
+  case: c d => /= -[n o] /andP[Hn] /andP[Ho] /andP[wfl wfr].
+    by rewrite wfl wfr Hn Ho.
+  case: r wfr Hn Ho => [[[[] ? [??] ?|?] [??] [[] ? [??] ?|?] | ? [??] ?]|?] /=;
+    rewrite wfl; repeat decompose_rewrite;
+    by rewrite ?(size_cat,count_cat,addKn,eqxx).
+Qed.
 
 Lemma leq_half n : n./2 <= n.
 Proof. by rewrite -{2}(odd_double_half n) -addnn addnA leq_addl. Qed.
@@ -531,8 +574,10 @@ Proof.
   move => wf;  move: B wf b i.
   apply: dtree_ind =>
          [c l r num ones -> -> [wfl wfr] IHl IHr b i | s Hs b i] /=.
-    case: ifP => Hi. by apply: balanceL_wf.
-    by apply: balanceR_wf.
+    case: ifP => Hi.
+      apply: balanceL_wf => /=;
+      by rewrite IHl wfr dinsE // size_insert1 count_insert1 eqb_id !eqxx.
+    apply: balanceR_wf => /=; by rewrite IHr wfl !eqxx.
   have/andP[Hs1 Hs2]:= Hs.
   have:= dins_leaf_wf b i Hs2.
   case Hins: dins_leaf => [//|s'] /= ->.
@@ -572,36 +617,9 @@ Proof.
   by rewrite Hins.
 Qed.
 
+(* Interaction with other operations *)
+
 Definition dinsert_wf0 B b i wf := wf_dtree'_dtree (@dinsert_wf B b i wf).
-
-(* Correctness of dinsert *)
-
-Lemma dins_leafE s b i :
-  size s < high -> dflatten (dins_leaf s b i) = insert1 s b i.
-Proof.
-  rewrite /dins /dins_leaf. case: ifP => Hi Hs //.
-  by rewrite dflatten_node /dflatten cat_take_drop.
-Qed.
-
-Lemma dinsE (B : dtree) b i :
-  wf_dtree_l B -> dflatten (dins B b i) = insert1 (dflatten B) b i.
-Proof.
-  move => wf; move: B wf b i. apply: dtree_ind => //.
-  + move => c l r num ones Hnum Hones _ IHl IHr /= b i.
-    case: ifPn => ?.
-     - by rewrite balanceLE IHl /insert1 insert_catL -?Hnum.
-     - by rewrite balanceRE IHr /insert1 insert_catR -?Hnum // leqNgt.
-  + move => s /andP [_] Hs b i /=.
-    by rewrite dins_leafE.
-Qed.
-
-Lemma dinsertE (B : dtree) b i :
-  wf_dtree' B -> dflatten (dinsert B b i) = insert1 (dflatten B) b i.
-Proof.
-  case: B => [c l d r | s] wf.
-    rewrite /dinsert -(dinsE b i) /binsert /dins //; by case: bins.
-  rewrite /dinsert /binsert /dins -dins_leafE /=; by case: dins_leaf.
-Qed.
 
 Lemma dinsert_rank (B : dtree) b i j :
   wf_dtree' B -> drank (dinsert B b i) j =
@@ -680,7 +698,7 @@ Proof.
   elim: B i => [c l IHl [num ones] r IHr | s] //= i; last first.
     by rewrite -size_update.
   case: ifP => Hi.
-    rewrite -(IHl i); by case: bset => ? [].
+    rewrite -(IHl i). by case: bset => ? [].
   rewrite -(IHr (i-num)); by case: bset => ? [].
 Qed.
 
@@ -994,6 +1012,7 @@ Local Notation wf_dtree_l := (wf_dtree low high).
 Local Notation donesE' := (@donesE low high).
 Local Notation dsizeE' := (@dsizeE low high).
 Local Notation leaf a := (Bleaf _ a : dtree).
+Definition mkD l := (dsize l, dones l).
 Local Notation rbnode := (rbnode mkD).
 Definition deleted_dtree := deleted_btree (nat * nat) (seq bool).
 Local Notation balanceL' c B b := (balanceL' mkD c B b : deleted_dtree).
