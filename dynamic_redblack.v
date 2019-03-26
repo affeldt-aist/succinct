@@ -1503,7 +1503,84 @@ Proof.
   rewrite nth_count // ltn_subLR //.
   all: by apply (leq_trans Hlow1).
 Qed.
- 
+
+(* Lemma ddelete_ind (P : deleted_dtree -> Prop) : *)
+(*   (forall (B : deleted_dtree), *)
+(*       is_redblack B Black n -> *)
+(*       wf_dtree_l B -> *)
+(*       i < dsize B -> *)
+(*       0 < n -> *)
+(*       num = size (dflatten l) -> ones = count_mem true (dflatten l) -> *)
+(*       wf_dtree l /\ wf_dtree r -> *)
+(*       P l -> P r -> P (Bnode c l (num, ones) r)) -> *)
+(*   (forall s, low <= size s < high -> P (Bleaf _ s)) -> *)
+(*   forall B, wf_dtree B -> P B. *)
+(* Proof. *)
+(*   move=> HN HL; elim => [c l IHl [num ones] r IHr | s] //=. *)
+(*     move/andP => [/eqP Hones] /andP [/eqP Hnum] /andP [wfl wfr]. *)
+(*     apply: HN; auto. *)
+(*   by apply: HL. *)
+(* Qed. *)
+
+(*   match B with *)
+(*   | Bnode c (Bleaf l) d (Bleaf r) => delete_from_leaves c l r i *)
+(*   | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr) as l) d (Bleaf r) => *)
+(*     if lt_index i d *)
+(*     then balanceL' Black (bdel l i) d (Bleaf _ r) *)
+(*     else balanceR' Black (Bleaf _ ll) ld *)
+(*                    (delete_from_leaves Red lr r (right_index i ld)) *)
+(*   | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) d (Bleaf rr) as r) => *)
+(*     if lt_index (right_index i ld) d *)
+(*     then balanceL' Black (delete_from_leaves Red l rl i) (addD ld d) (Bleaf _ rr) *)
+(*     else balanceR' Black (Bleaf _ l) ld (bdel r (right_index i ld)) *)
+(*   | Bnode c l d r =>  *)
+(*     if lt_index i d *)
+(*     then balanceL' c (bdel l i) d r *)
+(*     else balanceR' c l d (bdel r (right_index i d)) *)
+(*   | Bleaf x => *)
+(*     let (leaf, ret) := delete_leaf x i in *)
+(*     MkD (Bleaf _ leaf) false ret *)
+(*   end. *)
+
+(* Lemma ddel_wf_Black (l r : dtree) n i : *)
+(*   i < dsize l + dsize r -> wf_dtree_l l -> wf_dtree_l r -> *)
+(*   is_redblack l Black n.+1 -> is_redblack r Black n.+1 -> *)
+(*   wf_dtree_l (ddel (Bnode Black l (dsize l, dones l) r) i). *)
+(* Proof. *)
+(* move=> Hi wfl wfr rbl rbr. *)
+(* rewrite /= /lt_index /right_index /=. *)
+(* elim: l n Hi rbl rbr wfl wfr => *)
+(* [[]ll IHll[??] lr IHlr|?] // n Hi rbl rbr wfl wfr; *)
+(* try case: ll lr IHll IHlr rbl rbr wfl wfr Hi => *)
+(* [[] lll [??] llr|?] [[] lrl [??] lrr|?] // IHll IHlr rbl rbr wfl wfr Hi; *)
+(* case: ifP => Hc; *)
+(* (apply balanceL'_wf => // *)
+(* || apply balanceR'_wf => // *)
+(* || apply delete_from_leaves_wf => //; *)
+(* rewrite /mkD /subD /addD /access; *)
+(* rewrite ?(ddel_d_delE, *)
+(*           dsizeE', donesE', ddelE, @daccessE low high, *)
+(*           count_delete, size_delete, subn1)). *)
+Ltac close_branch Hi IHl IHr wfB rbB :=
+  let Hc := fresh "Hc" in
+  try case: ifP => Hc;
+  (apply balanceR'_wf => //
+  || apply balanceL'_wf => //
+  || apply delete_from_leaves_wf => //;
+  rewrite /mkD /subD /addD /access;
+  rewrite ?(ddel_d_delE,
+            dsizeE', donesE', ddelE, @daccessE low high,
+            count_delete, size_delete, subn1));
+  (try apply delete_from_leaves_wf => //);
+  rewrite ?delete_from_leaves_d_delE => //;
+  try (apply IHl => //
+    || apply IHr => //; rewrite ?ltn_subLR);
+  try move: Hc; move: Hi ; decomp wfB => //; decomp rbB => //;
+  try apply is_redblack_Red_Black => //;
+  try rewrite -size_cat //;
+  try rewrite size_cat ltn_addr // dsize_gt0 //;
+  try apply dsize_gt0 => //.
+
 Lemma ddel_wf (B : dtree) n i :
   0 < n ->
   i < dsize B ->
@@ -1516,107 +1593,55 @@ Proof.
   elim: B n i => [[] l IHl [??] r IHr|?] n i Hn Hi rbB wfB;
     last by move/eqP: rbB Hn => /= ->.
   + rewrite /bdel -/ddel;
-    case: ifP => Hc;
-     case: l Hi rbB IHl IHr wfB =>
-      [[]?[??]?|?] // Hi rbB IHl IHr wfB;
-      (apply balanceL'_wf => //
-      || apply balanceR'_wf => //
-      || apply delete_from_leaves_wf => //;
-      rewrite /mkD /subD /addD /access;
-      rewrite ?(ddel_d_delE,
-                dsizeE', donesE', ddelE, @daccessE low high,
-                count_delete, size_delete, subn1))
-      || (case: r Hi rbB IHl IHr wfB =>
-         [[]?[??]?|?] // Hi rbB IHl IHr wfB);
-      try apply (IHl n) => //
-          || (apply (IHr n) => //; rewrite ?ltn_subLR);
-      try apply delete_from_leaves_wf => //;
-      move: Hi Hc; decomp wfB => //; decomp rbB => //;
-      try rewrite -size_cat //;
-      try rewrite dsize_gt0 //;
-      apply is_redblack_Red_Black => //.
+    case: l Hi rbB IHl IHr wfB =>
+    [[]?[??]?|?] // Hi rbB IHl IHr wfB;
+    try by (close_branch Hi (IHl n) (IHr n) wfB rbB).
+    case: r Hi rbB IHl IHr wfB =>
+    [[]?[??]?|?] // Hi rbB IHl IHr wfB;
+    by close_branch Hi (IHl n) (IHr n) wfB rbB.
   + case: n Hn rbB => [//|[|n]] Hn rbB.
   * case: l r Hi rbB IHl IHr wfB =>
-        [[] [[]//|?] [??] [[]//|?]|?] [[] [[]//|?] [??] [[]|?]|?] //=
-        Hi rbB IHl IHr wfB;
-      try case: ifP => Hc;
-      (apply balanceL'_wf => //
-      || apply balanceR'_wf => //
-      || apply delete_from_leaves_wf => //;
-      rewrite /mkD /subD /addD /access;
-      rewrite ?(ddel_d_delE,
-                dsizeE', donesE', ddelE, @daccessE low high,
-                count_delete, size_delete, subn1));
-      (try apply delete_from_leaves_wf => //);
-      rewrite ?delete_from_leaves_d_delE => //;
-      (try move: Hc; decomp wfB; try rewrite -size_cat //) => //.
-    rewrite ltn_subLR; first by rewrite -size_cat //.
-    rewrite size_cat ltn_addl // (leq_trans Hlow1) //.
-    rewrite ltn_subLR; first by rewrite -size_cat catA //.
-    rewrite size_cat ltn_addl // (leq_trans Hlow1) //.
-    rewrite size_cat count_cat.
-    rewrite addnC addnK.
-    rewrite addnC addnK.
-    rewrite //.
-    rewrite -(eqP (pat3 _ _ _)).
-    all : try by [].
-    rewrite -size_cat //.
-        
-      rewrite /delete_from_leaves; repeat case:ifP => ?;
-      rewrite /= ?rcons_delete_access_behead // /access;
-      rewrite ?(pat6, pat7, pat8, pat9) //;
-      rewrite /= ?rcons_delete_access_behead // /access;
-      try rewrite /= ?subn1 //;
-      try by rewrite -size_cat //;
-      try by apply ltn_pred, (leq_trans Hlow1).
-      rewrite ltn_subLR.
-      rewrite -size_cat //.
-      apply (leq_trans Hlow1) => //.
-      apply (leq_trans Hlow1) => //.
-      rewrite ltn_subLR.
-      rewrite -size_cat //.
-      apply (leq_trans Hlow1) => //.
-      try by apply ltn_pred, (leq_trans Hlow1).
-      try by apply ltn_pred, (leq_trans Hlow1).
-      rewrite ltn_subLR.
-      rewrite -size_cat //.
-      rewrite size_cat ltn_addl // (leq_trans Hlow1) //.
-      by apply ltn_pred, (leq_trans Hlow1).
-      by apply ltn_pred, (leq_trans Hlow1).
-      try by apply ltn_pred, (leq_trans Hlow1).
-      
-      rewrite pat8.
-      rewrite pat9.
-      rewrite /=
-      rewrite pat7.
-      rewrite ?rcons_delete_access_behead //;
-      try rewrite -pat6 //;
-      try rewrite -pat7 //;
-      try rewrite /= subn1 /access //.
-      rewrite -pat6 //.
-      rewrite -pat7 //.
-      rewrite ?rcons_delete_access_behead //.
-      rewrite -pat6 //.
-      rewrite -pat7 //.
-      rewrite ?(size_cat, size_delete).
-      rewrite ?rcons_delete_access_behead //.
-      rewrite ?(balanceL'_wf, balanceR'_wf, delete_from_leaves_wf) //;
-      try move: Hc; move: wfB rbB Hi;
-      do! (decompose_rewrite; rewrite /= ?size_cat //).
-    - by rewrite ltn_subLR // ltn_addr // (leq_trans Hlow1).
-    - by rewrite ltn_subLR ?addnA // ltn_addr // (leq_trans Hlow1).
-    - by rewrite -ltn_subLR // (leq_trans Hlow1).
-    - by rewrite ltn_subLR // ltn_addr // (leq_trans Hlow1).
-  * time (case:l r Hi rbB IHl IHr wfB =>
-        [[] ll [??] lr|?] [[]?[??]?|?] Hi rbB IHl IHr wfB;
-      last rewrite delete_from_leaves_wf //;
-      case: ifP => Hc //;
-      try case: ll lr IHl rbB wfB Hi => [[]???|?] [[]???|?] // IHl rbB wfB Hi;
-      rewrite ?(balanceL'_wf, balanceR'_wf,
-                IHl n.+1, IHr n.+1, delete_from_leaves_wf, ltn_subLR) //;
-      move: rbB wfB Hi Hc;
-      do! (decompose_rewrite; rewrite //= ?size_cat); (* 66s => 59s by //= *)
-      by rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1)).
+    [[] [[]//|?] [??] [[]//|?]|?] [[] [[]//|?] [??] [[]|?]|?] //=
+    Hi rbB IHl IHr wfB;
+    try close_branch Hi (IHl 0) (IHr 0) wfB rbB;
+    rewrite ?(size_cat, catA, ltn_subLR);
+    try rewrite -!size_cat //;
+    try rewrite size_cat ltn_addl // (leq_trans Hlow1) //;
+    try by rewrite size_cat -ltn_subLR // (leq_trans Hlow1) //.
+    - rewrite catA //.
+    - rewrite count_cat //.
+  * rewrite /=.
+    case:l r Hi rbB IHl IHr wfB =>
+      [[] ll [??] lr|?] [[] rl [??] rr|?] Hi rbB IHl IHr wfB;
+       last rewrite delete_from_leaves_wf //.
+    destruct ll;
+    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
+    destruct lr;
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+
+    destruct ll;
+    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
+    destruct lr;
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+
+    destruct ll;
+    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
+    destruct lr;
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+    
+    destruct ll;
+    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
+    destruct lr;
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+    
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+    
+    destruct rl;
+    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
+    destruct rr;
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
 Qed.
 
 Lemma ddelete_wf (B : dtree) n i :
