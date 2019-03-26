@@ -1366,55 +1366,20 @@ Proof.
 Qed.
 
 Lemma count_delete arr i :
-  (count_mem true) arr - nth false arr i = (count_mem true) (delete arr i).
+  (count_mem true) (delete arr i) = (count_mem true) arr - nth false arr i.
 Proof.
-  case H : (i < (size arr)).
-  rewrite -(cat_take_drop i arr) /delete !count_cat cat_take_drop (drop_nth false)
-          // -/(cat [:: nth false arr i] _) count_cat /= addn0.
-   case: (nth false arr i) => /=.
-    by rewrite [1 + _]addnC addnA addn1 subn1 -[_.+1]subn0 subSKn subn0.
-   by rewrite add0n subn0.
-  rewrite ltnNge in H.
-  move/negPn : H => H.
-  rewrite nth_default /delete // take_oversize // drop_oversize.
-   by rewrite count_cat /= addn0 subn0.
-  by apply: leqW.
-Qed.
-
-Lemma pat6 a b c :
-  a > 0 -> a + b + c - 1 = a.-1 + b + c.
-Proof.
-move => H.
-rewrite -addnA addnC -addnBA // subn1 addnC addnA //.
-Qed.
-
-Lemma pat7 a b c i :
-  (count_mem true) ((delete a i ++ b) ++ c)
-  = (count_mem true) ((a ++ b) ++ c) - nth false a i.
-Proof.
-  rewrite 4!count_cat -count_delete.
-  elim: a i => [|A a IHa] i;
-    first by rewrite nth_nil add0n subn0.
-  case: i => [|i] /=.
-   case: A => /=;
-    rewrite ?(pat6, addSn, subn1, ltn0Sn) //.
-    by rewrite !add0n !subn0 //.
-  case: A => /=.
-   by case: (nth false a i);
-      rewrite ?(add0n, add1n, pat6, subn1, ltn0Sn, subn0) //.
-  by rewrite add0n //.
-Qed.
-
-Lemma pat8 T a b c i :
-  i < size a ->
-  @size T ((delete a i ++ b) ++ c) =
-  @size T a + @size T b + @size T c - 1.
-Proof.
-  move => H;
-  rewrite 2!size_cat size_delete //.
-  rewrite pat6 //.
-  elim:i H => // i IH H.
-  apply IH, ltnW, H.
+apply/eqP; rewrite eq_sym; apply/eqP.
+case H : (i < (size arr)).
+rewrite -(cat_take_drop i arr) /delete !count_cat cat_take_drop (drop_nth false)
+        // -/(cat [:: nth false arr i] _) count_cat /= addn0.
+ case: (nth false arr i) => /=.
+  by rewrite [1 + _]addnC addnA addn1 subn1 -[_.+1]subn0 subSKn subn0.
+ by rewrite add0n subn0.
+rewrite ltnNge in H.
+move/negPn : H => H.
+rewrite nth_default /delete // take_oversize // drop_oversize.
+ by rewrite count_cat /= addn0 subn0.
+by apply: leqW.
 Qed.
 
 Lemma ddel_wf (B : dtree) n i :
@@ -1426,62 +1391,27 @@ Lemma ddel_wf (B : dtree) n i :
 Proof.
   move => Hn Hi rbB wfB; rewrite dsizeE' // in Hi; move: Hn Hi rbB wfB.
   rewrite /= /lt_index /right_index /=.
-  elim: B n i => [[] l IHl [??] r IHr|?] n i Hn Hi rbB wfB /=;
+  elim: B n i => [[] l IHl [??] r IHr|?] n i Hn Hi rbB wfB;
     last by move/eqP: rbB Hn => /= ->.
-  + case: ifP => Hc;
-    case: l r Hi rbB IHl IHr wfB =>
-        [[] ll [??]?|?] [[]?[??]?|?]// Hi rbB IHl IHr wfB;
-    try case: ll IHl rbB wfB Hi => [[] lll [??]?|?] // IHl rbB wfB Hi;
-    rewrite ?(balanceL'_wf, balanceR'_wf,
-              IHl n, IHr n, delete_from_leaves_wf, ltn_subLR) //;
-    move: rbB wfB Hi Hc;
-    do! (decompose_rewrite; rewrite /= ?size_cat) => //;
-    rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1) //=.
-    destruct lll; case:ifP => ?; rewrite ?(balanceL'_d_delE, balanceR'_d_delE).
-    rewrite !ddel_d_delE /subD /mkD.
-    rewrite ?(dsizeE', donesE', balanceL'E, @daccessE low high, ddelE) /access.
-    rewrite ?(pat7, pat8, eqxx) //.
-    by [].
-    rewrite balance
-    rewrite /=.
-    rewrite /= eqxx //.
-    rewrite //=.
-    by [].
-    rewrite /(count_mem true).
-    
-    rewrite size_cat. size_delete.
-    
-    rewrite 2!size_cat.
-    rewrite size_delete.
-    rewrite /=.
-    ttt
-    rewrite -addnBA.
-    rewrite -subnAC.
-    apply/eqP.
-    rewrite /= -catA.
-    rewrite /= 3!count_cat -catA.
-    rewrite count_cat.
-    rewrite -count_delete /=.
-    
-    rewrite addnKS.
-    rewrite -subSn.
-    
-    rewrite /=.
-    rewrite /subD /=.
-    destruct p.
-    rewrite /=.
-    rewrite !size_cat !count_cat.
-    rewrite /=.
-    destruct lll as [c llll llld lllr| ?]; case:ifP =>?; try rewrite !balanceL'_d_delE.
-    
-    case:ifP =>?; try rewrite !balanceL'_d_delE.
-    destruct c, llld => /=.
-    rewrite /=.
-    case: lll.
-    rewrite /=.
-    destruct ll.
-    case: ll => 
-    rewrite /=.
+  + rewrite /bdel -/ddel;
+    case: ifP => Hc;
+     case: l Hi rbB IHl IHr wfB =>
+      [[]?[??]?|?] // Hi rbB IHl IHr wfB;
+      (apply balanceL'_wf => //
+      || apply balanceR'_wf => //;
+      rewrite /mkD /subD /addD /access;
+      rewrite ?(ddel_d_delE,
+                dsizeE', donesE', ddelE, @daccessE low high,
+                count_delete, size_delete, subn1))
+      || (case: r Hi rbB IHl IHr wfB =>
+         [[]?[??]?|?] // Hi rbB IHl IHr wfB);
+      try apply (IHl n) => //
+          || (apply (IHr n) => //; rewrite ?ltn_subLR);
+      try apply delete_from_leaves_wf => //;
+      move: Hi Hc; decomp wfB => //; decomp rbB => //;
+      try rewrite -size_cat //;
+      try rewrite dsize_gt0 //;
+      apply is_redblack_Red_Black => //.
   + case: n Hn rbB => [//|[|n]] Hn rbB.
   * case: l r Hi rbB IHl IHr wfB =>
         [[] [[]//|?] [??] [[]//|?]|?] [[] [[]//|?] [??] [[]|?]|?] //=
