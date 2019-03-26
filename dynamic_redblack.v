@@ -1432,10 +1432,10 @@ Lemma ltn_pred a :
   0 < a -> a.-1 < a.
 Proof. case: a => //=. Qed.
 
-Lemma dsize_gt0 (B: dtree) : wf_dtree' B -> size (dflatten B) > 0.
+Lemma dsize_gt0 (B: dtree) : wf_dtree_l B -> size (dflatten B) > 0.
 Proof.
 move: B; apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s wf] /=.
-   by rewrite size_cat ltn_addr.
+  by rewrite size_cat ltn_addr.
 rewrite (leq_trans Hlow1); by decomp wf.
 Qed.
 
