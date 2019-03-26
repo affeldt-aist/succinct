@@ -1382,15 +1382,41 @@ Proof.
 Qed.
 
 Lemma pat6 a b c :
-  a > 0 -> a + b + c - 1 == a.-1 + b + c.
+  a > 0 -> a + b + c - 1 = a.-1 + b + c.
 Proof.
 move => H.
 rewrite -addnA addnC -addnBA // subn1 addnC addnA //.
 Qed.
-                                                                           
-  (size (dflatten lll1 ++ dflatten lll2) + size (dflatten _b7_) + size (dflatten _b2_) - 1,
-  (count_mem true) (((dflatten lll1 ++ dflatten lll2) ++ dflatten _b7_) ++ dflatten _b2_) - nth false (dflatten lll1 ++ dflatten lll2) i) ==
-  ((size (dflatten lll1 ++ dflatten lll2)).-1 + size (dflatten _b7_) + size (dflatten _b2_), (count_mem true) ((delete (dflatten lll1 ++ dflatten lll2) i ++ dflatten _b7_) ++ dflatten _b2_))
+
+Lemma pat7 a b c i :
+  (count_mem true) ((delete a i ++ b) ++ c)
+  = (count_mem true) ((a ++ b) ++ c) - nth false a i.
+Proof.
+  rewrite 4!count_cat -count_delete.
+  elim: a i => [|A a IHa] i;
+    first by rewrite nth_nil add0n subn0.
+  case: i => [|i] /=.
+   case: A => /=;
+    rewrite ?(pat6, addSn, subn1, ltn0Sn) //.
+    by rewrite !add0n !subn0 //.
+  case: A => /=.
+   by case: (nth false a i);
+      rewrite ?(add0n, add1n, pat6, subn1, ltn0Sn, subn0) //.
+  by rewrite add0n //.
+Qed.
+
+Lemma pat8 T a b c i :
+  i < size a ->
+  @size T ((delete a i ++ b) ++ c) =
+  @size T a + @size T b + @size T c - 1.
+Proof.
+  move => H;
+  rewrite 2!size_cat size_delete //.
+  rewrite pat6 //.
+  elim:i H => // i IH H.
+  apply IH, ltnW, H.
+Qed.
+
 Lemma ddel_wf (B : dtree) n i :
   0 < n ->
   i < dsize B ->
@@ -1414,6 +1440,17 @@ Proof.
     destruct lll; case:ifP => ?; rewrite ?(balanceL'_d_delE, balanceR'_d_delE).
     rewrite !ddel_d_delE /subD /mkD.
     rewrite ?(dsizeE', donesE', balanceL'E, @daccessE low high, ddelE) /access.
+    rewrite ?(pat7, pat8, eqxx) //.
+    by [].
+    rewrite balance
+    rewrite /=.
+    rewrite /= eqxx //.
+    rewrite //=.
+    by [].
+    rewrite /(count_mem true).
+    
+    rewrite size_cat. size_delete.
+    
     rewrite 2!size_cat.
     rewrite size_delete.
     rewrite /=.
