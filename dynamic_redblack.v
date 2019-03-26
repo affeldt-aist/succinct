@@ -988,7 +988,7 @@ Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
   | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr) as l) d (Bleaf r) =>
     if lt_index i d
     then balanceL' Black (bdel l i) d (Bleaf _ r)
-    else balanceR' Black (Bleaf _ ll) (subD d ld)
+    else balanceR' Black (Bleaf _ ll) ld
                    (delete_from_leaves Red lr r (right_index i ld))
   | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) d (Bleaf rr) as r) =>
     if lt_index (right_index i ld) d
@@ -1552,6 +1552,13 @@ Proof.
       (try move: Hc; decomp wfB; try rewrite -size_cat //) => //.
     rewrite ltn_subLR; first by rewrite -size_cat //.
     rewrite size_cat ltn_addl // (leq_trans Hlow1) //.
+    rewrite ltn_subLR; first by rewrite -size_cat catA //.
+    rewrite size_cat ltn_addl // (leq_trans Hlow1) //.
+    rewrite size_cat count_cat.
+    rewrite addnC addnK.
+    rewrite addnC addnK.
+    rewrite //.
+    rewrite -(eqP (pat3 _ _ _)).
     all : try by [].
     rewrite -size_cat //.
         
