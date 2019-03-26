@@ -148,6 +148,9 @@ Fixpoint dones (B : dtree) :=
   | Bleaf s => count_mem true s
   end.
 
+Notation size_df t := (size (dflatten t)).
+Notation ones_df t := (count_mem true (dflatten t)).
+
 Definition access (s : seq bool) i := nth false s i.
 
 Variables low high : nat.  (* (w ^ 2)./2 and (w ^ 2).*2 *)
@@ -155,17 +158,13 @@ Variables low high : nat.  (* (w ^ 2)./2 and (w ^ 2).*2 *)
 Fixpoint wf_dtree (B : dtree) :=
   match B with
   | Bnode _ l (num, ones) r =>
-    [&& num == size (dflatten l),
-        ones == count_mem true (dflatten l),
-        wf_dtree l & wf_dtree r]
-  | Bleaf arr =>
-    low <= size arr < high
+    [&& num == size_df l, ones == ones_df l, wf_dtree l & wf_dtree r]
+  | Bleaf arr => low <= size arr < high
   end.
 
 Lemma dtree_ind (P : dtree -> Prop) :
   (forall c (l r : dtree) num ones,
-      num = size (dflatten l) -> ones = count_mem true (dflatten l) ->
-      wf_dtree l /\ wf_dtree r ->
+      num = size_df l -> ones = ones_df l -> wf_dtree l /\ wf_dtree r ->
       P l -> P r -> P (Bnode c l (num, ones) r)) ->
   (forall s, low <= size s < high -> P (Bleaf _ s)) ->
   forall B, wf_dtree B -> P B.
@@ -217,14 +216,14 @@ Proof.
   by rewrite select_cat -IHl -IHr -[in X in X - _]count_mem_false_true addnK.
 Qed.
 
-Lemma dsizeE (B : dtree) : wf_dtree B -> dsize B = size (dflatten B).
+Lemma dsizeE (B : dtree) : wf_dtree B -> dsize B = size_df B.
 Proof.
   move=> wf; move: B wf.
   apply: dtree_ind => // c l r num ones Hnum Hones _ IHl IHr /=.
   by rewrite Hnum IHr size_cat.
 Qed.
 
-Lemma donesE (B : dtree) : wf_dtree B -> dones B = count_mem true (dflatten B).
+Lemma donesE (B : dtree) : wf_dtree B -> dones B = ones_df B.
 Proof.
   move=> wf; move: B wf.
   apply: dtree_ind => // c l r num ones Hnum Hones _ IHl IHr /=.
@@ -232,12 +231,15 @@ Proof.
 Qed.
 
 Corollary drank_all (B : dtree) :
-  wf_dtree B -> drank B (dsize B) = (count_mem true) (dflatten B).
+  wf_dtree B -> drank B (dsize B) = ones_df B.
 Proof. move => wf. by rewrite drankE // /rank dsizeE // take_size. Qed.
 
 Definition drank_size B := drank B (dsize B).
 
 End dtree.
+
+Notation size_df t := (size (dflatten t)).
+Notation ones_df t := (count_mem true (dflatten t)).
 
 Section insert.
 
@@ -423,8 +425,6 @@ Local Notation balance := (balance addD subD).
 Local Notation balanceL := (balanceL addD subD).
 Local Notation balanceR := (balanceR addD subD).
 Local Notation wf_dtree_l := (wf_dtree low high).
-Local Notation donesE := (@donesE low high).
-Local Notation dsizeE := (@dsizeE low high).
 
 Definition dins_leaf s b i :=
   let s' := insert1 s b i in
@@ -647,8 +647,6 @@ Variables low high : nat.
 Hypothesis Hlow : low.*2 <= high.
 Hypothesis Hhigh : 1 < high.
 Local Notation wf_dtree' := (wf_dtree' low high).
-Local Notation size_df t := (size (dflatten t)).
-Local Notation ones_df t := (count_mem true (dflatten t)).
 
 Fixpoint bset (B : dtree) i : (dtree * bool) :=
   match B with
@@ -1190,7 +1188,7 @@ Proof.
   by rewrite {1}(eqP lc) (eqP rc).
 Qed.
 
-Lemma dsize_gt0 (B: dtree) : wf_dtree_l B -> size (dflatten B) > 0.
+Lemma dsize_gt0 (B: dtree) : wf_dtree_l B -> size_df B > 0.
 Proof.
 move: B; apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s wf] /=.
   by rewrite size_cat ltn_addr.
@@ -1242,18 +1240,18 @@ Qed.
 
 Lemma ddelete_wf (B : dtree) n i :
   is_redblack B Black n ->
-  i < dsize B ->
+  i < size_df B ->
   wf_dtree' B ->
   wf_dtree' (ddelete B i).
 Proof.
   case: n => [|n].
     case: B => [[]// [[]//???|s1] [n1 o1] [[]//???|s2]|s] //=.
-      move => _ Hi wf.
+      rewrite size_cat => _ Hi wf.
       apply /wf_dtree_dtree' /delete_from_leaves_wf => //; by decomp wf.
     move=> _ Hi Hs; rewrite size_delete //.
     by rewrite (ltn_predK Hi) ltnW.
-  case: B => // c l d r rb Hi wf.
-  by apply /wf_dtree_dtree' /(@ddel_wf _ n.+1).
+  case: B => // c l [s o] r rb Hi wf.
+  apply /wf_dtree_dtree' /(@ddel_wf _ n.+1); by rewrite // dsizeE'.
 Qed.
 
 End ddelete.
