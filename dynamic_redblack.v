@@ -881,63 +881,105 @@ Section delete.
 
 Variables D A : Type.
 Variable mkD : btree D A -> D.
+Variable addD : D -> D -> D.
+Variable subD : D -> D -> D.
 
 Definition rbnode c l r := Bnode c l (mkD l) r.
 Definition bnode l r := Bnode Black l (mkD l) r.
 Definition rnode l r := Bnode Red l (mkD l) r.
 Local Notation leaf a := (Bleaf _ a : btree D A).
 
-Inductive deleted_btree: Type :=
-| Stay : btree D A -> deleted_btree
-| Down : btree D A -> deleted_btree.
+Record deleted_btree: Type := MkD
+  { d_tree :> btree D A; d_down: bool; d_del: D }.
 
-Definition balanceL' col (l : deleted_btree) r : deleted_btree :=
-  match l with
-  | Stay l => Stay (rbnode col l r)
-  | Down l =>
-    match col, r with
-    | _, Bnode Black (Bnode Red rll _ rlr) _ rr =>
-      Stay (rbnode col (bnode l rll) (bnode rlr rr))
-    | Red, Bnode Black (Bleaf _ as rl) _ rr
-    | Red, Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
-      Stay (bnode (rnode l rl) rr)
-    | Black, Bnode Red (Bnode Black (Bnode Black _ _ _ as rll) _ rlr) _ rr
-    | Black, Bnode Red (Bnode Black (Bleaf _ as rll) _ rlr) _ rr =>
-      Stay (bnode (bnode (rnode l rll) rlr) rr)
-    | Black, Bnode Red (Bnode Black (Bnode Red rlll _ rllr) _ rlr) _ rr =>
-      Stay (bnode (bnode l rlll) (rnode (bnode rllr rlr) rr))
-    | Black, Bnode Black (Bleaf _ as rl) _ rr
-    | Black, Bnode Black (Bnode Black _ _ _ as rl) _ rr =>
-      Down (bnode (rnode l rl) rr)
-    | _, _ => Stay (rbnode col l r)
-    end
+Definition balanceL' col (l : deleted_btree) d r : deleted_btree :=
+  let d' := subD d (d_del l) in
+  let stay tr := MkD tr false (d_del l) in
+  let down tr := MkD tr true (d_del l) in
+  if ~~ d_down l
+  then stay (Bnode col l d' r)
+  else match col, r with
+  | _, Bnode Black (Bnode Red rll rld rlr) rd rr =>
+    stay (Bnode col
+                (Bnode Black l d' rll)
+                (addD rld d')
+                (Bnode Black rlr (subD rd rld) rr))
+  | Red, Bnode Black (Bleaf _ as rl) rd rr
+  | Red, Bnode Black (Bnode Black _ _ _ as rl) rd rr =>
+    stay (Bnode Black (Bnode Red l d' rl) (addD d' rd) rr)
+  | Black, Bnode Red (Bnode Black (Bnode Black _ _ _ as rll) rld rlr) rd rr
+  | Black, Bnode Red (Bnode Black (Bleaf _ as rll) rld rlr) rd rr =>
+    stay (Bnode Black
+               (Bnode Black
+                      (Bnode Red l d' rll)
+                      (addD d' rld)
+                      rlr)
+               (addD d' rd)
+               rr)
+  | Black, Bnode Red (Bnode Black (Bnode Red rlll rlld rllr) rld rlr) rd rr =>
+    stay (Bnode Black
+               (Bnode Black l d' rlll)
+               (addD rlld d')
+               (Bnode Red
+                      (Bnode Black rllr (subD rld rlld) rlr)
+                      (subD rd rlld)
+                      rr))
+  | Black, Bnode Black (Bleaf _ as rl) rd rr
+  | Black, Bnode Black (Bnode Black _ _ _ as rl) rd rr =>
+    down (Bnode Black (Bnode Red l d' rl) (addD d' rd) rr)
+  | _, _ => stay (Bnode col l d' r)
   end.
   
-Definition balanceR' col l (r : deleted_btree) : deleted_btree :=
-  match r with
-  | Stay r => Stay (rbnode col l r)
-  | Down r =>
-    match col, l with
-    | _, Bnode Black ll _ (Bnode Red lrl _ lrr) =>
-      Stay (rbnode col (bnode ll lrl) (bnode lrr r))
-    | Red, Bnode Black ll _ (Bleaf _ as lr)
-    | Red, Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
-      Stay (bnode ll (rnode lr r))
-    | Black, Bnode Red ll _ (Bnode Black lrl _ (Bnode Black _ _ _ as lrr))
-    | Black, Bnode Red ll _ (Bnode Black lrl _ (Bleaf _ as lrr)) =>
-      Stay (bnode ll (bnode lrl (rnode lrr r)))
-    | Black, Bnode Red ll _ (Bnode Black lrl _ (Bnode Red lrrl _ lrrr)) =>
-      Stay (bnode (rnode ll (bnode lrl lrrl)) (bnode lrrr r))
-    | Black, Bnode Black ll _ (Bleaf _ as lr)
-    | Black, Bnode Black ll _ (Bnode Black _ _ _ as lr) =>
-      Down (bnode ll (rnode lr r))
-    | _, _ => Stay (rbnode col l r)
-    end
+Definition balanceR' col l d (r : deleted_btree) : deleted_btree :=
+  let stay tr := MkD tr false (d_del r) in
+  let down tr := MkD tr true (d_del r) in
+  if ~~ d_down r
+  then stay (Bnode col l d r)
+  else match col, l with
+    | _, Bnode Black ll ld (Bnode Red lrl lrd lrr) =>
+      stay (Bnode col
+                  (Bnode Black ll ld lrl)
+                  (addD ld lrd)
+                  (Bnode Black lrr (subD d (addD ld lrd)) r))
+    | Red, Bnode Black ll ld (Bleaf _ as lr)
+    | Red, Bnode Black ll ld (Bnode Black _ _ _ as lr) =>
+      stay (Bnode Black ll ld (Bnode Red lr (subD d ld) r))
+    | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bnode Black _ _ _ as lrr))
+    | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bleaf _ as lrr)) =>
+      stay (Bnode
+              Black
+              ll
+              ld
+              (Bnode Black lrl lrd (Bnode Red lrr (subD d (addD ld lrd)) r)))
+    | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bnode Red lrrl lrrd lrrr)) =>
+      stay (Bnode Black (Bnode Red ll ld (Bnode Black lrl lrd lrrl))
+                  (addD (addD ld lrd) lrrd)
+                  (Bnode Black lrrr (subD d (addD (addD ld lrd) lrrd)) r))
+    | Black, Bnode Black ll ld (Bleaf _ as lr)
+    | Black, Bnode Black ll ld (Bnode Black _ _ _ as lr) =>
+      down (Bnode Black ll ld (Bnode Red lr (subD d ld) r))
+    | _, _ => stay (Bnode col l d r)
   end.
+
+Lemma balanceL'_d_delE c (l : deleted_btree) d r :
+  d_del (balanceL' c l d r) = d_del l.
+Proof.
+  case: l c r => l [] ? [] [[] rl ??|?] //=;
+  case: rl => [[] rll ??|?] //=;
+  case: rll => [[]???|?] //=.
+Qed.
+
+Lemma balanceR'_d_delE c l d (r : deleted_btree) :
+  d_del (balanceR' c l d r) = d_del r.
+Proof.
+  case: r c l => r [] ? [] [[]?? lr|?] //=;
+  case: lr => [[]?? lrr|?] //=;
+  case: lrr => [[]???|?] //=.
+Qed.
 
 Variable lt_index : nat -> D -> bool.
 Variable right_index : nat -> D -> nat.
-Variable delete_leaf : A -> nat -> A.
+Variable delete_leaf : A -> nat -> A * D.
 Variable delete_from_leaves : color -> A -> A -> nat -> deleted_btree.
 
 Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
@@ -945,25 +987,26 @@ Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
   | Bnode c (Bleaf l) d (Bleaf r) => delete_from_leaves c l r i
   | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr) as l) d (Bleaf r) =>
     if lt_index i d
-    then balanceL' Black (bdel l i) (Bleaf _ r)
-    else balanceR' Black (Bleaf _ ll)
+    then balanceL' Black (bdel l i) d (Bleaf _ r)
+    else balanceR' Black (Bleaf _ ll) d
                    (delete_from_leaves Red lr r (right_index i ld))
-  | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) rd (Bleaf rr) as r) =>
-    if lt_index (right_index i ld) rd
-    then balanceL' Black (delete_from_leaves Red l rl i) (Bleaf _ rr)
-    else balanceR' Black (Bleaf _ l) (bdel r (right_index i ld))
+  | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) d (Bleaf rr) as r) =>
+    if lt_index (right_index i ld) d
+    then balanceL' Black (delete_from_leaves Red l rl i) d (Bleaf _ rr)
+    else balanceR' Black (Bleaf _ l) d (bdel r (right_index i ld))
   | Bnode c l d r => 
     if lt_index i d
-    then balanceL' c (bdel l i) r
-    else balanceR' c l (bdel r (right_index i d))
-  | Bleaf x => Stay (leaf (delete_leaf x i))
+    then balanceL' c (bdel l i) d r
+    else balanceR' c l d (bdel r (right_index i d))
+  | Bleaf x =>
+    let (leaf, ret) := delete_leaf x i in
+    MkD (Bleaf _ leaf) false ret
   end.
 
 Definition is_nearly_redblack' tr c bh :=
-  match tr with
-  | Stay tr => is_redblack tr c bh
-  | Down tr => is_redblack tr Red bh.-1
-  end.
+  if d_down tr
+  then is_redblack tr Red bh.-1
+  else is_redblack tr c bh.
 
 Hypothesis Hdelete_from_leaves : forall c l d r i c' n,
   is_redblack (Bnode c (Bleaf D l) d (Bleaf D r)) c' n ->
@@ -971,44 +1014,50 @@ Hypothesis Hdelete_from_leaves : forall c l d r i c' n,
   
 Lemma is_nearly_redblack'_Red_Black B n :
   is_nearly_redblack' B Red n -> is_nearly_redblack' B Black n.
-Proof. case: B => [[]|] //= [] //. Qed.
-    
-Lemma balanceL'_Black_nearly_is_redblack l r n c :
+Proof. by case: B => [[[]???|?] [] ?]. Qed.
+
+Lemma balanceL'_Black_nearly_is_redblack l d r n c :
   0 < n -> is_nearly_redblack' l Black n.-1 -> is_redblack r Black n.-1 ->
-  is_nearly_redblack' (balanceL' Black l r) c n.
+  is_nearly_redblack' (balanceL' Black l d r) c n.
 Proof.
-  case: l => [l /= -> -> -> // | l Hn okl okr].
+  case: l => [l [] ?] Hn okl okr;
   case: c n r l okr okl Hn => [] [//|n]
-    [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l //=;
-  repeat decompose_rewrite; by rewrite // !is_redblack_Red_Black.
+    [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l;
+    rewrite /balanceL' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    by rewrite // !is_redblack_Red_Black.
 Qed.
   
-Lemma balanceL'_Red_nearly_is_redblack l r n :
+Lemma balanceL'_Red_nearly_is_redblack l d r n :
   is_nearly_redblack' l Red n -> is_redblack r Red n ->
-  is_nearly_redblack' (balanceL' Red l r) Black n.
+  is_nearly_redblack' (balanceL' Red l d r) Black n.
 Proof.
-  case: l => [l /= -> -> // | l okl okr].
-  case: r l okr okl => [ [//|] [[] rll ? rlr| ?] ? rr | ?] l /=;
-  repeat decompose_rewrite; by rewrite // !is_redblack_Red_Black.
+  case: l => [l [] ?] okl okr;
+  case: n r l okr okl => [//|n]
+    [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l;
+    rewrite /balanceL' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    by rewrite // !is_redblack_Red_Black.
 Qed.
-    
-Lemma balanceR'_Black_nearly_is_redblack l r n c :
+
+Lemma balanceR'_Black_nearly_is_redblack l d r n c :
   0 < n -> is_redblack l Black n.-1 -> is_nearly_redblack' r Black n.-1 ->
-  is_nearly_redblack' (balanceR' Black l r) c n.
+  is_nearly_redblack' (balanceR' Black l d r) c n.
 Proof.
-  case: r => [r /= -> -> -> //| //].
+  case: r => [r [] ?];
   case: c n l => [] [//|n] [[[[] lll ? llr|?] ?
     [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=;
-  repeat decompose_rewrite; by rewrite // !is_redblack_Red_Black. 
+    rewrite /balanceR' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    by rewrite // !is_redblack_Red_Black.
 Qed.
   
-Lemma balanceR'_Red_nearly_is_redblack l r n :
+Lemma balanceR'_Red_nearly_is_redblack l d r n :
   is_redblack l Red n -> is_nearly_redblack' r Red n ->
-  is_nearly_redblack' (balanceR' Red l r) Black n.
+  is_nearly_redblack' (balanceR' Red l d r) Black n.
 Proof.
-  case: r => [r /= -> -> //| //].
-  case: l => [ [//|] ll ? [[] lrl ? lrr|?] |?] r /=;
-  repeat decompose_rewrite; by rewrite // !is_redblack_Red_Black. 
+  case: r => [r [] ?];
+  case: l => [[[[] lll ? llr|?] ?
+    [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=;
+    rewrite /balanceR' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    by rewrite // !is_redblack_Red_Black.
 Qed.
   
 (* This tactic is not necessary,
@@ -1029,11 +1078,13 @@ Ltac close_branch d H IHl IHr :=
 Lemma bdel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (bdel B i) c n.
 Proof.
-elim: B c i n => // c l IHl d r IHr p i n H //.
+elim: B c i n => [c l IHl d r IHr |a] p i n H //.
 time (case: p c l IHl H => [] []// [[]//[[]//???|?]?[[]//???|?]|?] IHl H;
   try (by close_branch d H IHl IHr);
   case: r IHr H => [[]//[[]//???|?]?[[]//???|?]|?] IHr H;
-  by close_branch d H IHl IHr).
+  close_branch d H IHl IHr => //).
+  rewrite /is_nearly_redblack' /=;
+  case: (delete_leaf a i) => //=.
 (* 153s -> 73s by rewrite ? -> repeat apply || *)
 Qed.
 
@@ -1055,41 +1106,55 @@ Local Notation leaf a := (Bleaf _ a : dtree).
 Definition mkD l := (dsize l, dones l).
 Local Notation rbnode := (rbnode mkD).
 Definition deleted_dtree := deleted_btree (nat * nat) (seq bool).
-Local Notation balanceL' c B b := (balanceL' mkD c B b : deleted_dtree).
-Local Notation balanceR' c B b := (balanceR' mkD c B b : deleted_dtree).
+Local Notation balanceL' c B d b := (balanceL' addD subD c B d b : deleted_dtree).
+Local Notation balanceR' c B d b := (balanceR' addD subD c B d b : deleted_dtree).
 
 Definition delete_from_leaves (p : color) l r (i : nat) : deleted_dtree :=
   if i < size l
   then match low == size l, low == size r with
        | true, true =>
-         Down (leaf ((rcons (delete l i) (access r 0)) ++ (delete r 0)))
+         MkD (leaf ((rcons (delete l i) (access r 0)) ++ (delete r 0)))
+             true
+             (1, access l i : nat)
        | true, false =>
-         Stay (rbnode p (leaf (rcons (delete l i) (access r 0)))
-                          (leaf (delete r 0)))
+         MkD (rbnode p (leaf (rcons (delete l i) (access r 0)))
+                     (leaf (delete r 0)))
+             false
+             (1, access l i : nat)
        | false, _ =>
-         Stay (rbnode p (leaf (delete l i)) (leaf r))
+         MkD (rbnode p (leaf (delete l i)) (leaf r))
+             false
+             (1, access l i : nat)
        end
   else match low == size l, low == size r with
        | true, true =>
-         Down (leaf (l ++ (delete r (i - (size l)))))
+         MkD (leaf (l ++ (delete r (i - (size l)))))
+             true
+             (1, access r (i - (size l)) : nat)
        | false, true =>
-         Stay (rbnode p (leaf (delete l (size l).-1))
-                   (leaf (access l (size l).-1 :: delete r (i - size l))))
+         MkD (rbnode p (leaf (delete l (size l).-1))
+                     (leaf (access l (size l).-1 :: delete r (i - size l))))
+             false
+             (1, access r (i - (size l)) : nat)
        | _, false =>
-         Stay (rbnode p (leaf l) (leaf (delete r (i - size l))))
+         MkD (rbnode p (leaf l) (leaf (delete r (i - size l))))
+             false
+             (1, access r (i - (size l)) : nat)
        end.
 
 Lemma delete_from_leaves_nearly_redblack' c l d r i c' n :
   is_redblack (Bnode c (leaf l) d (leaf r)) c' n ->
   is_nearly_redblack' (delete_from_leaves c l r i) c' n.
 Proof.
-  rewrite /delete_from_leaves.
-  case: c c' => /= -[]; repeat case: ifP => ?; repeat decompose_rewrite => //=.
+  case: c c' => -[] //;
+  rewrite /is_nearly_redblack' /delete_from_leaves;
+  repeat case: ifP; repeat decompose_rewrite => //=.
 Qed.
 
-Notation ddel := (bdel mkD lt_index right_index (@delete _) delete_from_leaves
+Notation ddel := (bdel addD subD lt_index right_index
+                       (fun x i => (@delete _ x i, (1, @access x i : nat)))
+                       delete_from_leaves
                   : btree (nat * nat) (seq bool) -> nat -> deleted_dtree).
-
 (* Red-blackness invariant *)
 Lemma ddel_is_nearly_redblack' B i n c :
   is_redblack B c n -> is_nearly_redblack' (ddel B i) c n.
@@ -1097,13 +1162,13 @@ Proof.
   apply /bdel_is_nearly_redblack' /delete_from_leaves_nearly_redblack'.
 Qed.
 
-(* Forget Stay/Down *)
-Definition dtree_of_deleted_dtree (B : deleted_dtree) : dtree :=
-  match B with
-  | Stay b => b
-  | Down b => b
-  end.
-Coercion dtree_of_deleted_dtree : deleted_dtree >-> dtree.
+(* (* Forget Stay/Down *) *)
+(* Definition dtree_of_deleted_dtree (B : deleted_dtree) : dtree := *)
+(*   match B with *)
+(*   | Stay b => b *)
+(*   | Down b => b *)
+(*   end. *)
+(* Coercion dtree_of_deleted_dtree : deleted_dtree >-> dtree. *)
 
 Definition ddelete (B : dtree) i : dtree := (ddel B i : deleted_dtree).
 
@@ -1111,22 +1176,25 @@ Corollary ddelete_is_redblack B i n :
   is_redblack B Red n -> exists n', is_redblack (ddelete B i) Red n'.
 Proof.
   rewrite /ddelete => /(ddel_is_nearly_redblack' i).
-  case: ddel => B' /= rb; eexists; by apply: rb.
+  rewrite /is_nearly_redblack' /=.
+  case:ifP; case: ddel => B' /= ? ? ? rb;
+  eexists; apply rb.
 Qed.
 
 (* Correctness lemmas *)
 
-Lemma balanceL'E c (l : deleted_dtree) r :
-  dflatten (balanceL' c l r) = dflatten l ++ dflatten r.
+Lemma balanceL'E c (l : deleted_dtree) d r :
+  dflatten (balanceL' c l d r) = dflatten l ++ dflatten r.
 Proof. 
-  move: l => [] ?; case c; case r => [] [] // [] //= [] [] [] /=; 
+  move: l => [l [] ?];
+  case c; case r => [] [] // [] //= [] [] [] /=; 
   intros; by rewrite //= -!catA //= -!catA.
 Qed.
 
-Lemma balanceR'E c l (r : deleted_dtree) :
-  dflatten (balanceR' c l r) = dflatten l ++ dflatten r.
+Lemma balanceR'E c l d (r : deleted_dtree) :
+  dflatten (balanceR' c l d r) = dflatten l ++ dflatten r.
 Proof.
-  move: r => [] ?; case c; case l => //= [c'] ? ? [c''|]; 
+  move: r => [r [] ?]; case c; case l => //= [c'] ? ? [c''|]; 
   try case c'; try case c''; try (intros; by rewrite //= -!catA //= -!catA);
   move => ? ? [] x; first case x; intros; by rewrite //= -!catA //= -!catA.
 Qed.
@@ -1186,24 +1254,60 @@ Qed.
 
 (* Well-formedness *)
 
-Lemma balanceL'_wf (B: deleted_dtree) b c:
-  wf_dtree_l B -> wf_dtree_l b -> wf_dtree_l (balanceL' c B b).
+Lemma pat1 a b c :
+  a + b + c == c + a + b.
+Proof. by rewrite addnC addnA. Qed.
+
+Lemma pat2 a b c : a + b + c - a == b + c.
+Proof. by rewrite addnC addnA addnC addnA addnK. Qed.
+
+Lemma pat3 a b : a + b - a == b.
+Proof. by rewrite addnC addnK. Qed.
+
+Lemma pat4 a b c d :
+  a + b + c + d - a == b + c + d.
 Proof.
-  case: B b => B b /= wfB wfb.
-    by rewrite dsizeE' // donesE' // !eqxx wfB wfb.
-  move: c b wfb => [][[][[][[]?[??]?|?][??]?|?][??][[]?[??]?|?]|?] /=;
-   do !decompose_rewrite => //;
-   by rewrite !(size_cat,count_cat,addnA,catA,dsizeE',donesE',eqxx,wfB).
+  do 3! rewrite addnC !addnA;
+  by rewrite addnK.
 Qed.
 
-Lemma balanceR'_wf (B: deleted_dtree) b c:
-  wf_dtree_l B -> wf_dtree_l b -> wf_dtree_l (balanceR' c b B).
+Lemma pat5 a b c d e:
+  a + b + c + d + e - a == b + c + d + e.
 Proof.
-  case: B b => B b /= wfB wfb.
-    by rewrite dsizeE' // donesE' // !eqxx wfB wfb.
-  move: c b wfb => [][[][[]?[??]?|?][??][[]?[??][[]?[??]?|?]|?]|?] /=;
-   do! decompose_rewrite => //;
-   by rewrite !(size_cat,count_cat,addnA,catA,dsizeE',donesE',eqxx,wfB).
+  do 4! rewrite addnC !addnA;
+  by rewrite addnK.
+Qed.
+
+Lemma balanceL'_wf (B: deleted_dtree) d b c:
+  wf_dtree_l B -> wf_dtree_l b ->
+  subD d (d_del B) == mkD B ->
+  wf_dtree_l (balanceL' c B d b).
+Proof.
+case: B b d => B [] [s o] b [s' o'] /= wfB wfb;
+ rewrite /subD /mkD /= => /eqP [] Hs Ho.
+ case: c b wfb Hs Ho => [] [[] [[] ll [sl ol] lr|?] [??] ?|?] wfb /=;
+ try case: ll lr wfb => [[]?[??]?|?] [[]?[??]?|?] wfb /=;
+ decomp wfb; decomp wfB;
+ rewrite ?(addnK, dsizeE', donesE', size_cat, count_cat, addnA, eqxx) //=;
+ rewrite ?(pat1, pat2, pat3, pat4) //=;
+ repeat rewrite addnC eqxx //=.
+by rewrite Hs Ho dsizeE' // donesE' // !eqxx /= wfB wfb.
+Qed.
+
+Lemma balanceR'_wf (B: deleted_dtree) d b c:
+  wf_dtree_l B -> wf_dtree_l b ->
+  d == mkD b ->
+  wf_dtree_l (balanceR' c b d B).
+Proof.
+case: B b d => B [] [s o] b [s' o'] /= wfB wfb;
+ rewrite /mkD /= => /eqP [] Hs Ho.
+ case: c b wfb Hs Ho => [] [[] ll [??] lr|?] wfb /=;
+ try case: lr wfb => [[] lrl [??] lrr|?] wfb /=;
+ try case: lrl lrr wfb => [[]?[??]?|?] [[]?[??]?|?] wfb /=;
+ decomp wfb; decomp wfB;
+ rewrite ?(addnK, dsizeE', donesE', size_cat, count_cat, addnA, eqxx) //=;
+ rewrite ?(pat1, pat2, pat3, pat4, pat5) //=.
+by rewrite Hs Ho dsizeE' // donesE' // !eqxx wfB wfb.
 Qed.
 
 Lemma leq_predr (m n : nat) :
@@ -1229,6 +1333,64 @@ Proof.
   by rewrite {1}(eqP lc) (eqP rc).
 Qed.
 
+Lemma ddel_d_delE B i :
+  wf_dtree_l B ->
+  d_del (ddel B i) = (1, daccess B i : nat).
+Proof.
+  elim: B i => [[] l IHl [??] r IHr|//] i wfB /=;
+  rewrite /lt_index /right_index;
+  case: l IHl wfB => [[] ll [??] lr|?] IHl wfB;
+  case:ifP => H;
+  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
+  case: r IHr wfB => [[] rl [??] rr|?] IHr wfB;
+  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
+  try by decomp wfB.
+  all:
+  try case: ll lr IHl wfB => [[]?[??]?|?] [[]?[??]?|?] IHl wfB;
+  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
+  try by decomp wfB.
+  all:
+  try case: rl rr IHr wfB => [[]?[??]?|?] [[]?[??]?|?] IHr wfB;
+  try case:ifP => H';
+  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
+  try by decomp wfB.
+  all:
+  rewrite /delete_from_leaves;
+  move:H; try move:H'; decomp wfB; repeat case:ifP; rewrite /= /access //;
+  try (rewrite ltn_subLR; first by rewrite -size_cat H9 //);
+  try rewrite -subnDA -size_cat //;
+  rewrite ?(leq_trans Hlow1) //.
+  rewrite ltn_subLR in H9.
+  rewrite ltn_addr // in H9.
+  rewrite ?(leq_trans Hlow1) //.
+Qed.
+
+Lemma count_delete arr i :
+  (count_mem true) arr - nth false arr i = (count_mem true) (delete arr i).
+Proof.
+  case H : (i < (size arr)).
+  rewrite -(cat_take_drop i arr) /delete !count_cat cat_take_drop (drop_nth false)
+          // -/(cat [:: nth false arr i] _) count_cat /= addn0.
+   case: (nth false arr i) => /=.
+    by rewrite [1 + _]addnC addnA addn1 subn1 -[_.+1]subn0 subSKn subn0.
+   by rewrite add0n subn0.
+  rewrite ltnNge in H.
+  move/negPn : H => H.
+  rewrite nth_default /delete // take_oversize // drop_oversize.
+   by rewrite count_cat /= addn0 subn0.
+  by apply: leqW.
+Qed.
+
+Lemma pat6 a b c :
+  a > 0 -> a + b + c - 1 == a.-1 + b + c.
+Proof.
+move => H.
+rewrite -addnA addnC -addnBA // subn1 addnC addnA //.
+Qed.
+                                                                           
+  (size (dflatten lll1 ++ dflatten lll2) + size (dflatten _b7_) + size (dflatten _b2_) - 1,
+  (count_mem true) (((dflatten lll1 ++ dflatten lll2) ++ dflatten _b7_) ++ dflatten _b2_) - nth false (dflatten lll1 ++ dflatten lll2) i) ==
+  ((size (dflatten lll1 ++ dflatten lll2)).-1 + size (dflatten _b7_) + size (dflatten _b2_), (count_mem true) ((delete (dflatten lll1 ++ dflatten lll2) i ++ dflatten _b7_) ++ dflatten _b2_))
 Lemma ddel_wf (B : dtree) n i :
   0 < n ->
   i < dsize B ->
@@ -1242,12 +1404,47 @@ Proof.
     last by move/eqP: rbB Hn => /= ->.
   + case: ifP => Hc;
     case: l r Hi rbB IHl IHr wfB =>
-        [[]?[??]?|?] [[]?[??]?|?]// Hi rbB IHl IHr wfB;
+        [[] ll [??]?|?] [[]?[??]?|?]// Hi rbB IHl IHr wfB;
+    try case: ll IHl rbB wfB Hi => [[] lll [??]?|?] // IHl rbB wfB Hi;
     rewrite ?(balanceL'_wf, balanceR'_wf,
               IHl n, IHr n, delete_from_leaves_wf, ltn_subLR) //;
     move: rbB wfB Hi Hc;
     do! (decompose_rewrite; rewrite /= ?size_cat) => //;
     rewrite ?(ltn_addr, dsize_gt0, leq_trans Hlow1) //=.
+    destruct lll; case:ifP => ?; rewrite ?(balanceL'_d_delE, balanceR'_d_delE).
+    rewrite !ddel_d_delE /subD /mkD.
+    rewrite ?(dsizeE', donesE', balanceL'E, @daccessE low high, ddelE) /access.
+    rewrite 2!size_cat.
+    rewrite size_delete.
+    rewrite /=.
+    ttt
+    rewrite -addnBA.
+    rewrite -subnAC.
+    apply/eqP.
+    rewrite /= -catA.
+    rewrite /= 3!count_cat -catA.
+    rewrite count_cat.
+    rewrite -count_delete /=.
+    
+    rewrite addnKS.
+    rewrite -subSn.
+    
+    rewrite /=.
+    rewrite /subD /=.
+    destruct p.
+    rewrite /=.
+    rewrite !size_cat !count_cat.
+    rewrite /=.
+    destruct lll as [c llll llld lllr| ?]; case:ifP =>?; try rewrite !balanceL'_d_delE.
+    
+    case:ifP =>?; try rewrite !balanceL'_d_delE.
+    destruct c, llld => /=.
+    rewrite /=.
+    case: lll.
+    rewrite /=.
+    destruct ll.
+    case: ll => 
+    rewrite /=.
   + case: n Hn rbB => [//|[|n]] Hn rbB.
   * case: l r Hi rbB IHl IHr wfB =>
         [[] [[]//|?] [??] [[]//|?]|?] [[] [[]//|?] [??] [[]|?]|?] //=
