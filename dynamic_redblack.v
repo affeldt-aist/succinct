@@ -936,29 +936,29 @@ Definition balanceR' col l d (r : deleted_btree) : deleted_btree :=
   if ~~ d_down r
   then stay (Bnode col l d r)
   else match col, l with
-    | _, Bnode Black ll ld (Bnode Red lrl lrd lrr) =>
-      stay (Bnode col
-                  (Bnode Black ll ld lrl)
-                  (addD ld lrd)
-                  (Bnode Black lrr (subD d (addD ld lrd)) r))
-    | Red, Bnode Black ll ld (Bleaf _ as lr)
-    | Red, Bnode Black ll ld (Bnode Black _ _ _ as lr) =>
-      stay (Bnode Black ll ld (Bnode Red lr (subD d ld) r))
-    | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bnode Black _ _ _ as lrr))
-    | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bleaf _ as lrr)) =>
-      stay (Bnode
-              Black
-              ll
-              ld
-              (Bnode Black lrl lrd (Bnode Red lrr (subD d (addD ld lrd)) r)))
-    | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bnode Red lrrl lrrd lrrr)) =>
-      stay (Bnode Black (Bnode Red ll ld (Bnode Black lrl lrd lrrl))
-                  (addD (addD ld lrd) lrrd)
-                  (Bnode Black lrrr (subD d (addD (addD ld lrd) lrrd)) r))
-    | Black, Bnode Black ll ld (Bleaf _ as lr)
-    | Black, Bnode Black ll ld (Bnode Black _ _ _ as lr) =>
-      down (Bnode Black ll ld (Bnode Red lr (subD d ld) r))
-    | _, _ => stay (Bnode col l d r)
+  | _, Bnode Black ll ld (Bnode Red lrl lrd lrr) =>
+    stay (Bnode col
+                (Bnode Black ll ld lrl)
+                (addD ld lrd)
+                (Bnode Black lrr (subD d (addD ld lrd)) r))
+  | Red, Bnode Black ll ld (Bleaf _ as lr)
+  | Red, Bnode Black ll ld (Bnode Black _ _ _ as lr) =>
+    stay (Bnode Black ll ld (Bnode Red lr (subD d ld) r))
+  | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bnode Black _ _ _ as lrr))
+  | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bleaf _ as lrr)) =>
+    stay (Bnode
+            Black
+            ll
+            ld
+            (Bnode Black lrl lrd (Bnode Red lrr (subD d (addD ld lrd)) r)))
+  | Black, Bnode Red ll ld (Bnode Black lrl lrd (Bnode Red lrrl lrrd lrrr)) =>
+    stay (Bnode Black (Bnode Red ll ld (Bnode Black lrl lrd lrrl))
+                (addD (addD ld lrd) lrrd)
+                (Bnode Black lrrr (subD d (addD (addD ld lrd) lrrd)) r))
+  | Black, Bnode Black ll ld (Bleaf _ as lr)
+  | Black, Bnode Black ll ld (Bnode Black _ _ _ as lr) =>
+    down (Bnode Black ll ld (Bnode Red lr (subD d ld) r))
+  | _, _ => stay (Bnode col l d r)
   end.
 
 Lemma balanceL'_d_delE c (l : deleted_btree) d r :
@@ -992,7 +992,8 @@ Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
                    (delete_from_leaves Red lr r (right_index i ld))
   | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) d (Bleaf rr) as r) =>
     if lt_index (right_index i ld) d
-    then balanceL' Black (delete_from_leaves Red l rl i) (addD ld d) (Bleaf _ rr)
+    then balanceL' Black (delete_from_leaves Red l rl i)
+                   (addD ld d) (Bleaf _ rr)
     else balanceR' Black (Bleaf _ l) ld (bdel r (right_index i ld))
   | Bnode c l d r => 
     if lt_index i d
@@ -1106,8 +1107,10 @@ Local Notation leaf a := (Bleaf _ a : dtree).
 Definition mkD l := (dsize l, dones l).
 Local Notation rbnode := (rbnode mkD).
 Definition deleted_dtree := deleted_btree (nat * nat) (seq bool).
-Local Notation balanceL' c B d b := (balanceL' addD subD c B d b : deleted_dtree).
-Local Notation balanceR' c B d b := (balanceR' addD subD c B d b : deleted_dtree).
+Local Notation balanceL' c B d b :=
+  (balanceL' addD subD c B d b : deleted_dtree).
+Local Notation balanceR' c B d b :=
+  (balanceR' addD subD c B d b : deleted_dtree).
 
 Definition delete_from_leaves (p : color) l r (i : nat) : deleted_dtree :=
   if i < size l
@@ -1161,14 +1164,6 @@ Lemma ddel_is_nearly_redblack' B i n c :
 Proof.
   apply /bdel_is_nearly_redblack' /delete_from_leaves_nearly_redblack'.
 Qed.
-
-(* (* Forget Stay/Down *) *)
-(* Definition dtree_of_deleted_dtree (B : deleted_dtree) : dtree := *)
-(*   match B with *)
-(*   | Stay b => b *)
-(*   | Down b => b *)
-(*   end. *)
-(* Coercion dtree_of_deleted_dtree : deleted_dtree >-> dtree. *)
 
 Definition ddelete (B : dtree) i : dtree := (ddel B i : deleted_dtree).
 
@@ -1504,63 +1499,6 @@ Proof.
   all: by apply (leq_trans Hlow1).
 Qed.
 
-(* Lemma ddelete_ind (P : deleted_dtree -> Prop) : *)
-(*   (forall (B : deleted_dtree), *)
-(*       is_redblack B Black n -> *)
-(*       wf_dtree_l B -> *)
-(*       i < dsize B -> *)
-(*       0 < n -> *)
-(*       num = size (dflatten l) -> ones = count_mem true (dflatten l) -> *)
-(*       wf_dtree l /\ wf_dtree r -> *)
-(*       P l -> P r -> P (Bnode c l (num, ones) r)) -> *)
-(*   (forall s, low <= size s < high -> P (Bleaf _ s)) -> *)
-(*   forall B, wf_dtree B -> P B. *)
-(* Proof. *)
-(*   move=> HN HL; elim => [c l IHl [num ones] r IHr | s] //=. *)
-(*     move/andP => [/eqP Hones] /andP [/eqP Hnum] /andP [wfl wfr]. *)
-(*     apply: HN; auto. *)
-(*   by apply: HL. *)
-(* Qed. *)
-
-(*   match B with *)
-(*   | Bnode c (Bleaf l) d (Bleaf r) => delete_from_leaves c l r i *)
-(*   | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr) as l) d (Bleaf r) => *)
-(*     if lt_index i d *)
-(*     then balanceL' Black (bdel l i) d (Bleaf _ r) *)
-(*     else balanceR' Black (Bleaf _ ll) ld *)
-(*                    (delete_from_leaves Red lr r (right_index i ld)) *)
-(*   | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) d (Bleaf rr) as r) => *)
-(*     if lt_index (right_index i ld) d *)
-(*     then balanceL' Black (delete_from_leaves Red l rl i) (addD ld d) (Bleaf _ rr) *)
-(*     else balanceR' Black (Bleaf _ l) ld (bdel r (right_index i ld)) *)
-(*   | Bnode c l d r =>  *)
-(*     if lt_index i d *)
-(*     then balanceL' c (bdel l i) d r *)
-(*     else balanceR' c l d (bdel r (right_index i d)) *)
-(*   | Bleaf x => *)
-(*     let (leaf, ret) := delete_leaf x i in *)
-(*     MkD (Bleaf _ leaf) false ret *)
-(*   end. *)
-
-(* Lemma ddel_wf_Black (l r : dtree) n i : *)
-(*   i < dsize l + dsize r -> wf_dtree_l l -> wf_dtree_l r -> *)
-(*   is_redblack l Black n.+1 -> is_redblack r Black n.+1 -> *)
-(*   wf_dtree_l (ddel (Bnode Black l (dsize l, dones l) r) i). *)
-(* Proof. *)
-(* move=> Hi wfl wfr rbl rbr. *)
-(* rewrite /= /lt_index /right_index /=. *)
-(* elim: l n Hi rbl rbr wfl wfr => *)
-(* [[]ll IHll[??] lr IHlr|?] // n Hi rbl rbr wfl wfr; *)
-(* try case: ll lr IHll IHlr rbl rbr wfl wfr Hi => *)
-(* [[] lll [??] llr|?] [[] lrl [??] lrr|?] // IHll IHlr rbl rbr wfl wfr Hi; *)
-(* case: ifP => Hc; *)
-(* (apply balanceL'_wf => // *)
-(* || apply balanceR'_wf => // *)
-(* || apply delete_from_leaves_wf => //; *)
-(* rewrite /mkD /subD /addD /access; *)
-(* rewrite ?(ddel_d_delE, *)
-(*           dsizeE', donesE', ddelE, @daccessE low high, *)
-(*           count_delete, size_delete, subn1)). *)
 Ltac close_branch Hi IHl IHr wfB rbB :=
   let Hc := fresh "Hc" in
   try case: ifP => Hc;
