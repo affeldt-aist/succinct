@@ -988,12 +988,12 @@ Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
   | Bnode Black (Bnode Red (Bleaf ll) ld (Bleaf lr) as l) d (Bleaf r) =>
     if lt_index i d
     then balanceL' Black (bdel l i) d (Bleaf _ r)
-    else balanceR' Black (Bleaf _ ll) d
+    else balanceR' Black (Bleaf _ ll) (subD d ld)
                    (delete_from_leaves Red lr r (right_index i ld))
   | Bnode Black (Bleaf l) ld (Bnode Red (Bleaf rl) d (Bleaf rr) as r) =>
     if lt_index (right_index i ld) d
-    then balanceL' Black (delete_from_leaves Red l rl i) d (Bleaf _ rr)
-    else balanceR' Black (Bleaf _ l) d (bdel r (right_index i ld))
+    then balanceL' Black (delete_from_leaves Red l rl i) (addD ld d) (Bleaf _ rr)
+    else balanceR' Black (Bleaf _ l) ld (bdel r (right_index i ld))
   | Bnode c l d r => 
     if lt_index i d
     then balanceL' c (bdel l i) d r
@@ -1382,6 +1382,128 @@ rewrite nth_default /delete // take_oversize // drop_oversize.
 by apply: leqW.
 Qed.
 
+Lemma rcons_delete_access_behead a b i :
+  low <= size b ->
+  rcons (delete a i) (access b 0) ++ delete b 0 = (delete a i) ++ b.
+Proof.
+  case: b => [|? b ?] /=;
+    first rewrite leqNgt Hlow1 //.
+  case: (delete a i) => /=;
+    first by rewrite /delete take0 drop1.
+  intros; by rewrite /delete take0 drop1 /= cat_rcons //.
+Qed.
+
+Lemma nth_count a i :
+  i < size a ->
+  nth false a i <= (count_mem true) a.
+Proof.
+  elim: a i => //= t a IH i H.
+  case: i IH H => [|i] IH H;
+  case: t H => //= H.
+   rewrite add1n; apply leqW, IH, H.
+  rewrite add0n.
+  apply IH, H.
+Qed.
+
+Lemma pat6 T a b i :
+  i < @size T a ->
+  @size T (delete a i ++ b)
+  = (@size T (a ++ b)).-1.
+Proof.
+  move => H.
+  apply/eqP; rewrite eq_sym; apply/eqP.
+  rewrite 2!size_cat size_delete //
+          addnC -subn1 -addnBA;
+    first by rewrite subn1 addnC //.
+  elim: i H => [//|i IH] H.
+  apply IH, ltnW, H.
+Qed.
+
+Lemma pat7 a b i :
+  i < size a ->
+  (count_mem true) (delete a i ++ b)
+  = (count_mem true) (a ++ b) - nth false a i.
+Proof.
+  move => H.
+  apply/eqP; rewrite eq_sym; apply/eqP.
+  rewrite 2!count_cat count_delete addnC -addnBA;
+    first by rewrite addnC.
+  by apply nth_count.
+Qed.
+
+Lemma pat8 T a b i :
+  (i < @size T a) = false ->
+  i < size a + size b ->
+  size (a ++ delete b (i - size a))
+  = (size (a ++ b)).-1.
+Proof.
+  rewrite ltnNge; move/negPn => H H'.
+  rewrite 2!size_cat size_delete; last rewrite ltn_subLR //.
+  rewrite -subn1 addnBA.
+  rewrite addnC subn1 //.
+  all:
+  rewrite ltnNge;
+  apply/implyP;
+  rewrite leqn0;
+  move/eqP => H''; move: H'' H H' => ->;
+  rewrite addn0 ltnNge => -> //=.
+Qed.
+
+Lemma pat9 a b i :
+  (i < size a) = false ->
+  i < size a + size b ->
+  (count_mem true) (a ++ delete b (i - size a))
+  = ((count_mem true) (a ++ b)) - nth false b (i - size a).
+Proof.
+  rewrite ltnNge; move/negPn => H H'.
+  rewrite 2!count_cat count_delete.
+  rewrite addnBA //.
+  apply nth_count.
+  rewrite ltn_subLR //.
+  rewrite ltnNge;
+  apply/implyP;
+  rewrite leqn0;
+  move/eqP => H''; move: H'' H H' => ->;
+  rewrite addn0 ltnNge => -> //=.
+Qed.
+
+Lemma pat10 a b c : c + ((a == true) + b) - a = c + b.
+Proof.
+  case: a => //=.
+   rewrite addnCA addnC addnK //.
+  rewrite add0n subn0 //.
+Qed.
+
+Lemma ltn_pred a :
+  0 < a -> a.-1 < a.
+Proof. case: a => //=. Qed.
+
+Lemma delete_from_leaves_d_delE a b i :
+  i < size a + size b ->
+  low <= size a < high ->
+  low <= size b < high ->
+  (size (dflatten (delete_from_leaves Red a b i)),
+   (count_mem true) (dflatten (delete_from_leaves Red a b i)))
+  = (size (a ++ b) - (d_del (delete_from_leaves Red a b i)).1,
+     (count_mem true) (a ++ b) - (d_del (delete_from_leaves Red a b i)).2).
+Proof.
+  move => Hi Ha Hb.
+  rewrite /delete_from_leaves; repeat case:ifP => ?;
+  rewrite /= ?rcons_delete_access_behead // /access;
+  rewrite ?(pat6, pat7, pat8, pat9) //;
+  rewrite /= ?rcons_delete_access_behead // /access;
+  (try rewrite /= ?subn1 //);
+  (try by rewrite -size_cat //);
+  decomp Ha; decomp Hb => //;
+  try by apply ltn_pred, (leq_trans Hlow1).
+  rewrite !size_cat !count_cat /= size_delete //;
+    last rewrite ltn_subLR //.
+  rewrite count_delete /= prednK.
+  rewrite pat10 addnBA //.
+  rewrite nth_count // ltn_subLR //.
+  all: by apply (leq_trans Hlow1).
+Qed.
+ 
 Lemma ddel_wf (B : dtree) n i :
   0 < n ->
   i < dsize B ->
@@ -1398,7 +1520,8 @@ Proof.
      case: l Hi rbB IHl IHr wfB =>
       [[]?[??]?|?] // Hi rbB IHl IHr wfB;
       (apply balanceL'_wf => //
-      || apply balanceR'_wf => //;
+      || apply balanceR'_wf => //
+      || apply delete_from_leaves_wf => //;
       rewrite /mkD /subD /addD /access;
       rewrite ?(ddel_d_delE,
                 dsizeE', donesE', ddelE, @daccessE low high,
@@ -1417,6 +1540,59 @@ Proof.
         [[] [[]//|?] [??] [[]//|?]|?] [[] [[]//|?] [??] [[]|?]|?] //=
         Hi rbB IHl IHr wfB;
       try case: ifP => Hc;
+      (apply balanceL'_wf => //
+      || apply balanceR'_wf => //
+      || apply delete_from_leaves_wf => //;
+      rewrite /mkD /subD /addD /access;
+      rewrite ?(ddel_d_delE,
+                dsizeE', donesE', ddelE, @daccessE low high,
+                count_delete, size_delete, subn1));
+      (try apply delete_from_leaves_wf => //);
+      rewrite ?delete_from_leaves_d_delE => //;
+      (try move: Hc; decomp wfB; try rewrite -size_cat //) => //.
+    rewrite ltn_subLR; first by rewrite -size_cat //.
+    rewrite size_cat ltn_addl // (leq_trans Hlow1) //.
+    all : try by [].
+    rewrite -size_cat //.
+        
+      rewrite /delete_from_leaves; repeat case:ifP => ?;
+      rewrite /= ?rcons_delete_access_behead // /access;
+      rewrite ?(pat6, pat7, pat8, pat9) //;
+      rewrite /= ?rcons_delete_access_behead // /access;
+      try rewrite /= ?subn1 //;
+      try by rewrite -size_cat //;
+      try by apply ltn_pred, (leq_trans Hlow1).
+      rewrite ltn_subLR.
+      rewrite -size_cat //.
+      apply (leq_trans Hlow1) => //.
+      apply (leq_trans Hlow1) => //.
+      rewrite ltn_subLR.
+      rewrite -size_cat //.
+      apply (leq_trans Hlow1) => //.
+      try by apply ltn_pred, (leq_trans Hlow1).
+      try by apply ltn_pred, (leq_trans Hlow1).
+      rewrite ltn_subLR.
+      rewrite -size_cat //.
+      rewrite size_cat ltn_addl // (leq_trans Hlow1) //.
+      by apply ltn_pred, (leq_trans Hlow1).
+      by apply ltn_pred, (leq_trans Hlow1).
+      try by apply ltn_pred, (leq_trans Hlow1).
+      
+      rewrite pat8.
+      rewrite pat9.
+      rewrite /=
+      rewrite pat7.
+      rewrite ?rcons_delete_access_behead //;
+      try rewrite -pat6 //;
+      try rewrite -pat7 //;
+      try rewrite /= subn1 /access //.
+      rewrite -pat6 //.
+      rewrite -pat7 //.
+      rewrite ?rcons_delete_access_behead //.
+      rewrite -pat6 //.
+      rewrite -pat7 //.
+      rewrite ?(size_cat, size_delete).
+      rewrite ?rcons_delete_access_behead //.
       rewrite ?(balanceL'_wf, balanceR'_wf, delete_from_leaves_wf) //;
       try move: Hc; move: wfB rbB Hi;
       do! (decompose_rewrite; rewrite /= ?size_cat //).
