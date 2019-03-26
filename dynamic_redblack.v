@@ -1432,6 +1432,13 @@ Lemma ltn_pred a :
   0 < a -> a.-1 < a.
 Proof. case: a => //=. Qed.
 
+Lemma dsize_gt0 (B: dtree) : wf_dtree' B -> size (dflatten B) > 0.
+Proof.
+move: B; apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s wf] /=.
+   by rewrite size_cat ltn_addr.
+rewrite (leq_trans Hlow1); by decomp wf.
+Qed.
+
 Lemma delete_from_leaves_d_delE a b i :
   i < size a + size b ->
   low <= size a < high ->
@@ -1525,15 +1532,15 @@ Proof.
     try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
     destruct lr;
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-    
+
     destruct ll;
     try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
     destruct lr;
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-    
+
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-    
+
     destruct rl;
     try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
     destruct rr;
