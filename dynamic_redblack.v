@@ -1444,7 +1444,7 @@ Proof.
     [[]?[??]?|?] // Hi rbB IHl IHr wfB;
     try by (close_branch Hi (IHl n) (IHr n) wfB rbB).
     case: r Hi rbB IHl IHr wfB =>
-    [[]?[??]?|?] // Hi rbB IHl IHr wfB;
+    [[]?[??]?|?] Hi rbB IHl IHr wfB;
     by close_branch Hi (IHl n) (IHr n) wfB rbB.
   + case: n Hn rbB => [//|[|n]] Hn rbB.
   * case: l r Hi rbB IHl IHr wfB =>
@@ -1461,32 +1461,17 @@ Proof.
     case:l r Hi rbB IHl IHr wfB =>
       [[] ll [??] lr|?] [[] rl [??] rr|?] Hi rbB IHl IHr wfB;
        last rewrite delete_from_leaves_wf //.
-    destruct ll;
-    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
-    destruct lr;
+    destruct ll; destruct lr;
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-
-    destruct ll;
-    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
-    destruct lr;
+    destruct ll; destruct lr;
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-
-    destruct ll;
-    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
-    destruct lr;
+    destruct ll; destruct lr;
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-
-    destruct ll;
-    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
-    destruct lr;
-    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-
+    destruct ll; destruct lr;
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
-
-    destruct rl;
-    try close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB;
-    destruct rr;
+    close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
+    destruct rl; destruct rr;
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
     close_branch Hi (IHl n.+1) (IHr n.+1) wfB rbB.
 Qed.
