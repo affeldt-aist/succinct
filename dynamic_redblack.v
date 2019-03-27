@@ -1111,7 +1111,7 @@ Proof.
 Qed.
 
 Notation ddel := (bdel addD subD lt_index right_index
-                       (fun x i => (@delete _ x i, (1, @access x i : nat)))
+                       (fun x i => (delete x i, (1, access x i : nat)))
                        delete_from_leaves
                   : btree (nat * nat) (seq bool) -> nat -> deleted_dtree).
 (* Red-blackness invariant *)
@@ -1208,29 +1208,23 @@ Qed.
 
 (* Well-formedness *)
 
-Lemma pat1 a b c :
-  a + b + c == c + a + b.
+Lemma eq_addnC a b : a + b == b + a.
+Proof. by rewrite addnC. Qed.
+
+Lemma eq_addnC2 a b c : a + b + c == c + a + b.
 Proof. by rewrite addnC addnA. Qed.
 
-Lemma pat2 a b c : a + b + c - a == b + c.
-Proof. by rewrite addnC addnA addnC addnA addnK. Qed.
+Lemma eq_addKn a b : a + b - a == b.
+Proof. by rewrite addKn. Qed.
 
-Lemma pat3 a b : a + b - a == b.
-Proof. by rewrite addnC addnK. Qed.
+Lemma eq_addKn2 a b c : a + b + c - a == b + c.
+Proof. by rewrite -addnA addKn. Qed.
 
-Lemma pat4 a b c d :
-  a + b + c + d - a == b + c + d.
-Proof.
-  do 3! rewrite addnC !addnA;
-  by rewrite addnK.
-Qed.
+Lemma eq_addKn3 a b c d : a + b + c + d - a == b + c + d.
+Proof. by rewrite -!addnA addKn. Qed.
 
-Lemma pat5 a b c d e:
-  a + b + c + d + e - a == b + c + d + e.
-Proof.
-  do 4! rewrite addnC !addnA;
-  by rewrite addnK.
-Qed.
+Lemma eq_addKn4 a b c d e : a + b + c + d + e - a == b + c + d + e.
+Proof. by rewrite -!addnA addKn. Qed.
 
 Lemma balanceL'_wf (B: deleted_dtree) d b c:
   wf_dtree_l B -> wf_dtree_l b ->
@@ -1239,12 +1233,11 @@ Lemma balanceL'_wf (B: deleted_dtree) d b c:
 Proof.
 case: B b d => B [] [s o] b [s' o'] /= wfB wfb;
  rewrite /subD /mkD /= => /eqP [] Hs Ho.
- case: c b wfb Hs Ho => [] [[] [[] ll [sl ol] lr|?] [??] ?|?] wfb /=;
- try case: ll lr wfb => [[]?[??]?|?] [[]?[??]?|?] wfb /=;
- decomp wfb; decomp wfB;
- rewrite ?(addnK, dsizeE', donesE', size_cat, count_cat, addnA, eqxx) //=;
- rewrite ?(pat1, pat2, pat3, pat4) //=;
- repeat rewrite addnC eqxx //=.
+ time (case: c b wfb Hs Ho => [] [[] [[] ll [sl ol] lr|?] [??] ?|?] wfb /=;
+  try case: ll lr wfb => [[]?[??]?|?] [[]?[??]?|?] wfb /=;
+  decomp wfb; decomp wfB;
+  rewrite ?(eqxx, dsizeE', donesE', size_cat, count_cat, addnA);
+  by rewrite ?(eq_addnC, eq_addnC2, eq_addKn, eq_addKn2, eq_addKn3)).
 by rewrite Hs Ho dsizeE' // donesE' // !eqxx /= wfB wfb.
 Qed.
 
@@ -1255,12 +1248,12 @@ Lemma balanceR'_wf (B: deleted_dtree) d b c:
 Proof.
 case: B b d => B [] [s o] b [s' o'] /= wfB wfb;
  rewrite /mkD /= => /eqP [] Hs Ho.
- case: c b wfb Hs Ho => [] [[] ll [??] lr|?] wfb /=;
- try case: lr wfb => [[] lrl [??] lrr|?] wfb /=;
- try case: lrl lrr wfb => [[]?[??]?|?] [[]?[??]?|?] wfb /=;
- decomp wfb; decomp wfB;
- rewrite ?(addnK, dsizeE', donesE', size_cat, count_cat, addnA, eqxx) //=;
- rewrite ?(pat1, pat2, pat3, pat4, pat5) //=.
+ time (case: c b wfb Hs Ho => [] [[] ll [??] lr|?] wfb /=;
+  try case: lr wfb => [[] lrl [??] lrr|?] wfb /=;
+  try case: lrl lrr wfb => [[]?[??]?|?] [[]?[??]?|?] wfb /=;
+  decomp wfb; decomp wfB;
+  rewrite ?(eqxx, dsizeE', donesE', size_cat, count_cat, addnA);
+  by rewrite ?(eq_addnC2, eq_addKn, eq_addKn2, eq_addKn3, eq_addKn4)).
 by rewrite Hs Ho dsizeE' // donesE' // !eqxx wfB wfb.
 Qed.
 
@@ -1287,6 +1280,9 @@ Proof.
   by rewrite {1}(eqP lc) (eqP rc).
 Qed.
 
+Ltac prune_d_delE IHl IHr wfB :=
+  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //; try by decomp wfB.
+
 Lemma ddel_d_delE B i :
   wf_dtree_l B ->
   d_del (ddel B i) = (1, daccess B i : nat).
@@ -1294,83 +1290,54 @@ Proof.
   elim: B i => [[] l IHl [??] r IHr|//] i wfB /=;
   rewrite /lt_index /right_index;
   case: l IHl wfB => [[] ll [??] lr|?] IHl wfB;
-  case:ifP => H;
-  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
-  case: r IHr wfB => [[] rl [??] rr|?] IHr wfB;
-  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
-  try by decomp wfB.
-  all:
+  case: ifP => H; prune_d_delE IHl IHr wfB;
+  case: r IHr wfB => [[] rl [??] rr|?] IHr wfB; prune_d_delE IHl IHr wfB;
   try case: ll lr IHl wfB => [[]?[??]?|?] [[]?[??]?|?] IHl wfB;
-  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
-  try by decomp wfB.
-  all:
+  prune_d_delE IHl IHr wfB;
   try case: rl rr IHr wfB => [[]?[??]?|?] [[]?[??]?|?] IHr wfB;
-  try case:ifP => H';
-  rewrite ?(balanceL'_d_delE, balanceR'_d_delE, IHl, IHr) //;
-  try by decomp wfB.
-  all:
-  rewrite /delete_from_leaves;
-  move:H; try move:H'; decomp wfB; repeat case:ifP; rewrite /= /access //;
-  try (rewrite ltn_subLR; first by rewrite -size_cat H9 //);
-  try rewrite -subnDA -size_cat //;
-  rewrite ?(leq_trans Hlow1) //.
-  rewrite ltn_subLR in H9.
-  rewrite ltn_addr // in H9.
-  rewrite ?(leq_trans Hlow1) //.
+  try case: ifP => H'; prune_d_delE IHl IHr wfB.
+  all: rewrite /delete_from_leaves;
+    move:H; try move:H'; decomp wfB; do? case: ifP => //=.
+  all: try (rewrite ltn_subLR; first by rewrite -size_cat H9);
+    try rewrite -subnDA -size_cat //;
+    rewrite ?(leq_trans Hlow1) //.
+  rewrite ltn_subLR ?ltn_addr // in H9.
+  by apply (leq_trans Hlow1).
 Qed.
 
 Lemma count_delete arr i :
   (count_mem true) (delete arr i) = (count_mem true) arr - nth false arr i.
 Proof.
-apply/eqP; rewrite eq_sym; apply/eqP.
+symmetry.
 case H : (i < (size arr)).
-rewrite -(cat_take_drop i arr) /delete !count_cat cat_take_drop (drop_nth false)
-        // -/(cat [:: nth false arr i] _) count_cat /= addn0.
- case: (nth false arr i) => /=.
-  by rewrite [1 + _]addnC addnA addn1 subn1 -[_.+1]subn0 subSKn subn0.
- by rewrite add0n subn0.
-rewrite ltnNge in H.
-move/negPn : H => H.
-rewrite nth_default /delete // take_oversize // drop_oversize.
- by rewrite count_cat /= addn0 subn0.
-by apply: leqW.
+  rewrite -(cat_take_drop i arr) /delete !count_cat cat_take_drop.
+  rewrite (drop_nth false) // -cat1s count_cat /= addn0 eqb_id.
+  by rewrite addnA (addnC (count _ _)) -addnA addKn.
+move: H; rewrite ltnNge => /negbFE H.
+rewrite nth_default // /delete take_oversize // drop_oversize ?leqW //.
+by rewrite count_cat /= addn0 subn0.
 Qed.
 
 Lemma rcons_delete_access_behead a b i :
   low <= size b ->
   rcons (delete a i) (access b 0) ++ delete b 0 = (delete a i) ++ b.
 Proof.
-  case: b => [|? b ?] /=;
-    first rewrite leqNgt Hlow1 //.
-  case: (delete a i) => /=;
-    first by rewrite /delete take0 drop1.
-  intros; by rewrite /delete take0 drop1 /= cat_rcons //.
+case: b => [|h b] //= H; first by rewrite leqNgt Hlow1 in H.
+by rewrite -cats1 -catA /delete take0 drop1.
 Qed.
+
+Search count.
 
 Lemma nth_count a i :
   i < size a ->
   nth false a i <= (count_mem true) a.
-Proof.
-  elim: a i => //= t a IH i H.
-  case: i IH H => [|i] IH H;
-  case: t H => //= H.
-   rewrite add1n; apply leqW, IH, H.
-  rewrite add0n.
-  apply IH, H.
-Qed.
+Proof. move/(mem_nth false); rewrite -has_pred1 has_count; by case: nth. Qed.
 
-Lemma pat6 T a b i :
-  i < @size T a ->
-  @size T (delete a i ++ b)
-  = (@size T (a ++ b)).-1.
+Lemma pat6 (a b : bitseq) i :
+  i < size a -> size (delete a i ++ b) = (size (a ++ b)).-1.
 Proof.
-  move => H.
-  apply/eqP; rewrite eq_sym; apply/eqP.
-  rewrite 2!size_cat size_delete //
-          addnC -subn1 -addnBA;
-    first by rewrite subn1 addnC //.
-  elim: i H => [//|i IH] H.
-  apply IH, ltnW, H.
+move=> Hi; rewrite size_cat size_delete // size_cat.
+by rewrite -!subn1 [LHS]addnC [in RHS]addnC -addnBA // (@leq_trans i.+1).
 Qed.
 
 Lemma pat7 a b i :
