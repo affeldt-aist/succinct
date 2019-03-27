@@ -1342,61 +1342,37 @@ Qed.
 
 Lemma pat7 a b i :
   i < size a ->
-  (count_mem true) (delete a i ++ b)
-  = (count_mem true) (a ++ b) - nth false a i.
+  count_mem true (delete a i ++ b) = count_mem true (a ++ b) - nth false a i.
 Proof.
-  move => H.
-  apply/eqP; rewrite eq_sym; apply/eqP.
-  rewrite 2!count_cat count_delete addnC -addnBA;
-    first by rewrite addnC.
-  by apply nth_count.
+move=> H.
+by rewrite count_cat count_delete !count_cat addnC addnBA ?nth_count // addnC.
 Qed.
 
-Lemma pat8 T a b i :
-  (i < @size T a) = false ->
-  i < size a + size b ->
-  size (a ++ delete b (i - size a))
-  = (size (a ++ b)).-1.
+Lemma pat8 (a b : bitseq) i :
+  (i < size a) = false -> i < size a + size b ->
+  size (a ++ delete b (i - size a)) = (size (a ++ b)).-1.
 Proof.
-  rewrite ltnNge; move/negPn => H H'.
-  rewrite 2!size_cat size_delete; last rewrite ltn_subLR //.
-  rewrite -subn1 addnBA.
-  rewrite addnC subn1 //.
-  all:
-  rewrite ltnNge;
-  apply/implyP;
-  rewrite leqn0;
-  move/eqP => H''; move: H'' H H' => ->;
-  rewrite addn0 ltnNge => -> //=.
+rewrite ltnNge; move/negPn => H H'.
+rewrite size_cat addnC -size_cat pat6 // ?ltn_subLR //.
+  by rewrite !size_cat addnC.
+case: b H' => //; by rewrite addn0 ltnNge H.
 Qed.
 
 Lemma pat9 a b i :
-  (i < size a) = false ->
-  i < size a + size b ->
+  (i < size a) = false -> i < size a + size b ->
   (count_mem true) (a ++ delete b (i - size a))
   = ((count_mem true) (a ++ b)) - nth false b (i - size a).
 Proof.
-  rewrite ltnNge; move/negPn => H H'.
-  rewrite 2!count_cat count_delete.
-  rewrite addnBA //.
-  apply nth_count.
-  rewrite ltn_subLR //.
-  rewrite ltnNge;
-  apply/implyP;
-  rewrite leqn0;
-  move/eqP => H''; move: H'' H H' => ->;
-  rewrite addn0 ltnNge => -> //=.
+rewrite ltnNge; move/negPn => H H'.
+rewrite count_cat addnC -count_cat pat7 // ?ltn_subLR //.
+  by rewrite !count_cat addnC.
+case: b H' => //; by rewrite addn0 ltnNge H.
 Qed.
 
 Lemma pat10 a b c : c + ((a == true) + b) - a = c + b.
-Proof.
-  case: a => //=.
-   rewrite addnCA addnC addnK //.
-  rewrite add0n subn0 //.
-Qed.
+Proof. by rewrite eqb_id addnCA addnC addnK. Qed.
 
-Lemma ltn_pred a :
-  0 < a -> a.-1 < a.
+Lemma ltn_pred a : 0 < a -> a.-1 < a.
 Proof. case: a => //=. Qed.
 
 Lemma dsize_gt0 (B: dtree) : wf_dtree_l B -> size (dflatten B) > 0.
