@@ -182,7 +182,7 @@ Proof. move => wf. by rewrite drankE // /rank dsizeE // take_size. Qed.
 End dtree.
 
 Notation size_df t := (size (dflatten t)).
-Notation ones_df t := (count_mem true (dflatten t)).  
+Notation ones_df t := (count_mem true (dflatten t)).
 
 Section insert.
 
