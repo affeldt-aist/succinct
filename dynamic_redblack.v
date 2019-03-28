@@ -38,63 +38,6 @@ Inductive btree : Type :=
 
 End btree.
 
-Section eq_btree.
-
-Definition eq_color c1 c2 :=
-  match c1,c2 with
-  | Black,Black | Red,Red => true
-  | _,_ => false
-  end.
-
-Lemma color_eqP : Equality.axiom eq_color.
-Proof.
-  move; case; case => /=;
-  try apply ReflectT => //;
-  apply ReflectF => //. 
-Qed.
-
-Canonical color_eqMixin := EqMixin color_eqP.
-Canonical color_eqType := Eval hnf in EqType color color_eqMixin.
-
-Variables D A : eqType.
-
-Fixpoint eq_btree (t1 t2 : btree D A) := 
-  match t1,t2 with
-  | Bleaf a, Bleaf b => a == b
-  | Bnode c1 l1 d1 r1, Bnode c2 l2 d2 r2 =>
-    (d1 == d2) && (c1 == c2) && (eq_btree l1 l2) && (eq_btree r1 r2)
-  | Bnode _ _ _ _, Bleaf _ 
-  | Bleaf _, Bnode _ _ _ _ => false
-  end.
-
-Lemma eq_dtree_refl (t : btree D A) : eq_btree t t.
-Proof. elim t => [? l H1 ? r H2 /=|a //=]; by rewrite H1 H2 !eq_refl. Qed.
-
-Lemma eq_dtree_iff t1 t2 : t1 = t2 <-> eq_btree t1 t2.
-Proof.
-  split => [->|]; first by rewrite eq_dtree_refl.
-  move: t1 t2;
-    elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;
-  last by move/eqP => /= ->.
-  move/andP: H; case; move/andP; case;
-    move/andP; case; move/eqP => ->; move/eqP => -> H1 H2.
-  by rewrite (lH1 _ H1) (rH1 _ H2).
-Qed.
-
-Lemma btree_eqP : Equality.axiom eq_btree.
-Proof.
-  move; case => [? l1 ? r1 |?]; case => [? l2 ? r2|?] //;
-  set b:= (eq_btree _ _); case Hb : b; subst b;
-  try (apply ReflectT; apply eq_dtree_iff => //); try apply ReflectF => //.
-   by case => H1 H2 H3 H4; move: Hb; rewrite H1 H2 H3 H4 eq_dtree_refl.
-  by case => H1; move: Hb; rewrite H1 eq_dtree_refl.
-Qed.
-
-Canonical btree_eqMixin := EqMixin btree_eqP.
-Canonical btree_eqType := Eval hnf in EqType (btree D A) btree_eqMixin.
-
-End eq_btree.
-
 Section dtree.
 
 Definition dtree := btree (nat * nat) (seq bool).
@@ -1479,11 +1422,11 @@ Definition t : dtree :=
                (Bleaf _ [:: true; false; true])
                (3, 2)
                (Bleaf _ [:: true; true; true; true])).
-Lemma drank_t : drank t 10 == 7. Proof. by []. Qed.
-Lemma dselect1_t : dselect_1 t 7 == 10. Proof. by []. Qed.
-Lemma dselect0_t : dselect_0 t 3 == 5. Proof. by []. Qed.
-Lemma dinsert_t :
-  dinsert 5 (* upper bound *) t false 9 ==
+Example drank_t : drank t 10 = 7. Proof. by []. Qed.
+Example dselect1_t : dselect_1 t 7 = 10. Proof. by []. Qed.
+Example dselect0_t : dselect_0 t 3 = 5. Proof. by []. Qed.
+Example dinsert_t :
+  dinsert 5 (* upper bound *) t false 9 =
   Bnode Black
         (Bnode Black
                (Bleaf _ [:: true; false; false])
@@ -1495,11 +1438,68 @@ Lemma dinsert_t :
                (2, 2)
                (Bleaf _ [:: true; false; true])).
 Proof. by []. Qed.
-Lemma ddelete_t :
-  ddelete 3 (* lower bound *) t 2 ==
+Example ddelete_t :
+  ddelete 3 (* lower bound *) t 2 =
   Bnode Black
         (Bleaf _ [:: true; false; true; false; true])
         (5, 3)
         (Bleaf _ [:: true; true; true; true]).
 Proof. by []. Qed.
 End example.
+
+Section eq_btree.
+
+Definition eq_color c1 c2 :=
+  match c1,c2 with
+  | Black,Black | Red,Red => true
+  | _,_ => false
+  end.
+
+Lemma color_eqP : Equality.axiom eq_color.
+Proof.
+  move; case; case => /=;
+  try apply ReflectT => //;
+  apply ReflectF => //. 
+Qed.
+
+Canonical color_eqMixin := EqMixin color_eqP.
+Canonical color_eqType := Eval hnf in EqType color color_eqMixin.
+
+Variables D A : eqType.
+
+Fixpoint eq_btree (t1 t2 : btree D A) := 
+  match t1,t2 with
+  | Bleaf a, Bleaf b => a == b
+  | Bnode c1 l1 d1 r1, Bnode c2 l2 d2 r2 =>
+    (d1 == d2) && (c1 == c2) && (eq_btree l1 l2) && (eq_btree r1 r2)
+  | Bnode _ _ _ _, Bleaf _ 
+  | Bleaf _, Bnode _ _ _ _ => false
+  end.
+
+Lemma eq_dtree_refl (t : btree D A) : eq_btree t t.
+Proof. elim t => [? l H1 ? r H2 /=|a //=]; by rewrite H1 H2 !eq_refl. Qed.
+
+Lemma eq_dtree_iff t1 t2 : t1 = t2 <-> eq_btree t1 t2.
+Proof.
+  split => [->|]; first by rewrite eq_dtree_refl.
+  move: t1 t2;
+    elim => [? l1 lH1 ? r1 rH1|?]; elim => [? l2 lH2 ? r2 rH2 H|?] //;
+  last by move/eqP => /= ->.
+  move/andP: H; case; move/andP; case;
+    move/andP; case; move/eqP => ->; move/eqP => -> H1 H2.
+  by rewrite (lH1 _ H1) (rH1 _ H2).
+Qed.
+
+Lemma btree_eqP : Equality.axiom eq_btree.
+Proof.
+  move; case => [? l1 ? r1 |?]; case => [? l2 ? r2|?] //;
+  set b:= (eq_btree _ _); case Hb : b; subst b;
+  try (apply ReflectT; apply eq_dtree_iff => //); try apply ReflectF => //.
+   by case => H1 H2 H3 H4; move: Hb; rewrite H1 H2 H3 H4 eq_dtree_refl.
+  by case => H1; move: Hb; rewrite H1 eq_dtree_refl.
+Qed.
+
+Canonical btree_eqMixin := EqMixin btree_eqP.
+Canonical btree_eqType := Eval hnf in EqType (btree D A) btree_eqMixin.
+
+End eq_btree.
