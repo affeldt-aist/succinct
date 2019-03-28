@@ -42,59 +42,14 @@ Section dtree.
 
 Definition dtree := btree (nat * nat) (seq bool).
 
-Fixpoint daccess (B : dtree) (i : nat) :=
-  match B with
-  | Bnode _  l (num, ones) r =>
-    if i < num then daccess l i else daccess r (i - num)
-  | Bleaf s =>
-    nth false s i
-  end.
-
-Fixpoint drank (B : dtree) (i : nat) :=
-  match B with
-  | Bnode _ l (num, ones) r =>
-    if i < num then drank l i else ones + drank r (i - num)
-  | Bleaf s =>
-    rank true i s
-  end.
-
 Fixpoint dflatten (B : dtree) :=
   match B with
   | Bnode _ l _ r => dflatten l ++ dflatten r
   | Bleaf s => s
   end.
 
-Fixpoint dselect_1 (B : dtree) (i : nat) :=
-  match B with
-  | Bnode _ l (num, ones) r =>
-    if i <= ones then dselect_1 l i else num + dselect_1 r (i - ones)
-  | Bleaf s => select true i s
-  end.
-
-Fixpoint dselect_0 (B : dtree) (i : nat) :=
-  match B with
-  | Bnode _ l (num, ones) r =>
-    let zeroes := num - ones
-    in if i <= zeroes then dselect_0 l i else num + dselect_0 r (i - zeroes)
-  | Bleaf s => select false i s
-  end.
-
-Fixpoint dsize (B : dtree) :=
-  match B with
-  | Bnode _ l (n, _) r => n + dsize r
-  | Bleaf s => size s
-  end.
-
-Fixpoint dones (B : dtree) :=
-  match B with
-  | Bnode _ l (_, o) r => o + dones r
-  | Bleaf s => count_mem true s
-  end.
-
 Notation size_df t := (size (dflatten t)).
 Notation ones_df t := (count_mem true (dflatten t)).
-
-Definition access (s : seq bool) i := nth false s i.
 
 Variables low high : nat.  (* (w ^ 2)./2 and (w ^ 2).*2 *)
 
@@ -117,6 +72,53 @@ Proof.
     apply: HN; auto.
   by apply: HL.
 Qed.
+
+Fixpoint dsize (B : dtree) :=
+  match B with
+  | Bnode _ l (n, _) r => n + dsize r
+  | Bleaf s => size s
+  end.
+
+Fixpoint daccess (B : dtree) (i : nat) :=
+  match B with
+  | Bnode _  l (num, ones) r =>
+    if i < num then daccess l i else daccess r (i - num)
+  | Bleaf s =>
+    nth false s i
+  end.
+
+Fixpoint drank (B : dtree) (i : nat) :=
+  match B with
+  | Bnode _ l (num, ones) r =>
+    if i < num then drank l i else ones + drank r (i - num)
+  | Bleaf s =>
+    rank true i s
+  end.
+
+Definition drank_size B := drank B (dsize B).
+
+Fixpoint dselect_1 (B : dtree) (i : nat) :=
+  match B with
+  | Bnode _ l (num, ones) r =>
+    if i <= ones then dselect_1 l i else num + dselect_1 r (i - ones)
+  | Bleaf s => select true i s
+  end.
+
+Fixpoint dselect_0 (B : dtree) (i : nat) :=
+  match B with
+  | Bnode _ l (num, ones) r =>
+    let zeroes := num - ones
+    in if i <= zeroes then dselect_0 l i else num + dselect_0 r (i - zeroes)
+  | Bleaf s => select false i s
+  end.
+
+Fixpoint dones (B : dtree) :=
+  match B with
+  | Bnode _ l (_, o) r => o + dones r
+  | Bleaf s => count_mem true s
+  end.
+
+Definition access (s : seq bool) i := nth false s i.
 
 Lemma daccessE (B : dtree) : wf_dtree B -> daccess B =1 access (dflatten B).
 Proof.
@@ -177,12 +179,10 @@ Corollary drank_all (B : dtree) :
   wf_dtree B -> drank B (dsize B) = ones_df B.
 Proof. move => wf. by rewrite drankE // /rank dsizeE // take_size. Qed.
 
-Definition drank_size B := drank B (dsize B).
-
 End dtree.
 
 Notation size_df t := (size (dflatten t)).
-Notation ones_df t := (count_mem true (dflatten t)).
+Notation ones_df t := (count_mem true (dflatten t)).  
 
 Section insert.
 
