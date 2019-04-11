@@ -25,5 +25,5 @@ A tentative formalization of compact data structures following [1]
 
 - Most recent [draft paper](201903/compact-20190331.pdf) ([arXiv version](https://arxiv.org/pdf/1904.02809.pdf))
 - TPP 2018 slides for [LOUDS](tpp2018/slides_louds_en.pdf) and [dynamic
-  bit vectors](tp2018/slides_dynamic.pdf)
+  bit vectors](tpp2018/slides_dynamic.pdf)
 - JSSST 2018 [draft paper](jssst2018/compact.pdf)
