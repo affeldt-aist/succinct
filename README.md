@@ -21,6 +21,11 @@ A tentative formalization of compact data structures following [1]
 1. `coq_makefile -f _CoqProject -o Makefile`
 2. `make`
 
+## Requirements
+
+- Coq 8.9.1
+- MathComp 1.9.0
+
 # Accompanying material
 
 - Most recent [draft paper](201903/compact-20190331.pdf) ([arXiv version](https://arxiv.org/pdf/1904.02809.pdf))

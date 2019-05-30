@@ -52,7 +52,8 @@ rewrite size_cat size_node_description addSn; congr S.
 rewrite -doubleE foldr_big_eq.
 rewrite (@big_morph nat (seq (seq (seq bool)))
          (fun i => size (flatten (flatten i))) 0 addn nil) //; first last.
-  elim => // x xs IHx [] //= y ys.
+  elim; first by move=> ?; rewrite add0n.
+  move=> x xs IHx [/=|y ys]; first by rewrite addn0.
   by rewrite !flatten_cat !size_cat IHx !addnA (addnAC (size (flatten x))).
 rewrite big_seq_cond /=.
 rewrite (eq_bigr (fun t => (number_of_nodes t).*2.-1)) /=; last first.
