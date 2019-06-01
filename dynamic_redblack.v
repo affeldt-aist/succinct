@@ -657,6 +657,26 @@ Proof. by rewrite /dbitset size_bset. Qed.
 Lemma size_dbitclear (B : dtree) i : size_df (dbitclear B i) = size_df B.
 Proof. by rewrite /dbitclear size_bclear. Qed.
 
+Lemma is_redblack_dbitset (B : dtree) i c n :
+  is_redblack B c n = is_redblack (dbitset B i) c n.
+Proof.
+  rewrite /dbitset.
+  elim: B i c n => //= cB l IHl [nn o] r IHr i c n //.
+  rewrite (surjective_pairing (_ l i)).
+  rewrite (surjective_pairing (_ r _)) !(fun_if fst) /=.
+  case: ifP => _ /=; by rewrite -!(IHl, IHr).
+Qed.
+
+Lemma is_redblack_dbitclear (B : dtree) i c n :
+  is_redblack B c n = is_redblack (dbitclear B i) c n.
+Proof.
+  rewrite /dbitclear.
+  elim: B i c n => //= cB l IHl [nn o] r IHr i c n //.
+  rewrite (surjective_pairing (_ l i)).
+  rewrite (surjective_pairing (_ r _)) !(fun_if fst) /=.
+  case: ifP => _ /=; by rewrite -!(IHl, IHr).
+Qed.
+
 Lemma flip_bit_bset (B : dtree) i :
   wf_dtree low high B -> i < size_df B -> (bset B i).2 = ~~ (daccess B i).
 Proof.
@@ -1264,8 +1284,6 @@ Proof.
 case: b => [|h b] //= H; first by rewrite leqNgt Hlow1 in H.
 by rewrite -cats1 -catA /delete take0 drop1.
 Qed.
-
-Search count.
 
 Lemma nth_count a i :
   i < size a ->
