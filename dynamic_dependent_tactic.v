@@ -795,7 +795,7 @@ Section delete.
   Definition merge_arrays (a b : seq bool) (i : nat) (w1 : w ^ 2 %/ 2 == size a) (w2 : w ^ 2 %/ 2 == size b) (val : i < size a + size b) :
              {tr : tree (size a + size b - (i < size a + size b)) (count_one a + count_one b - (access (a ++ b) i)) 0 Black | dflatten tr = delete (a ++ b) i}.
 
-    move/eqP : wordsize_sqrn_div2_neq0; rewrite -lt0n => pos.
+    move/eqP : (wordsize_sqrn_div2_neq0 _ wordsize_gt1); rewrite -lt0n => pos.
     move/eqP: w1 => w1. move/eqP: w2 => w2. move: (pos); rewrite w1 => w1p. move: (pos); rewrite w2 => w2p.
     case Hl : (i < size a).
      have ueq : size ((rcons (delete a i) (access b 0)) ++ (delete b 0)) < 2 * w ^ 2.
@@ -826,7 +826,7 @@ Section delete.
     {B' : near_tree' (s1 + s2 - (i < s1 + s2))
                     (o1 + o2 - access (dflatten l ++ dflatten r) i) (inc_black 0 p) p | dflattenn' B' = delete (dflatten l ++ dflatten r) i}.
 
-    move/eqP : wordsize_sqrn_div2_neq0 (sizeW' l) (sizeW' r); rewrite -lt0n => pos posl posr.
+    move/eqP : (wordsize_sqrn_div2_neq0 _ wordsize_gt1) (sizeW' l) (sizeW' r); rewrite -lt0n => pos posl posr.
     remember_eq 0 d' deq; remember_eq Black c' ceq; move: l r; rewrite -ceq -deq => l; destruct l as [al leql ueql|]; last rewrite ceq /= // in deq.
     move => {deq ceq}; remember_eq 0 d' deq; remember_eq Black c' ceq; rewrite /= -ceq -deq => r; destruct r as [ar leqr ueqr|]; last rewrite ceq /= // in deq.
 

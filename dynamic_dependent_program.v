@@ -778,6 +778,7 @@ Section delete.
     | Down _ _ _ t => dflatten t
     end.
 
+(* NB: move to dynamic_dependent.v? *)
   Lemma wordsize_sqrn_div2_gt0 : 0 < w ^ 2 %/ 2.
   Proof.
     rewrite lt0n. apply/eqP. exact: wordsize_sqrn_div2_neq0.
@@ -795,9 +796,6 @@ Section delete.
     by rewrite -divn2 wordsize_sqrn_div2_gt0.
     apply: leq_trans. apply: Hw. exact: leq_pmull.  
   Qed.
-
-  Lemma bool_true b : b = (b == true).
-  Proof. by case: b. Qed.
 
   Lemma cons_del_head s : size s > 0 -> access s 0 :: delete s 0 = s.
   Proof.
@@ -857,7 +855,7 @@ Section delete.
     rewrite /count_one. rewrite -[in LHS]cats1 count_cat count_cat.
     rewrite -/count_one -!count_delete.
     rewrite /access nth_cat -Heq_anonymous //= addn0.
-    rewrite -addnA -bool_true subnKC.
+    rewrite -addnA eqb_id subnKC.
     by rewrite addnC [in RHS]addnC addnBA //= -/access access_leq_count.
     have Hmatch: (match s2 with
                   | []%list => false
@@ -1092,7 +1090,7 @@ Section delete.
                   | x :: _ => x
                   end = access arr2 0). by rewrite /access.
     rewrite /access nth_cat -Heq_l /= -Heq_anonymous4 Hmatch.
-    rewrite -bool_true /access addn0.
+    rewrite eqb_id /access addn0.
     rewrite [in RHS]addnC -/access -/count_one.
     rewrite -addnBA. rewrite count_delete.
     rewrite -[X in _ + _ + X = _]count_delete.
@@ -1156,7 +1154,7 @@ Section delete.
                   | x :: _ => x
                   end = access arr2 0). by rewrite /access.
     rewrite /access nth_cat -Heq_l /= -Heq_anonymous4 Hmatch.
-    rewrite -bool_true /access addn0.
+    rewrite eqb_id /access addn0.
     rewrite [in RHS]addnC -/access -/count_one.
     rewrite -addnBA. rewrite count_delete.
     rewrite -[X in _ + _ + X = _]count_delete.
@@ -1315,7 +1313,7 @@ Section delete.
   Qed.
 
   Next Obligation.
-    rewrite /delete_last -bool_true /blast -!count_delete.
+    rewrite /delete_last eqb_id /blast -!count_delete.
     rewrite /access nth_cat -Heq_l -Heq_r //= -if_neg.
     move/eqP/eqnP/eqP: (H) => ->.
     rewrite addnA subnK; try rewrite addnBA //=;
@@ -1383,7 +1381,7 @@ Section delete.
   Qed.
 
   Next Obligation.
-    rewrite /delete_last -bool_true /blast -!count_delete.
+    rewrite /delete_last eqb_id /blast -!count_delete.
     rewrite /access nth_cat -Heq_l -Heq_r //= -if_neg.
     move/eqP/eqnP/eqP: (H) => ->.
     rewrite addnA subnK; try rewrite addnBA //=;
