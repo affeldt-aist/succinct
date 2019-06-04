@@ -1,7 +1,7 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 
-Require Import compact_data_structures rank_select insert_delete Program JMeq set_clear Wf_nat Compare_dec ExtrOcamlNatInt.
+Require Import compact_data_structures rank_select insert_delete Program JMeq set_clear Compare_dec ExtrOcamlNatInt.
 
 Set Implicit Arguments.
 
@@ -601,12 +601,6 @@ Section delete.
     by apply: leqW.
   Qed.
 
-  Lemma count_delete' {s o} (tr : tree s o 0 Black) (i : nat) : o - (daccess tr i) = count_one (delete (dflatten tr) i).
-  Proof.
-    remember_eq 0 d' deq. remember_eq Black c' ceq. move: tr. rewrite -deq -ceq => tr. destruct tr as [arr leq ueq|];last by rewrite ceq /= in deq.
-    by apply count_delete.
-  Qed.
-
   Lemma delete_oversize {arr : seq bool} {i} : size arr <= i -> arr = delete arr i.
   Proof.
     move => H.
@@ -1051,55 +1045,8 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     exact (IH _ (ltn_trans1 _ _ _ H2 H1)).
   Qed.
 
-  Lemma wf_nat : well_founded lt.
-  Proof.
-    case => [|?]. apply Acc_intro => ?. move/leP. by rewrite ltn0.
-    apply Acc_intro => m. move/leP. move: m. apply wf_nat'.
-  Qed.
-
-  Fixpoint size_of_tree' {s o d c} (tr : tree s o d c) :=
-    match tr with
-    | Leaf _ _ _ => 1
-    | Node _ _ _ _ _ _ _ _ _ _ l r => (size_of_tree' l) + (size_of_tree' r) + 1
-    end.
-
-  Definition ltc (c c' : color) :=
-    match c,c' with
-    | Red,Black => true
-    | _,_ => false
-    end.
-
-  Lemma ltc_trans c c' c'' : ltc c c' -> ltc c' c'' -> ltc c c''.
-  Proof. case c,c',c'' => //. Qed.
-
-  Lemma wf_color : well_founded ltc.
-  Proof. case; apply Acc_intro => [] [] /=; [done | done | move => ?;apply Acc_intro => [] [] /= // | done]. Qed.
-
-  Lemma wf_nc : forall dc, Acc (fun dc dc' =>
-                                  match dc,dc' with
-                                  | (d,c),(d',c') => 
-                                    if d == d'
-                                    then ltc c c'
-                                    else d < d'
-                                  end) dc.
-  Proof.
-    case => d; refine (Fix wf_nat (fun (d : nat) => _) _ d) => d' IH1 c; refine (Fix wf_color (fun (c : color) => _) _ c) => c' IH2;
-    apply Acc_intro; case => d'' c''; (case: ifP; [ move/eqP -> => H1 | move => nH1 H1 ]);
-    apply Acc_intro; case => d''' c'''; (case: ifP; [move/eqP -> => H2 | move => nH2 H2 ]);
-    [ apply (IH2 _ (ltc_trans _ _ _ H2 H1))
-    | move/ltP in H2; apply (IH1 _ H2 c''')
-    | move/ltP in H1; apply (IH1 _ H1 c''')
-    | move/ltP: (ltn_trans H2 H1) => H; apply (IH1 _ H c''') ].
-  Qed.
-
   Lemma cic_ok {c} : color_ok c (inv c).
   Proof. by destruct c. Qed.
-
-  Lemma ltcnS {d c c'} : (if d == d.+1 then ltc c c' else d < d.+1).
-  Proof. case: ifP => //; move/eqP; elim d => // n IH; move/eqP; rewrite eqSS; move/eqP => //. Qed.
-
-  Lemma ltcnBR {d} : (if d == d then ltc Red Black else d < d).
-  Proof. rewrite eq_refl //. Qed.
 
   Lemma ltn_subLN a b c : 0 < c -> (a < b + c) -> (a - b < c).
   Proof. move => H H'. rewrite -ltn_subln //. Qed.
