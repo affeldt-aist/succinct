@@ -55,16 +55,16 @@ Section insert_delete.
   Lemma insert_head (s xs : seq T) x i :
     insert s (x :: xs) i = insert (insert1 s x i) xs i.+1.
   Proof. by rewrite -cat1s insert_cat addn1. Qed.
-    
+
   Definition delete (s : seq T) i :=
     take i s ++ drop (i.+1) s.
 
   Lemma delete_nil i : delete [::] i = [::].
   Proof. by []. Qed.
-  
+
   Lemma size_take_leq i (s : seq T) : size (take i s) <= i.
   Proof. rewrite size_take; case: ifP => Hi //; by rewrite leqNgt Hi. Qed.
-    
+
   Lemma nth_delete (s : seq T) i x0 n :
     nth x0 (delete s i) n = if n >= i then nth x0 s (n.+1)
                             else nth x0 s n.
@@ -75,7 +75,7 @@ Section insert_delete.
     case: i => /= [|i]. by rewrite drop0.
     case: n => // n. by rewrite ltnS -IHt.
   Qed.
-  
+
   Lemma size_delete (s : seq T) i :
     i < size s -> size (delete s i) = (size s).-1.
   Proof.
@@ -83,7 +83,7 @@ Section insert_delete.
     rewrite Hi -addn1 -subn1 addnBA addnC //=.
     by rewrite subnDA addnK.
   Qed.
-    
+
   Lemma delete_insert1 (s : seq T) x i :
     i <= size s -> delete (insert1 s x i) i = s.
   Proof.
@@ -112,14 +112,14 @@ Section insert_delete.
     rewrite subnn drop0 [in RHS]drop_oversize //=.
     rewrite cats0 //=. by rewrite leqNgt Hif.
   Qed.
-    
+
   Lemma delete_catR s i t : i >= size s ->
     delete (s ++ t) i = s ++ delete t (i - size s).
   Proof.
     move => H. rewrite /delete take_cat ltnNge H //= drop_cat ltnNge.
     by rewrite leqW //= catA subSn.
   Qed.
-  
+
   Lemma delete_cat s t i:
     delete (s ++ t) i =
     if i < size s then delete s i ++ t
@@ -128,7 +128,7 @@ Section insert_delete.
     case:ifP => H; first by apply delete_catL.
     by rewrite delete_catR // leqNgt H.
   Qed.
-    
+
 End insert_delete.
 
 Section insert_delete_eqtype.
@@ -169,20 +169,20 @@ Variable A : eqType.
     rank b0 (size (insert s t i)) (insert s t i) =
     rank b0 (size s) s + rank b0 (size t) t.
   Proof. by rewrite /rank !take_size count_insert addnC. Qed.
-    
+
 End insert_delete_rank.
 
 Section delete_with_return.
 
   Variable T : Type.
-  
+
   Definition delete_ret x0 (s : seq T) i := (take i s ++ drop (i.+1) s,
                                              nth x0 s i).
 
   Lemma delete_delete_ret x0 (s : seq T) i :
     delete_ret x0 s i = (delete s i, nth x0 s i).
   Proof. by rewrite /delete /delete_ret. Qed.
-  
+
   Lemma delete_ret_oversize x0 (s : seq T) i :
     i >= size s -> delete_ret x0 s i = (s, x0).
   Proof.
@@ -198,7 +198,7 @@ Section delete_with_return.
     move => His.
     by rewrite delete_delete_ret delete_insert1 ?nth_insert1.
   Qed.
-    
+
 End delete_with_return.
 
 Section insert_delete_bit.
@@ -206,7 +206,7 @@ Section insert_delete_bit.
   Definition count_one := count_mem true.
 
   Definition access := nth false.
-  
+
   Lemma count_delete s i : count_one s - access s i = count_one (delete s i).
   Proof.
     rewrite /count_one /access /delete.
@@ -220,5 +220,5 @@ Section insert_delete_bit.
     move/negbT: Hi. rewrite ltnNge. move/negbNE => Hi.
     apply: leq_trans. apply: Hi. apply: leqnSn.
   Qed.
-    
+
 End insert_delete_bit.

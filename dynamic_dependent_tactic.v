@@ -20,7 +20,7 @@ Section insert.
   (*                         *)
 
   (* work around for program fixpoint *)
-  Definition count_one arr := count_mem true arr.
+(*  Definition count_one arr := count_mem true arr.
 
   Inductive tree : nat -> nat -> nat -> color -> Type :=
   | Leaf : forall (arr : seq bool),
@@ -30,15 +30,15 @@ Section insert.
   | Node : forall {s1 o1 s2 o2 d cl cr c},
       color_ok c cl -> color_ok c cr ->
       tree s1 o1 d cl -> tree s2 o2 d cr ->
-      tree (s1 + s2) (o1 + o2) (incr_black d c) c.
+      tree (s1 + s2) (o1 + o2) (incr_black d c) c.*)
 
-  Fixpoint size_of_tree {s o d c} (t : tree s o d c) : nat :=
+  Fixpoint size_of_tree {s o d c} (t : tree w s o d c) : nat :=
     match t with
     | Leaf _ _ s => 1
     | Node _ _ _ _ _ _ _ _ _ _ l r => size_of_tree l + size_of_tree r
     end.
 
-  Lemma size_of_tree_pos num ones d c (B : tree num ones d c) :
+  Lemma size_of_tree_pos num ones d c (B : tree w num ones d c) :
     size_of_tree B > 0.
   Proof.
     elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
@@ -47,23 +47,23 @@ Section insert.
 
   Definition bx_ok x : color_ok Black x := erefl.
 
-  Definition rnode {s1 s2 o1 o2 d} (l : tree s1 o1 d Black)
-             (r : tree s2 o2 d Black) : tree (s1 + s2) (o1 + o2) d Red :=
+  Definition rnode {s1 s2 o1 o2 d} (l : tree w s1 o1 d Black)
+             (r : tree w s2 o2 d Black) : tree w (s1 + s2) (o1 + o2) d Red :=
     Node red_black_ok red_black_ok l r.
 
-  Definition bnode {s1 s2 o1 o2 d cl cr} (l : tree s1 o1 d cl)
-             (r : tree s2 o2 d cr)
-           : tree (s1 + s2) (o1 + o2) (incr_black d Black) Black :=
+  Definition bnode {s1 s2 o1 o2 d cl cr} (l : tree w s1 o1 d cl)
+             (r : tree w s2 o2 d cr)
+           : tree w (s1 + s2) (o1 + o2) (incr_black d Black) Black :=
     Node (black_any_ok cl) (black_any_ok cr) l r.
 
   Inductive near_tree : nat -> nat -> nat -> color -> Type :=
   | Bad : forall {s1 o1 s2 o2 s3 o3 d},
-      tree s1 o1 d Black ->
-      tree s2 o2 d Black ->
-      tree s3 o3 d Black ->
+      tree w s1 o1 d Black ->
+      tree w s2 o2 d Black ->
+      tree w s3 o3 d Black ->
       near_tree (s1 + s2 + s3) (o1 + o2 + o3) d Red
   | Good: forall {s o d c} p,
-      tree s o d c ->
+      tree w s o d c ->
       near_tree s o d p.
 
   (* Xuanrui: I see no point to define fix_color in Ltac...
@@ -85,25 +85,25 @@ Section insert.
     | Good _ _ _ c _ _ => c
     end.
 
-  Definition real_tree {nl ml d c} (t : near_tree nl ml d c) : tree nl ml (incr_black d (inv (fix_color t))) (black_of_bad t) :=
+  Definition real_tree {nl ml d c} (t : near_tree nl ml d c) : tree w nl ml (incr_black d (inv (fix_color t))) (black_of_bad t) :=
     match t with
     | Bad _ _ _ _ _ _ _ x y z => bnode (rnode x y) z
     | Good _ _ _ _ _ t' => t'
     end.
 
-  Fixpoint dflatten {n m d c} (B : tree n m d c) :=
+  Fixpoint dflatten {n m d c} (B : tree w n m d c) :=
     match B with
     | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
     | Leaf s _ _ => s
     end.
 
-  Lemma dflatten_sizeK {n m d c} (B : tree n m d c) : size (dflatten B) = n.
+  Lemma dflatten_sizeK {n m d c} (B : tree w n m d c) : size (dflatten B) = n.
   Proof.
     elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
     by rewrite size_cat IHl IHr.
   Qed.
 
-  Lemma dflatten_countK {n m d c} (B : tree n m d c) : count_one (dflatten B) = m.
+  Lemma dflatten_countK {n m d c} (B : tree w n m d c) : count_one (dflatten B) = m.
   Proof.
     elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
     rewrite /count_one in IHl,IHr.
@@ -116,7 +116,7 @@ Section insert.
     | Good _ _ _ _ _ t => dflatten t
     end.
 
-  Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree nl ml d cl) (r : tree nr mr d cr) :
+  Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree nl ml d cl) (r : tree w nr mr d cr) :
     color_ok p (fix_color l) (* important claim! *) ->
     color_ok p cr ->
     {tr : near_tree (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflattenn l ++ dflatten r}.
@@ -140,7 +140,7 @@ Section insert.
         by exists (Good Red (rnode l' r)).
   Defined.
 
-  Definition balanceR {nl ml d cl cr nr mr} (p : color) (l : tree nl ml d cl) (r : near_tree nr mr d cr):
+  Definition balanceR {nl ml d cl cr nr mr} (p : color) (l : tree w nl ml d cl) (r : near_tree nr mr d cr):
     color_ok p cl ->
     color_ok p (fix_color r) ->  (* important claim! *)
     {tr : near_tree (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflatten l ++ dflattenn r}.
@@ -164,14 +164,14 @@ Section insert.
         by exists (Good Red (rnode l r')).
   Defined.
 
-  Lemma dflatten_size num ones d c (B : tree num ones d c) :
+  Lemma dflatten_size num ones d c (B : tree w num ones d c) :
     num = size (dflatten B).
   Proof.
     elim: B => //= s1 o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr.
     by rewrite size_cat -IHl -IHr.
   Qed.
 
-  Program Fixpoint dinsert' {n m d c} (B : tree n m d c) (b : bool) i
+  Program Fixpoint dinsert' {n m d c} (B : tree w n m d c) (b : bool) i
           {measure (size_of_tree B)} : { B' : near_tree n.+1 (m + b) d c
                               | dflattenn B' = insert1 (dflatten B) b i } :=
     match B with
@@ -181,8 +181,8 @@ Section insert.
       | true => let n  := (size s') %/ 2 in
                 let sl := take n s' in
                 let sr := drop n s' in
-                Good c (rnode (Leaf sl _ _) (Leaf sr _ _))
-      | false => Good c (Leaf s' _ _)
+                Good c (rnode (Leaf _ sl _ _) (Leaf _ sr _ _))
+      | false => Good c (Leaf _ s' _ _)
       end
     | Node s1 o1 s2 o2 d cl cr _ okl okr l r =>
       if i < s1
@@ -294,14 +294,14 @@ Section insert.
       by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
   Qed.
 
-  Definition dinsert n m d c (B : tree n m d c) (b : bool) (i : nat) :=
+  Definition dinsert n m d c (B : tree w n m d c) (b : bool) (i : nat) :=
     real_tree (proj1_sig (dinsert' B b i)).
 
   Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
 
-  Lemma dinsertK n m d c (B : tree n m d c) b i :
+  Lemma dinsertK n m d c (B : tree w n m d c) b i :
     dflatten (dinsert B b i) = insert1 (dflatten B) b i.
   Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i)). Qed.
 
@@ -309,7 +309,7 @@ End insert.
 
 Section query.
 
-  Fixpoint daccess {n m d c} (tr : tree n m d c) i :=
+  Fixpoint daccess {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => nth false s i
     | Node lnum _ _ _ _ _ _ _ _ _ l r =>
@@ -318,7 +318,7 @@ Section query.
       else daccess r (i - lnum)
     end.
 
-  Fixpoint drank {n m d c} (tr : tree n m d c) i :=
+  Fixpoint drank {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => rank true i s
     | Node lnum lones rnum rones _ _ _ _ _ _ l r =>
@@ -327,7 +327,7 @@ Section query.
       else lones + drank r (i - lnum)
     end.
 
-  Fixpoint dselect_0 {n m d c} (tr : tree n m d c) i :=
+  Fixpoint dselect_0 {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => select false i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
@@ -337,7 +337,7 @@ Section query.
       else s1 + dselect_0 r (i - zeroes)
     end.
 
-  Fixpoint dselect_1 {n m d c} (tr : tree n m d c) i :=
+  Fixpoint dselect_1 {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => select true i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
@@ -348,20 +348,20 @@ Section query.
 
   Definition access (s : seq bool) i := nth false s i.
 
-  Lemma dflatten_ones num ones d c (B : tree num ones d c) :
+  Lemma dflatten_ones num ones d c (B : tree w num ones d c) :
     ones = count_mem true (dflatten B).
   Proof.
     elim: B => //= s1 o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr.
     by rewrite count_cat -IHl -IHr.
   Qed.
 
-  Lemma ones_lt_num num ones d c (B : tree num ones d c) :
+  Lemma ones_lt_num num ones d c (B : tree w num ones d c) :
     ones <= num.
   Proof.
     by rewrite (dflatten_ones B) [in X in _ <= X](dflatten_size B) count_size.
   Qed.
 
-  Lemma dflatten_zeroes num ones d c (B : tree num ones d c) :
+  Lemma dflatten_zeroes num ones d c (B : tree w num ones d c) :
     num - ones = count_mem false (dflatten B).
   Proof.
     rewrite [in LHS](dflatten_ones B) [in X in X - _](dflatten_size B).
@@ -370,13 +370,13 @@ Section query.
     by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
   Qed.
 
-  Lemma dflatten_rank num ones d c (B : tree num ones d c) :
+  Lemma dflatten_rank num ones d c (B : tree w num ones d c) :
     ones = rank true num (dflatten B).
   Proof.
     by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
   Qed.
 
-  Lemma daccessK nums ones d c (B : tree nums ones d c) :
+  Lemma daccessK nums ones d c (B : tree w nums ones d c) :
     daccess B =1 access (dflatten B).
   Proof.
     rewrite /access.
@@ -384,27 +384,27 @@ Section query.
     by rewrite nth_cat -dflatten_size -IHl -IHr.
   Qed.
 
-  Lemma drankK nums ones d c (B : tree nums ones d c) i :
+  Lemma drankK nums ones d c (B : tree w nums ones d c) i :
     drank B i = rank true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite rank_cat -dflatten_size IHl -IHr -dflatten_rank.
   Qed.
 
-  Lemma drank_ones num ones d c (B : tree num ones d c) :
+  Lemma drank_ones num ones d c (B : tree w num ones d c) :
     drank B num = ones.
   Proof.
     by rewrite [in RHS](dflatten_rank B) drankK.
   Qed.
 
-  Lemma dselect1K nums ones d c (B : tree nums ones d c) i :
+  Lemma dselect1K nums ones d c (B : tree w nums ones d c) i :
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
   Qed.
 
-  Lemma dselect0K nums ones d c (B : tree nums ones d c) i :
+  Lemma dselect0K nums ones d c (B : tree w nums ones d c) i :
     dselect_0 B i = select false i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
@@ -423,12 +423,12 @@ Section set_clear.
 
   Obligation Tactic := idtac.
 
-  Program Fixpoint bset {num ones d c} (B : tree num ones d c) i
+  Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
     {measure (size_of_tree B)} :
-    { B'b : tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
+    { B'b : tree w num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
     | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
     match B with
-    | Leaf s _ _ => (Leaf (bit_set s i) _ _, ~~ (access s i))
+    | Leaf s _ _ => (Leaf _ (bit_set s i) _ _, ~~ (access s i))
     | Node lnum lones rnum rones _ _ _ _ col cor l r =>
       match lt_dec i lnum with
       | left H =>
@@ -539,7 +539,7 @@ Section delete.
      by apply: leqW.
   Qed.
 
-  Lemma daccess_default {n m d c} (tr : tree n m d c) : forall(i : nat), n <= i -> (daccess tr i) = false.
+  Lemma daccess_default {n m d c} (tr : tree w n m d c) : forall(i : nat), n <= i -> (daccess tr i) = false.
   Proof.
     elim: tr => /=. intros; by rewrite nth_default //.
     intros.
@@ -666,15 +666,15 @@ Qed.
   Lemma ltn_subrn a b c : b > 0 -> a < b + c = (a - c < b).
   Proof. rewrite addnC. exact: (ltn_subln a c b). Qed.
 
-  Lemma sizeW' {s o d c} (tr : tree s o d c) : s > 0.
+  Lemma sizeW' {s o d c} (tr : tree w s o d c) : s > 0.
   Proof. elim tr; intros; first apply sizeW => //; rewrite ltn_addr //. Qed.
 
   Inductive near_tree' : nat -> nat -> nat -> color -> Type :=
   | Stay : forall {s o d c} p,
       color_ok c (inv p) ->
-      tree s o d c -> near_tree' s o d p
+      tree w s o d c -> near_tree' s o d p
   | Down : forall {s o d},
-      tree s o d Black -> near_tree' s o d.+1 Black.
+      tree w s o d Black -> near_tree' s o d.+1 Black.
 
   Definition dflattenn' {s o d c} (tr : near_tree' s o d c) :=
     match tr with
@@ -682,14 +682,14 @@ Qed.
     | Down _ _ _ t =>  dflatten t
    end.
 
-  Definition black_of_red {s o d} (B : tree s o d Red) : { B' : tree s o (incr_black d Black) Black | dflatten B' = dflatten B }.
+  Definition black_of_red {s o d} (B : tree w s o d Red) : { B' : tree w s o (incr_black d Black) Black | dflatten B' = dflatten B }.
 
     move: B; move ceq : (Red) => c' B.
     move: B ceq => [//|? ? ? ? ? cl cr c ? ? l r] /= <-.
     by exists (bnode l r).
   Defined.
 
-  Lemma leq_access_count {s o d c} : forall(B : tree s o d c), forall(i : nat) , i < s -> daccess B i <= o.
+  Lemma leq_access_count {s o d c} : forall(B : tree w s o d c), forall(i : nat) , i < s -> daccess B i <= o.
   Proof.
     move => B.
     elim B => /=. intros. exact: leq_nth_count.
@@ -705,7 +705,7 @@ Qed.
   Qed.
 
   Definition merge_arrays (a b : seq bool) (i : nat) (w1 : w ^ 2 %/ 2 == size a) (w2 : w ^ 2 %/ 2 == size b) (val : i < size a + size b) :
-             {tr : tree (size a + size b - (i < size a + size b)) (count_one a + count_one b - (access (a ++ b) i)) 0 Black | dflatten tr = delete (a ++ b) i}.
+             {tr : tree w (size a + size b - (i < size a + size b)) (count_one a + count_one b - (access (a ++ b) i)) 0 Black | dflatten tr = delete (a ++ b) i}.
 
     move/eqP : (wordsize_sqrn_div2_neq0 _ wordsize_gt1); rewrite -lt0n => pos.
     move/eqP: w1 => w1. move/eqP: w2 => w2. move: (pos); rewrite w1 => w1p. move: (pos); rewrite w2 => w2p.
@@ -717,7 +717,7 @@ Qed.
        by rewrite size_cat size_rcons !size_delete // prednK // w1 leq_addr.
      rewrite ltn_addr // addnC -addnBA // subn1 -(size_delete Hl) /= addnC -size_cat delete_cat addnBAC /access nth_cat Hl; last rewrite leq_nth_count //.
      rewrite count_delete -count_cat -cat_head_behead //.
-     by exists (Leaf ((rcons (delete a i) (access b 0)) ++ (delete b 0)) leq ueq).
+     by exists (Leaf _ ((rcons (delete a i) (access b 0)) ++ (delete b 0)) leq ueq).
     move: val; rewrite ltn_subln // => Hr.
     have ueq : size (a ++ (delete b (i - (size a)))) < 2 * w ^ 2.
      rewrite size_cat size_delete // -w1 -w2 -subn1 addnBA // subn1 ltnW // prednK //;last rewrite ltn_addl //.
@@ -727,14 +727,14 @@ Qed.
       by rewrite leq_addr.
     rewrite Hr -addnBA // subn1 -(size_delete Hr) -size_cat -addnBA /access nth_cat Hl ;last rewrite leq_nth_count //.
       rewrite count_delete -count_cat.
-    exists (Leaf (a ++ (delete b (i - (size a)))) leq ueq).
+    exists (Leaf _ (a ++ (delete b (i - (size a)))) leq ueq).
     by rewrite /= delete_cat Hl.
   Qed.
 
   Lemma xir_ok {c} : color_ok c (inv Red).
   Proof. move: c => [] //. Qed.
 
-  Definition delete_leaves2 {s1 o1 s2 o2} p (l : tree s1 o1 0 Black) (r : tree s2 o2 0 Black) (i : nat) :
+  Definition delete_leaves2 {s1 o1 s2 o2} p (l : tree w s1 o1 0 Black) (r : tree w s2 o2 0 Black) (i : nat) :
     {B' : near_tree' (s1 + s2 - (i < s1 + s2))
                     (o1 + o2 - access (dflatten l ++ dflatten r) i) (incr_black 0 p) p | dflattenn' B' = delete (dflatten l ++ dflatten r) i}.
 
@@ -755,15 +755,15 @@ Qed.
       rewrite addnC -addnBA // ltn_addl // subn1 -(size_delete Hl) addnC -size_cat addnBAC;last exact: leq_nth_count.
       rewrite count_delete -count_cat -cat_head_behead // count_cat size_cat.
       case: p;
-        [ exists (Stay Red xir_ok (rnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr))))
-        | exists (Stay Black (black_any_ok Red) (bnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr)))) ];
+        [ exists (Stay Red xir_ok (rnode (Leaf _ (rcons (delete al i) (access ar 0)) leql ueql) (Leaf _ (delete ar 0) leqr (ltnW ueqr))))
+        | exists (Stay Black (black_any_ok Red) (bnode (Leaf _ (rcons (delete al i) (access ar 0)) leql ueql) (Leaf _ (delete ar 0) leqr (ltnW ueqr)))) ];
       by rewrite delete_cat Hl /= cat_head_behead.
      rewrite leq_eqVlt bcl (size_delete1 i) Hl /= addn1 in leql,ueql.
      rewrite addnC -addnBA // ltn_addl // subn1 -(size_delete Hl) /= addnC addnBAC;last exact: leq_nth_count.
      rewrite count_delete.
       case: p;
-        [ exists (Stay Red xir_ok (rnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr)))
-        | exists (Stay Black (black_any_ok Red) (bnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr))) ];
+        [ exists (Stay Red xir_ok (rnode (Leaf _ (delete al i) leql (ltnW ueql)) (Leaf _ ar leqr ueqr)))
+        | exists (Stay Black (black_any_ok Red) (bnode (Leaf _ (delete al i) leql (ltnW ueql)) (Leaf _ ar leqr ueqr))) ];
      by rewrite delete_cat Hl.
     case Hrl : (i < size al + size ar).
      case bcr : (w ^ 2 %/ 2 == size ar).
@@ -781,8 +781,8 @@ Qed.
      rewrite -!addnBA //;last by apply leq_nth_count.
      rewrite count_delete -count_cat /= subn1 [size ar](size_delete1 (i - size al)) -ltn_subln // Hrl -subn1 -addnBA // subnn addn0 -size_cat -cat_last_belast // size_cat count_cat.
       case: p;
-        [ exists (Stay Red xir_ok (rnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr')))
-        | exists (Stay Black (black_any_ok Red) (bnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))) ];
+        [ exists (Stay Red xir_ok (rnode (Leaf _ (delete al (size al).-1) leql (ltnW ueql)) (Leaf _ ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr')))
+        | exists (Stay Black (black_any_ok Red) (bnode (Leaf _ (delete al (size al).-1) leql (ltnW ueql)) (Leaf _ ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))) ];
      by rewrite delete_cat Hl /= cat_last_belast.
     rewrite /=.
     rewrite leq_eqVlt bcr (size_delete1 (i - size al)) -ltn_subln // Hrl addn1 /= in leqr,ueqr.
@@ -790,19 +790,19 @@ Qed.
     rewrite count_delete subn1 [size ar](size_delete1 (i - size al)).
     rewrite -ltn_subln // Hrl -subn1 -addnBA // subnn addn0.
     case: p;
-      [ exists (Stay Red xir_ok (rnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr))))
-      | exists (Stay Black (black_any_ok Red) (bnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr)))) ];
+      [ exists (Stay Red xir_ok (rnode (Leaf _ al leql ueql) (Leaf _ (delete ar (i - size al)) leqr (ltnW ueqr))))
+      | exists (Stay Black (black_any_ok Red) (bnode (Leaf _ al leql ueql) (Leaf _ (delete ar (i - size al)) leqr (ltnW ueqr)))) ];
     by rewrite delete_cat Hl.
    rewrite /= nth_default;last rewrite ltn_subln // in Hrl;last by rewrite leqNgt Hrl.
    rewrite !subn0.
    case: p;
-     [ exists (Stay Red xir_ok (rnode (Leaf al leql ueql) (Leaf ar leqr ueqr)))
-     | exists (Stay Black (black_any_ok Red) (bnode (Leaf al leql ueql) (Leaf ar leqr ueqr))) ];
+     [ exists (Stay Red xir_ok (rnode (Leaf _ al leql ueql) (Leaf _ ar leqr ueqr)))
+     | exists (Stay Black (black_any_ok Red) (bnode (Leaf _ al leql ueql) (Leaf _ ar leqr ueqr))) ];
    by rewrite -delete_oversize // size_cat leqNgt Hrl.
   Defined.
 
   Definition balanceR2 {s1 s2 o1 o2 d cl cr} (p : color)
-             (l : tree s1 o1 d cl)
+             (l : tree w s1 o1 d cl)
              (dr : near_tree' s2 o2 d cr) :
     color_ok p cl ->
     color_ok p cr ->
@@ -861,7 +861,7 @@ Qed.
 
   Definition balanceL2 {s1 s2 o1 o2 d cl cr} (p : color)
              (dl : near_tree' s1 o1 d cl)
-             (r : tree s2 o2 d cr) :
+             (r : tree w s2 o2 d cr) :
     color_ok p cl ->
     color_ok p cr ->
   {B' : near_tree' (s1 + s2) (o1 + o2) (incr_black d p) p |
@@ -946,7 +946,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
 
   Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addr leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW'.
 
-  Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree num ones (incr_black d c) c) :
+  Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w num ones (incr_black d c) c) :
       { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (incr_black d c) c | dflattenn' B' = delete (dflatten B) i }.
     case val : (i < num);last first.
      move/negP/negP : val;

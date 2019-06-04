@@ -13,7 +13,7 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-  Inductive tree : nat -> nat -> nat -> color -> Type :=
+(*  Inductive tree : nat -> nat -> nat -> color -> Type :=
   | Leaf : forall (arr : seq bool),
       (w ^ 2) %/ 2 <= size arr ->
       2 * (w ^ 2) > size arr ->
@@ -21,37 +21,37 @@ Section insert.
   | Node : forall {lnum lones rnum rones d cl cr c},
       color_ok c cl -> color_ok c cr ->
       tree lnum lones d cl -> tree rnum rones d cr ->
-      tree (lnum + rnum) (lones + rones) (incr_black d c) c.
+      tree (lnum + rnum) (lones + rones) (incr_black d c) c.*)
 
-  Fixpoint tree_size {num ones d c} (t : tree num ones d c) : nat :=
+  Fixpoint tree_size {num ones d c} (t : tree w num ones d c) : nat :=
     match t with
-    | @Leaf _ _ _ => 1
-    | @Node _ _ _ _ _ _ _ _ _ _ l r =>
+    | @Leaf _ _ _ _ => 1
+    | @Node _ _ _ _ _ _ _ _ _ _ _ l r =>
       tree_size l + tree_size r
     end.
 
-  Lemma tree_size_pos {num ones d c} (B : tree num ones d c) :
+  Lemma tree_size_pos {num ones d c} (B : tree w num ones d c) :
     tree_size B > 0.
   Proof.
     elim: B => //= lnum lones rnum rones d' cl cr c' _ _ l IHl r IHr.
     by rewrite addn_gt0 IHl.
   Qed.
 
-  Definition RNode {lnum lones rnum rones d} (l : tree lnum lones d Black)
-    (r : tree rnum rones d Black) : tree (lnum + rnum) (lones + rones) d Red :=
+  Definition RNode {lnum lones rnum rones d} (l : tree w lnum lones d Black)
+    (r : tree w rnum rones d Black) : tree w (lnum + rnum) (lones + rones) d Red :=
     Node red_black_ok red_black_ok l r.
 
   Definition BNode {lnum lones rnum rones d cl cr}
-    (l : tree lnum lones d cl) (r : tree rnum rones d cr) :
-    tree (lnum + rnum) (lones + rones) d.+1 Black :=
+    (l : tree w lnum lones d cl) (r : tree w rnum rones d cr) :
+    tree w (lnum + rnum) (lones + rones) d.+1 Black :=
     Node (black_any_ok cl) (black_any_ok cr) l r.
 
   Inductive ins_tree : nat -> nat -> nat -> color -> Type :=
   | Fix : forall {num1 ones1 num2 ones2 num3 ones3 d},
-      tree num1 ones1 d Black -> tree num2 ones2 d Black ->
-      tree num3 ones3 d Black ->
+      tree w num1 ones1 d Black -> tree w num2 ones2 d Black ->
+      tree w num3 ones3 d Black ->
       ins_tree (num1 + num2 + num3) (ones1 + ones2 + ones3) d Red
-  | Tr : forall {num ones d c} pc, tree num ones d c -> ins_tree num ones d pc.
+  | Tr : forall {num ones d c} pc, tree w num ones d c -> ins_tree num ones d pc.
 
   Definition ins_tree_color {nums ones d c} (t : ins_tree nums ones d c) :=
     match t with
@@ -66,25 +66,25 @@ Section insert.
     end.
 
   Definition fix_ins_tree {num ones d c} (t : ins_tree num ones d c) :
-    tree num ones (incr_black d (inv (ins_tree_color t))) (black_of_fix t) :=
+    tree w num ones (incr_black d (inv (ins_tree_color t))) (black_of_fix t) :=
     match t with
     | Fix _ _ _ _ _ _ _ t1 t2 t3 => BNode (RNode t1 t2) t3
     | Tr _ _ _ _ _ t' => t'
     end.
 
-  Fixpoint dflatten {n m d c} (B : tree n m d c) :=
+  Fixpoint dflatten {n m d c} (B : tree w n m d c) :=
     match B with
     | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
     | Leaf s _ _ => s
     end.
 
-  Lemma dflatten_sizeE {n m d c} (B : tree n m d c) : size (dflatten B) = n.
+  Lemma dflatten_sizeE {n m d c} (B : tree w n m d c) : size (dflatten B) = n.
   Proof.
     elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
     by rewrite size_cat IHl IHr.
   Qed.
 
-  Lemma dflatten_countE {n m d c} (B : tree n m d c) : count_one (dflatten B) = m.
+  Lemma dflatten_countE {n m d c} (B : tree w n m d c) : count_one (dflatten B) = m.
   Proof.
     elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
     rewrite /count_one in IHl,IHr.
@@ -103,7 +103,7 @@ Section insert.
    *)
   Program Definition balanceL {lnum lones rnum rones d cl cr} (c : color)
             (l : ins_tree lnum lones d cl)
-            (r : tree rnum rones d cr)
+            (r : tree w rnum rones d cr)
             (ok_l : color_ok c (ins_tree_color l))
             (ok_r : color_ok c cr) :
     { t' : ins_tree (lnum + rnum) (lones + rones) (incr_black d c) c
@@ -123,7 +123,7 @@ Section insert.
                         | Red =>
                           match l' with
                           | Leaf _ _ _ => _ (* impossible *)
-                          | @Node _ _ _ _ _ cll clr _ _ _ t1 t2 =>
+                          | @Node _ _ _ _ _ _ cll clr _ _ _ t1 t2 =>
                             match cll with
                             | Black => match clr with
                                       | Black => Fix t1 t2 r
@@ -166,7 +166,7 @@ Section insert.
   Qed.
 
   Program Definition balanceR {lnum lones rnum rones d cl cr} (c : color)
-            (l : tree lnum lones d cl)
+            (l : tree w lnum lones d cl)
             (r : ins_tree rnum rones d cr)
             (ok_l : color_ok c cl)
             (ok_r : color_ok c (ins_tree_color r)) :
@@ -187,7 +187,7 @@ Section insert.
                         | Red =>
                           match r' with
                           | Leaf _ _ _ => _ (* impossible *)
-                          | @Node _ _ _ _ _ cll clr _ _ _ t1 t2 =>
+                          | @Node _ _ _ _ _ _ cll clr _ _ _ t1 t2 =>
                             match cll with
                             | Black => match clr with
                                       | Black => Fix l t1 t2
@@ -234,7 +234,7 @@ Section insert.
     by rewrite -Heq_r.
   Qed.
 
-  Lemma dflatten_size num ones d c (B : tree num ones d c) :
+  Lemma dflatten_size num ones d c (B : tree w num ones d c) :
     num = size (dflatten B).
   Proof.
     elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
@@ -242,7 +242,7 @@ Section insert.
   Qed.
 
   Program Fixpoint dins {num ones d c}
-    (B : tree num ones d c)
+    (B : tree w num ones d c)
     (b : bool) (i : nat) {measure (tree_size B) } :
     { B' : ins_tree num.+1 (ones + b) d c |
       dflatteni B' = insert1 (dflatten B) b i } :=
@@ -255,8 +255,8 @@ Section insert.
         let n := (size s') %/ 2 in
         let sl := take n s' in
         let sr := drop n s' in
-        Tr c (RNode (Leaf sl _ _) (Leaf sr _ _))
-      | false => Tr c (Leaf s' _ _)
+        Tr c (RNode (Leaf _ sl _ _) (Leaf _ sr _ _))
+      | false => Tr c (Leaf _ s' _ _)
       end
     | Node lnum _ _ _ _ _ _ _ ok_l ok_r l r =>
       if i < lnum
@@ -358,8 +358,8 @@ Section insert.
       by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
   Qed.
 
- Program Definition paint_black {num ones d c} (B : tree num ones d c) :
-   { B' : tree num ones (incr_black d (inv c)) Black |
+ Program Definition paint_black {num ones d c} (B : tree w num ones d c) :
+   { B' : tree w num ones (incr_black d (inv c)) Black |
      dflatten B' = dflatten B } :=
    match B with
    | Leaf _ _ _ => B
@@ -376,7 +376,7 @@ Section insert.
  Next Obligation. rewrite /eq_rect. by destruct paint_black_obligation_6. Qed.
 
  Definition dinsert {num ones d c}
-   (B : tree num ones d c) (b : bool) (i : nat) :=
+   (B : tree w num ones d c) (b : bool) (i : nat) :=
    (` (paint_black (fix_ins_tree (` (dins B b i))))).
 
  Lemma fix_ins_treeK {num ones d c} (t : ins_tree num ones d c) :
@@ -386,7 +386,7 @@ Section insert.
    by rewrite catA.
  Qed.
 
- Theorem dinsertK {num ones d c} (B : tree num ones d c) (b : bool) (i : nat) :
+ Theorem dinsertK {num ones d c} (B : tree w num ones d c) (b : bool) (i : nat) :
    dflatten (dinsert B b i) = insert1 (dflatten B) b i.
  Proof.
    rewrite /dinsert. destruct dins, paint_black => //=.
@@ -397,7 +397,7 @@ End insert.
 
 Section query.
 
-  Fixpoint daccess {n m d c} (tr : tree n m d c) i :=
+  Fixpoint daccess {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => nth false s i
     | Node lnum _ _ _ _ _ _ _ _ _ l r =>
@@ -406,7 +406,7 @@ Section query.
       else daccess r (i - lnum)
     end.
 
-  Fixpoint drank {n m d c} (tr : tree n m d c) i :=
+  Fixpoint drank {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => rank true i s
     | Node lnum lones rnum rones _ _ _ _ _ _ l r =>
@@ -415,7 +415,7 @@ Section query.
       else lones + drank r (i - lnum)
     end.
 
-  Fixpoint dselect_0 {n m d c} (tr : tree n m d c) i :=
+  Fixpoint dselect_0 {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => select false i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
@@ -425,7 +425,7 @@ Section query.
       else s1 + dselect_0 r (i - zeroes)
     end.
 
-  Fixpoint dselect_1 {n m d c} (tr : tree n m d c) i :=
+  Fixpoint dselect_1 {n m d c} (tr : tree w n m d c) i :=
     match tr with
     | Leaf s _ _ => select true i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
@@ -434,20 +434,20 @@ Section query.
       else s1 + dselect_1 r (i - o1)
     end.
 
-  Lemma dflatten_ones {num ones d c} (B : tree num ones d c) :
+  Lemma dflatten_ones {num ones d c} (B : tree w num ones d c) :
     ones = count_mem true (dflatten B).
   Proof.
     elim: B => //= s1 o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr.
     by rewrite count_cat -IHl -IHr.
   Qed.
 
-  Lemma ones_lt_num num ones d c (B : tree num ones d c) :
+  Lemma ones_lt_num num ones d c (B : tree w num ones d c) :
     ones <= num.
   Proof.
     by rewrite (dflatten_ones B) [in X in _ <= X](dflatten_size B) count_size.
   Qed.
 
-  Lemma dflatten_zeroes num ones d c (B : tree num ones d c) :
+  Lemma dflatten_zeroes num ones d c (B : tree w num ones d c) :
     num - ones = count_mem false (dflatten B).
   Proof.
     rewrite [in LHS](dflatten_ones B) [in X in X - _](dflatten_size B).
@@ -456,13 +456,13 @@ Section query.
     by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
   Qed.
 
-  Lemma dflatten_rank num ones d c (B : tree num ones d c) :
+  Lemma dflatten_rank num ones d c (B : tree w num ones d c) :
     ones = rank true num (dflatten B).
   Proof.
     by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
   Qed.
 
-  Lemma daccessK nums ones d c (B : tree nums ones d c) :
+  Lemma daccessK nums ones d c (B : tree w nums ones d c) :
     daccess B =1 access (dflatten B).
   Proof.
     rewrite /access.
@@ -470,27 +470,27 @@ Section query.
     by rewrite nth_cat -dflatten_size -IHl -IHr.
   Qed.
 
-  Lemma drankK nums ones d c (B : tree nums ones d c) i :
+  Lemma drankK nums ones d c (B : tree w nums ones d c) i :
     drank B i = rank true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite rank_cat -dflatten_size IHl -IHr -dflatten_rank.
   Qed.
 
-  Lemma drank_ones num ones d c (B : tree num ones d c) :
+  Lemma drank_ones num ones d c (B : tree w num ones d c) :
     drank B num = ones.
   Proof.
     by rewrite [in RHS](dflatten_rank B) drankK.
   Qed.
 
-  Lemma dselect1K nums ones d c (B : tree nums ones d c) i :
+  Lemma dselect1K nums ones d c (B : tree w nums ones d c) i :
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
   Qed.
 
-  Lemma dselect0K nums ones d c (B : tree nums ones d c) i :
+  Lemma dselect0K nums ones d c (B : tree w nums ones d c) i :
     dselect_0 B i = select false i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
@@ -506,7 +506,7 @@ Section query.
     by rewrite leq_addl.
   Qed.
 
-  Lemma daccess_leq_ones {num ones d c} (B : tree num ones d c) i :
+  Lemma daccess_leq_ones {num ones d c} (B : tree w num ones d c) i :
     i < num -> daccess B i <= ones.
   Proof.
     elim: B i => [s w_wf size_wf | lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr] //= i H.
@@ -525,12 +525,12 @@ Section set_clear.
 
   Obligation Tactic := idtac.
 
-  Program Fixpoint bset {num ones d c} (B : tree num ones d c) i
+  Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
     {measure (tree_size B)} :
-    { B'b : tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
+    { B'b : tree w num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
     | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
     match B with
-    | Leaf s _ _ => (Leaf (bit_set s i) _ _, ~~ (access s i))
+    | Leaf s _ _ => (Leaf _ (bit_set s i) _ _, ~~ (access s i))
     | Node lnum lones rnum rones _ _ _ _ col cor l r =>
       match lt_dec i lnum with
       | left H =>
@@ -616,13 +616,13 @@ Section set_clear.
   Next Obligation. intuition. Qed.
 
   Program Fixpoint bclear {num ones d c}
-    (B : tree num ones d c) i
+    (B : tree w num ones d c) i
     { measure (tree_size B) } :
-    { B'b : tree num (ones - (daccess B i) && (i < num)) d c * bool |
+    { B'b : tree w num (ones - (daccess B i) && (i < num)) d c * bool |
       dflatten B'b.1 = bit_clear (dflatten B) i /\ snd B'b = daccess B i } :=
 
     match B with
-    | Leaf s _ _ => (Leaf (bit_clear s i) _ _, access s i)
+    | Leaf s _ _ => (Leaf _ (bit_clear s i) _ _, access s i)
     | Node lnum lones rnum rones _ _ _ _ col cor l r =>
       match lt_dec i lnum with
       | left H =>
@@ -714,8 +714,8 @@ Section delete.
 
   Inductive del_tree : nat -> nat -> nat -> color -> Type :=
   | Stay : forall {num ones d c} pc,
-      color_ok c (inv pc) -> tree num ones d c -> del_tree num ones d pc
-  | Down : forall {num ones d}, tree num ones d Black -> del_tree num ones d.+1 Black.
+      color_ok c (inv pc) -> tree w num ones d c -> del_tree num ones d pc
+  | Down : forall {num ones d}, tree w num ones d Black -> del_tree num ones d.+1 Black.
 
   Definition dflattend {num ones d c} (tr : del_tree num ones d c) :=
     match tr with
@@ -753,12 +753,12 @@ Section delete.
     (w_ok1 : w ^ 2 %/ 2 == size s1)
     (w_ok2 : w ^ 2 %/ 2 == size s2)
     (Hi : i < size s1 + size s2) :
-    { tr : tree (size s1 + size s2 - 1)
+    { tr : tree w (size s1 + size s2 - 1)
                 (count_one s1 + count_one s2 - access (s1 ++ s2) i) 0 Black |
       dflatten tr = delete (s1 ++ s2) i } :=
     if i < size s1 is true
-    then Leaf ((rcons (delete s1 i) (access s2 0)) ++ (delete s2 0)) _ _
-    else Leaf (s1 ++ (delete s2 (i - size s1))) _ _.
+    then Leaf _ ((rcons (delete s1 i) (access s2 0)) ++ (delete s2 0)) _ _
+    else Leaf _ (s1 ++ (delete s2 (i - size s1))) _ _.
 
   Next Obligation.
     rewrite size_cat size_rcons.
@@ -871,8 +871,8 @@ Section delete.
 
   Program Definition delete_from_leaves {lnum lones rnum rones : nat}
     (pc : color)
-    (l : tree lnum lones 0 Black)
-    (r : tree rnum rones 0 Black)
+    (l : tree w lnum lones 0 Black)
+    (r : tree w rnum rones 0 Black)
     (i : nat) :
     { B' : del_tree (lnum + rnum - (i < lnum + rnum))
                     (lones + rones - access (dflatten l ++ dflatten r) i)
@@ -894,22 +894,22 @@ Section delete.
                   else
                     match pc with
                     | Red => Stay Red _ (RNode
-                                          (Leaf (rcons (delete arr1 i)
+                                          (Leaf _ (rcons (delete arr1 i)
                                                        (access arr2 0)) _ _)
-                                          (Leaf (delete arr2 0) _ _))
+                                          (Leaf _ (delete arr2 0) _ _))
                     | Black => Stay Black _ (BNode
-                                              (Leaf (rcons (delete arr1 i)
+                                              (Leaf _ (rcons (delete arr1 i)
                                                            (access arr2 0)) _ _)
-                                              (Leaf (delete arr2 0) _ _))
+                                              (Leaf _ (delete arr2 0) _ _))
                     end
              else
                match pc with
                | Red => Stay Red _ (RNode
-                                     (Leaf (delete arr1 i) _ _)
-                                     (Leaf arr2 _ _))
+                                     (Leaf _ (delete arr1 i) _ _)
+                                     (Leaf _ arr2 _ _))
                | Black => Stay Black _ (BNode
-                                         (Leaf (delete arr1 i) _ _)
-                                         (Leaf arr2 _ _))
+                                         (Leaf _ (delete arr1 i) _ _)
+                                         (Leaf _ arr2 _ _))
                end
         else
           if i < size arr1 + size arr2 is true
@@ -924,27 +924,27 @@ Section delete.
                     else
                       match pc with
                       | Red => Stay Red _
-                                   (RNode (Leaf (delete_last arr1) _ _)
-                                          (Leaf ((blast arr1) ::
+                                   (RNode (Leaf _ (delete_last arr1) _ _)
+                                          (Leaf _ ((blast arr1) ::
                                                  (delete arr2 (i - size arr1)))
                                             _ _))
                       | Black => Stay Black _
-                                     (BNode (Leaf (delete_last arr1) _ _)
-                                            (Leaf ((blast arr1) ::
+                                     (BNode (Leaf _ (delete_last arr1) _ _)
+                                            (Leaf _ ((blast arr1) ::
                                                    (delete arr2 (i - size arr1)))
                                               _ _))
                       end
                else
                  match pc with
-                 | Red => Stay Red _ (RNode (Leaf arr1 _ _)
-                                           (Leaf (delete arr2 (i - size arr1)) _ _))
-                 | Black => Stay Black _ (BNode (Leaf arr1 _ _)
-                                               (Leaf (delete arr2 (i - size arr1)) _ _))
+                 | Red => Stay Red _ (RNode (Leaf _ arr1 _ _)
+                                           (Leaf _ (delete arr2 (i - size arr1)) _ _))
+                 | Black => Stay Black _ (BNode (Leaf _ arr1 _ _)
+                                               (Leaf _ (delete arr2 (i - size arr1)) _ _))
                  end
           else
             match pc with
-            | Red => Stay Red _ (RNode (Leaf arr1 _ _) (Leaf arr2 _ _))
-            | Black => Stay Black _ (BNode (Leaf arr1 _ _) (Leaf arr2 _ _))
+            | Red => Stay Red _ (RNode (Leaf _ arr1 _ _) (Leaf _ arr2 _ _))
+            | Black => Stay Black _ (BNode (Leaf _ arr1 _ _) (Leaf _ arr2 _ _))
             end
       | Node _ _ _ _ _ _ _ _ _ _ _ _  => _
       end
@@ -1474,7 +1474,7 @@ Section delete.
   (* Here we follow the naming pattern used in Kahrs (2001) *)
   Program Definition balright {lnum rnum lones rones d cl cr}
     (c : color)
-    (l : tree lnum lones d cl)
+    (l : tree w lnum lones d cl)
     (r : del_tree rnum rones d cr)
     (ok_l : color_ok c cl)
     (ok_r : color_ok c cr) :
@@ -1680,7 +1680,7 @@ Section delete.
   Program Definition balleft {lnum rnum lones rones d cl cr}
     (c : color)
     (l : del_tree lnum lones d cl)
-    (r : tree rnum rones d cr)
+    (r : tree w rnum rones d cr)
     (ok_l : color_ok c cl)
     (ok_r : color_ok c cr) :
     { B' : del_tree (lnum + rnum) (lones + rones) (incr_black d c) c |
@@ -1868,7 +1868,7 @@ Section delete.
     end.
 
   Program Fixpoint ddelete {num ones d c}
-    (B : tree num ones d c)
+    (B : tree w num ones d c)
     (i : nat)
     (H : pos_black c d) { measure (tree_size B) } :
     { B' : del_tree (num - (i < num)) (ones - (daccess B i)) d c

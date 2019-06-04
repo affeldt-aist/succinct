@@ -71,4 +71,17 @@ Proof.
 by move/eqP; rewrite gtn_eqF // divn_gt0 // (ltn_trans _ wordsize_sqrn_gt2).
 Qed.
 
+(* work around for program fixpoint *)
+(*Definition count_one arr := count_mem true arr.*)
+
+Inductive tree : nat -> nat -> nat -> color -> Type :=
+| Leaf : forall (arr : seq bool),
+    (w ^ 2) %/ 2 <= size arr ->
+    2 * (w ^ 2) > size arr ->
+    tree (size arr) (count_one arr) 0 Black
+| Node : forall {s1 o1 s2 o2 d cl cr c},
+    color_ok c cl -> color_ok c cr ->
+    tree s1 o1 d cl -> tree s2 o2 d cr ->
+    tree (s1 + s2) (o1 + o2) (incr_black d c) c.
+
 End wordsize.
