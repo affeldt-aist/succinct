@@ -8,5 +8,5 @@ insert_delete.v
 set_clear.v
 dynamic_redblack.v
 dynamic_dependent_tactic.v
-dynamic_dependent_progam.v
+dynamic_dependent_program.v
 -R . compact

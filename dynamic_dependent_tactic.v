@@ -760,12 +760,6 @@ Section delete.
     by rewrite mulnC addnn -muln2 ltn_mul2r /=.
   Qed.
 
-Lemma leq_addln a b c : a <= b -> a <= b + c.
-Proof. by move/leq_trans; apply; rewrite leq_addr. Qed.
-
-Lemma leq_addrn a b c : a <= c -> a <= b + c.
-Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
-
   Lemma ltn_subln a b c : c > 0 -> a < b + c = (a - b < c).
   Proof.
     case H1 : (b <= a) => H2. by rewrite -[RHS](ltn_add2r b) subnK // addnC.
@@ -808,8 +802,9 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     elim B => /=. intros. exact: leq_nth_count.
     move => s1 o1 s2 o2 d' cl cr c' ? ? l IHl r IHr.
     move => i H.
-    case: ifP => H'. apply: leq_addln (IHl i H').
-    apply: leq_addrn.
+    case: ifP => H'.
+    by rewrite (leq_trans (IHl _ H')) // leq_addr.
+    rewrite (leq_trans _ (leq_addl _ _)) //.
     move: (IHr (i - s1)).
     rewrite -(ltn_add2r s1) subnK ;last by rewrite leqNgt H' /=.
     rewrite addnC => H''.
@@ -826,7 +821,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
       rewrite size_cat size_rcons !size_delete // prednK // -subn1 addnBA // subn1 -w1 -w2 ltnW // prednK //;last rewrite ltn_addl //.
       rewrite leq_divn2n_mul2 // wordsize_sqrn_gt0 //.
      have leq : size (rcons (delete a i) (access b 0) ++ delete b 0) >= w ^ 2 %/ 2.
-      rewrite size_cat size_rcons !size_delete // prednK // w1 leq_addln //.
+       by rewrite size_cat size_rcons !size_delete // prednK // w1 leq_addr.
      rewrite ltn_addr // addnC -addnBA // subn1 -(size_delete Hl) /= addnC -size_cat delete_cat addnBAC /access nth_cat Hl; last rewrite leq_nth_count //.
      rewrite count_delete -count_cat -cat_head_behead //.
      by exists (Leaf ((rcons (delete a i) (access b 0)) ++ (delete b 0)) leq ueq).
@@ -836,8 +831,8 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
      rewrite leq_divn2n_mul2 // wordsize_sqrn_gt0 //.
     have leq : size (a ++ (delete b (i - (size a)))) >= w ^ 2 %/ 2.
     rewrite size_cat size_delete //;last rewrite -{1}w1 w2 //.
-      by rewrite leq_addln // w1.
-      rewrite Hr -addnBA // subn1 -(size_delete Hr) -size_cat -addnBA /access nth_cat Hl ;last rewrite leq_nth_count //.
+      by rewrite leq_addr.
+    rewrite Hr -addnBA // subn1 -(size_delete Hr) -size_cat -addnBA /access nth_cat Hl ;last rewrite leq_nth_count //.
       rewrite count_delete -count_cat.
     exists (Leaf (a ++ (delete b (i - (size a)))) leq ueq).
     by rewrite /= delete_cat Hl.
@@ -1063,7 +1058,13 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     by apply: ltn_addl.
   Qed.
 
-  Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addln leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW'.
+Lemma leq_addln a b c : a <= b -> a <= b + c.
+Proof. by move/leq_trans; apply; rewrite leq_addr. Qed.
+
+Lemma leq_addrn a b c : a <= c -> a <= b + c.
+Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
+
+  Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addr leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW'.
 
   Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree num ones (inc_black d c) c) :
       { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (inc_black d c) c | dflattenn' B' = delete (dflatten B) i }.
@@ -1127,7 +1128,8 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
      apply: exist; apply: etrans.
      apply (proj2_sig (balanceL2 Black (proj1_sig dl) rr erefl erefl)).
      rewrite !catA; congr (_ ++ _).
-     apply: (proj2_sig dl).
+     exact: (proj2_sig dl).
+     by rewrite (leq_trans _ (leq_addr _ _)) // leq_access_count.
 
     (* ordinal case *)
     move=> r l IHl _ val H.
