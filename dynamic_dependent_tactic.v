@@ -1,34 +1,15 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 
-Require Import compact_data_structures rank_select insert_delete Program JMeq set_clear Compare_dec ExtrOcamlNatInt.
+Require Import compact_data_structures rank_select insert_delete Program JMeq set_clear Compare_dec ExtrOcamlNatInt dynamic_dependent.
 
 Set Implicit Arguments.
 
 Tactic Notation "remember_eq" constr(expr) ident(vname) ident(eqname) := case (exist (fun x => x = expr) expr erefl) => vname eqname.
 
 Section dynamic_dependent.
-
-(* NB: same code in dynamic_dependent_program.v *)
-Variable w : nat.
+Variable w : nat. (* wordsize *)
 Hypothesis wordsize_gt1: w > 1.
-
-Lemma wordsize_gt0 : w > 0.
-Proof. exact/ltnW/wordsize_gt1. Qed.
-
-Lemma wordsize_neq0 : w != 0.
-Proof. rewrite -lt0n; exact wordsize_gt0. Qed.
-
-Lemma wordsize_sqrn_gt0 : w ^ 2 > 0.
-Proof. by rewrite sqrn_gt0 lt0n wordsize_neq0. Qed.
-
-Lemma wordsize_sqrn_gt2 : w ^ 2 > 2.
-Proof. by move: wordsize_gt1; case: w => // -[//|] []. Qed.
-
-Lemma wordsize_sqrn_div2_neq0 : w ^ 2 %/ 2 <> 0.
-Proof.
-by move/eqP; rewrite gtn_eqF // divn_gt0 // (ltn_trans _ wordsize_sqrn_gt2).
-Qed.
 
 Section insert.
   Inductive color := Red | Black.
@@ -624,7 +605,7 @@ Section delete.
 
   Lemma sizeW (arr : seq bool) : w ^ 2 %/ 2 <= size arr -> 0 < size arr.
   Proof.
-    move/eqP: wordsize_sqrn_div2_neq0.
+    move/eqP: (wordsize_sqrn_div2_neq0 _ wordsize_gt1).
     rewrite -lt0n => ltn1.
     rewrite leq_eqVlt.
     case/orP => eq2. move/eqP: eq2 => eq2. by rewrite eq2 in ltn1.
@@ -1027,7 +1008,7 @@ Section delete.
   Lemma access_cat s t i : access (s ++ t) i = (if i < size s then access s i else access t (i - size s)).
   Proof. by rewrite /access nth_cat. Qed.
 
-  Lemma ltn_trans1 (l m n : nat) : l < m -> m < n.+1 -> l < n.
+(*  Lemma ltn_trans1 (l m n : nat) : l < m -> m < n.+1 -> l < n.
   Proof.
     move => H1; case: leqP => // H2 ?.
     exact (leq_trans H1 H2).
@@ -1038,7 +1019,7 @@ Section delete.
     elim => [?|? IH ? H1]; first by rewrite ltn0.
     apply Acc_intro => ?; move/leP => H2.
     exact (IH _ (ltn_trans1 _ _ _ H2 H1)).
-  Qed.
+  Qed.*)
 
   Lemma cic_ok {c} : color_ok c (inv c).
   Proof. by destruct c. Qed.

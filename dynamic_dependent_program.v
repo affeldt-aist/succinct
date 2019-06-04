@@ -3,31 +3,13 @@ From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 
 Require Import compact_data_structures rank_select insert_delete Program.
-Require Import set_clear Compare_dec ExtrOcamlNatInt.
+Require Import set_clear Compare_dec ExtrOcamlNatInt dynamic_dependent.
 
 Set Implicit Arguments.
 
 Section dynamic_dependent.
-
-Variable w : nat.
+Variable w : nat. (* wordsize *)
 Hypothesis wordsize_gt1: w > 1.
-
-Lemma wordsize_gt0 : w > 0.
-Proof. exact/ltnW/wordsize_gt1. Qed.
-
-Lemma wordsize_neq0 : w != 0.
-Proof. rewrite -lt0n; exact wordsize_gt0. Qed.
-
-Lemma wordsize_sqrn_gt0 : w ^ 2 > 0.
-Proof. by rewrite sqrn_gt0 lt0n wordsize_neq0. Qed.
-
-Lemma wordsize_sqrn_gt2 : w ^ 2 > 2.
-Proof. by move: wordsize_gt1; case: w => // -[//|] []. Qed.
-
-Lemma wordsize_sqrn_div2_neq0 : w ^ 2 %/ 2 <> 0.
-Proof.
-by move/eqP; rewrite gtn_eqF // divn_gt0 // (ltn_trans _ wordsize_sqrn_gt2).
-Qed.
 
 Section insert.
 
@@ -798,7 +780,7 @@ Section delete.
 
   Lemma wordsize_sqrn_div2_gt0 : 0 < w ^ 2 %/ 2.
   Proof.
-    rewrite lt0n. apply/eqP. apply: wordsize_sqrn_div2_neq0.
+    rewrite lt0n. apply/eqP. exact: wordsize_sqrn_div2_neq0.
   Qed.
 
   Lemma wordsize_del_lt_twice : (w ^ 2 %/ 2 + (w ^ 2 %/ 2).-1 < 2 * w ^ 2).
