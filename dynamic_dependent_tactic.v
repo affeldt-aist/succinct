@@ -19,34 +19,6 @@ Section insert.
   | NodeML : forall(s1 s2 o1 o2 : nat) (c : color) (l r : tree_ml), tree_ml.
   (*                         *)
 
-  (* work around for program fixpoint *)
-(*  Definition count_one arr := count_mem true arr.
-
-  Inductive tree : nat -> nat -> nat -> color -> Type :=
-  | Leaf : forall (arr : seq bool),
-      (w ^ 2) %/ 2 <= size arr ->
-      2 * (w ^ 2) > size arr ->
-      tree (size arr) (count_one arr) 0 Black
-  | Node : forall {s1 o1 s2 o2 d cl cr c},
-      color_ok c cl -> color_ok c cr ->
-      tree s1 o1 d cl -> tree s2 o2 d cr ->
-      tree (s1 + s2) (o1 + o2) (incr_black d c) c.*)
-
-(*  Fixpoint size_of_tree {s o d c} (t : tree w s o d c) : nat :=
-    match t with
-    | Leaf _ _ s => 1
-    | Node _ _ _ _ _ _ _ _ _ _ l r => size_of_tree l + size_of_tree r
-    end.*)
-
-  Lemma size_of_tree_pos num ones d c (B : tree w num ones d c) :
-    size_of_tree B > 0.
-  Proof.
-    elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
-    by rewrite addn_gt0 IHl orTb.
-  Qed.
-
-  Definition bx_ok x : color_ok Black x := erefl.
-
   Definition rnode {s1 s2 o1 o2 d} (l : tree w s1 o1 d Black)
              (r : tree w s2 o2 d Black) : tree w (s1 + s2) (o1 + o2) d Red :=
     Node red_black_ok red_black_ok l r.

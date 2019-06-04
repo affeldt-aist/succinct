@@ -90,4 +90,11 @@ Fixpoint size_of_tree {s o d c} (t : tree s o d c) : nat :=
   | Node _ _ _ _ _ _ _ _ _ _ l r => size_of_tree l + size_of_tree r
   end.
 
+Lemma size_of_tree_pos num ones d c (B : tree num ones d c) :
+  size_of_tree B > 0.
+Proof.
+elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
+by rewrite addn_gt0 IHl orTb.
+Qed.
+
 End wordsize.
