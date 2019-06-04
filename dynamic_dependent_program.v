@@ -23,15 +23,15 @@ Section insert.
       tree lnum lones d cl -> tree rnum rones d cr ->
       tree (lnum + rnum) (lones + rones) (incr_black d c) c.*)
 
-  Fixpoint tree_size {num ones d c} (t : tree w num ones d c) : nat :=
+(*  Fixpoint tree_size {num ones d c} (t : tree w num ones d c) : nat :=
     match t with
     | @Leaf _ _ _ _ => 1
     | @Node _ _ _ _ _ _ _ _ _ _ _ l r =>
       tree_size l + tree_size r
-    end.
+    end.*)
 
   Lemma tree_size_pos {num ones d c} (B : tree w num ones d c) :
-    tree_size B > 0.
+    size_of_tree B > 0.
   Proof.
     elim: B => //= lnum lones rnum rones d' cl cr c' _ _ l IHl r IHr.
     by rewrite addn_gt0 IHl.
@@ -243,7 +243,7 @@ Section insert.
 
   Program Fixpoint dins {num ones d c}
     (B : tree w num ones d c)
-    (b : bool) (i : nat) {measure (tree_size B) } :
+    (b : bool) (i : nat) {measure (size_of_tree B) } :
     { B' : ins_tree num.+1 (ones + b) d c |
       dflatteni B' = insert1 (dflatten B) b i } :=
     match B with
@@ -526,7 +526,7 @@ Section set_clear.
   Obligation Tactic := idtac.
 
   Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
-    {measure (tree_size B)} :
+    {measure (size_of_tree B)} :
     { B'b : tree w num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
     | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
     match B with
@@ -617,7 +617,7 @@ Section set_clear.
 
   Program Fixpoint bclear {num ones d c}
     (B : tree w num ones d c) i
-    { measure (tree_size B) } :
+    { measure (size_of_tree B) } :
     { B'b : tree w num (ones - (daccess B i) && (i < num)) d c * bool |
       dflatten B'b.1 = bit_clear (dflatten B) i /\ snd B'b = daccess B i } :=
 
@@ -1870,7 +1870,7 @@ Section delete.
   Program Fixpoint ddelete {num ones d c}
     (B : tree w num ones d c)
     (i : nat)
-    (H : pos_black c d) { measure (tree_size B) } :
+    (H : pos_black c d) { measure (size_of_tree B) } :
     { B' : del_tree (num - (i < num)) (ones - (daccess B i)) d c
     | dflattend B' = delete (dflatten B) i } :=
     if i < num is true
@@ -2252,7 +2252,7 @@ Section delete.
 
   Next Obligation.
     intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -{1}(addn0 (tree_size l)) ltn_add2l tree_size_pos.
+    by rewrite -Heq_B //= -{1}(addn0 (size_of_tree l)) ltn_add2l tree_size_pos.
   Qed.
 
   Next Obligation.
@@ -2340,7 +2340,7 @@ Section delete.
 
   Next Obligation.
     intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -{1}(add0n (tree_size r)) ltn_add2r tree_size_pos.
+    by rewrite -Heq_B //= -{1}(add0n (size_of_tree r)) ltn_add2r tree_size_pos.
   Qed.
 
   Next Obligation.
@@ -2372,7 +2372,7 @@ Section delete.
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0.
     rewrite /eq_rect //=. apply/ltP.
-    rewrite -Heq_B -Heq_l //= -(add0n (tree_size lr + tree_size r)).
+    rewrite -Heq_B -Heq_l //= -(add0n (size_of_tree lr + size_of_tree r)).
     by rewrite -addnA ltn_add2r tree_size_pos.
   Qed.
 
@@ -2422,7 +2422,7 @@ Section delete.
 
   Next Obligation.
     intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -{1}(add0n (tree_size r)) ltn_add2r tree_size_pos.
+    by rewrite -Heq_B //= -{1}(add0n (size_of_tree r)) ltn_add2r tree_size_pos.
   Qed.
 
   Next Obligation.

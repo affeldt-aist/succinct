@@ -84,4 +84,10 @@ Inductive tree : nat -> nat -> nat -> color -> Type :=
     tree s1 o1 d cl -> tree s2 o2 d cr ->
     tree (s1 + s2) (o1 + o2) (incr_black d c) c.
 
+Fixpoint size_of_tree {s o d c} (t : tree s o d c) : nat :=
+  match t with
+  | Leaf _ _ _ => 1
+  | Node _ _ _ _ _ _ _ _ _ _ l r => size_of_tree l + size_of_tree r
+  end.
+
 End wordsize.
