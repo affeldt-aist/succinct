@@ -9,6 +9,7 @@ A tentative formalization of compact data structures following [1]
 - [compact_data_structures.v](compact_data_structures.v)
 - [rank_select.v](rank_select.v)
 - [jacobson_rank_complexity.v](jacobson_rank_complexity.v)
+- [pred_succ.v](pred_succ.v)
 - [louds.v](louds.v)
 - [insert_delete.v](insert_delete.v)
 - [set_clear.v](set_clear.v)

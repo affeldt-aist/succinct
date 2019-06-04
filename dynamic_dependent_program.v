@@ -63,7 +63,7 @@ Section insert.
     end.
 
   Lemma incr_black_prop d c : incr_black d c = d + (c == Black).
-  Proof. case: c => //=. by rewrite addn1. Qed.
+  Proof. case: c => //=; by rewrite ?(addn0,addn1). Qed.
 
   Definition inv c := if c is Black then Red else Black.
 

@@ -58,7 +58,7 @@ Section insert.
     end.
 
   Lemma incr_black_prop d c : incr_black d c = d + is_black c.
-  Proof. case: c => //=. by rewrite addn1. Qed.
+  Proof. case: c => //=; by rewrite ?(addn0,addn1). Qed.
 
   Definition inv c :=
     match c with
@@ -724,7 +724,7 @@ Section delete.
     move/negP/negP => G.
     rewrite -leqNgt in G.
     rewrite /delete take_oversize // drop_oversize // /=;last first. exact: (leqW G).
-    by rewrite cats0.
+    by rewrite cats0 addn0.
   Qed.
 
   Lemma leq_nth_count {i arr} : nth false arr i <= count_one arr.
