@@ -1,18 +1,17 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-
-Require Import compact_data_structures rank_select insert_delete Program JMeq set_clear Compare_dec ExtrOcamlNatInt dynamic_dependent.
+Require Import Program JMeq Compare_dec ExtrOcamlNatInt.
+Require Import compact_data_structures rank_select insert_delete set_clear dynamic.
 
 Set Implicit Arguments.
 
 Tactic Notation "remember_eq" constr(expr) ident(vname) ident(eqname) := case (exist (fun x => x = expr) expr erefl) => vname eqname.
 
 Section dynamic_dependent.
-Variable w : nat. (* wordsize *)
+Variable w : nat.
 Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
-  Inductive color := Red | Black.
 
   (* due to technical reason *)
   Inductive tree_ml : Type :=
@@ -20,43 +19,12 @@ Section insert.
   | NodeML : forall(s1 s2 o1 o2 : nat) (c : color) (l r : tree_ml), tree_ml.
   (*                         *)
 
-  Definition color_ok parent child : bool :=
-    match parent,child with
-    | Red,Red => false
-    | _,_ => true
-    end.
-
-  Definition incr_black d c :=
-    match c with
-    | Black => d.+1
-    | _ => d
-    end.
-
-  Definition is_black c :=
-    match c with
-    | Black => true
-    | _ => false
-    end.
-
-  Lemma incr_black_prop d c : incr_black d c = d + is_black c.
-  Proof. case: c => //=; by rewrite ?(addn0,addn1). Qed.
-
-  Definition inv c :=
-    match c with
-    | Black => Red
-    | Red => Black
-    end.
-
-  Inductive param (A : Type) : Prop := Param : A -> param A.
-
+  (* TODO: replace with incr_black? *)
   Definition inc_black d c :=
     match c, d with
     | Black, n => n.+1
     | _, _ => d
     end.
-
-  (* Definition app_param (A B : Type) (f : A -> B) (x : param A) := *)
-  (*   let: Param x := x in Param (f x). *)
 
   (* work around for program fixpoint *)
   Definition count_one arr := count_mem true arr.
@@ -84,18 +52,16 @@ Section insert.
     by rewrite addn_gt0 IHl orTb.
   Qed.
 
-  Definition rb_ok: color_ok Red Black := erefl.
-
   Definition bx_ok x : color_ok Black x := erefl.
 
   Definition rnode {s1 s2 o1 o2 d} (l : tree s1 o1 d Black)
              (r : tree s2 o2 d Black) : tree (s1 + s2) (o1 + o2) d Red :=
-    Node rb_ok rb_ok l r.
+    Node red_black_ok red_black_ok l r.
 
   Definition bnode {s1 s2 o1 o2 d cl cr} (l : tree s1 o1 d cl)
              (r : tree s2 o2 d cr)
            : tree (s1 + s2) (o1 + o2) (inc_black d Black) Black :=
-    Node (bx_ok cl) (bx_ok cr) l r.
+    Node (black_any_ok cl) (black_any_ok cr) l r.
 
   Inductive near_tree : nat -> nat -> nat -> color -> Type :=
   | Bad : forall {s1 o1 s2 o2 s3 o3 d},
@@ -109,9 +75,9 @@ Section insert.
 
   (* Xuanrui: I see no point to define fix_color in Ltac...
    * Gallina would be much more readable here
-   * Kazunari: I totally agree. sorry for being lazy. 
+   * Kazunari: I totally agree. sorry for being lazy.
    *)
-  
+
   Definition fix_color {nl ml d c} (l : near_tree nl ml d c) :=
     match l with
     | Bad _ _ _ _ _ _ _ _ _ _ => Red
@@ -131,7 +97,7 @@ Section insert.
     | Bad _ _ _ _ _ _ _ x y z => bnode (rnode x y) z
     | Good _ _ _ _ _ t' => t'
     end.
-  
+
   Fixpoint dflatten {n m d c} (B : tree n m d c) :=
     match B with
     | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
@@ -150,7 +116,7 @@ Section insert.
     rewrite /count_one in IHl,IHr.
     by rewrite /count_one count_cat IHl IHr.
   Qed.
-  
+
   Definition dflattenn {n m d c} (B : near_tree n m d c) :=
     match B with
     | Bad _ _ _ _ _ _ _ x y z => dflatten x ++ dflatten y ++ dflatten z
@@ -159,7 +125,7 @@ Section insert.
 
   Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree nl ml d cl) (r : tree nr mr d cr) :
     color_ok p (fix_color l) (* important claim! *) ->
-    color_ok p cr -> 
+    color_ok p cr ->
     {tr : near_tree (nl + nr) (ml + mr) (inc_black d p) p | dflattenn tr = dflattenn l ++ dflatten r}.
 
     destruct l as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc l'].
@@ -230,7 +196,7 @@ Section insert.
       then proj1_sig (balanceL c (dinsert' l b i) r _ okr)
       else proj1_sig (balanceR c l (dinsert' r b (i - s1)) okl _)
     end.
-  
+
   Next Obligation.
     move/eqP/eqnP : Heq_anonymous => /=.
     rewrite size_take size_insert1.
@@ -254,14 +220,14 @@ Section insert.
     by rewrite H3.
   Qed.
 
-  Next Obligation. 
+  Next Obligation.
     move/eqP/eqnP : Heq_anonymous => /=.
     rewrite size_drop size_insert1.
     move => H.
     by rewrite H mulKn // mulSn mul1n -addnBA // subnKC // leq_div.
   Qed.
 
-  Next Obligation. 
+  Next Obligation.
     move/eqP/eqnP : Heq_anonymous => /=.
     rewrite size_drop size_insert1.
     move => H.
@@ -341,15 +307,15 @@ Section insert.
   Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
-  
+
   Lemma dinsertK n m d c (B : tree n m d c) b i :
     dflatten (dinsert B b i) = insert1 (dflatten B) b i.
   Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i)). Qed.
-  
+
 End insert.
 
 Section query.
-  
+
   Fixpoint daccess {n m d c} (tr : tree n m d c) i :=
     match tr with
     | Leaf s _ _ => nth false s i
@@ -373,7 +339,7 @@ Section query.
     | Leaf s _ _ => select false i s
     | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
       let zeroes := s1 - o1
-      in if i <= zeroes 
+      in if i <= zeroes
       then dselect_0 l i
       else s1 + dselect_0 r (i - zeroes)
     end.
@@ -396,15 +362,6 @@ Section query.
     by rewrite count_cat -IHl -IHr.
   Qed.
 
-  Lemma predC_bool b : predC (pred1 b) =1 pred1 (negb b).
-  Proof. by case. Qed.
-
-  Lemma count_mem_false_true (s : seq bool) :
-    count_mem false s + count_mem true s = size s.
-  Proof.
-    by rewrite -(count_predC (pred1 false)) (eq_count (predC_bool false)).
-  Qed.
-
   Lemma ones_lt_num num ones d c (B : tree num ones d c) :
     ones <= num.
   Proof.
@@ -416,16 +373,16 @@ Section query.
   Proof.
     rewrite [in LHS](dflatten_ones B) [in X in X - _](dflatten_size B).
     apply/eqP. rewrite -(eqn_add2r (count_mem true (dflatten B))) subnK.
-      by rewrite count_mem_false_true.
+      by rewrite -(count_predC (pred1 false)) eqn_add2l; apply/eqP/eq_count; case.
     by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
   Qed.
-    
+
   Lemma dflatten_rank num ones d c (B : tree num ones d c) :
     ones = rank true num (dflatten B).
   Proof.
     by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
   Qed.
-    
+
   Lemma daccessK nums ones d c (B : tree nums ones d c) :
     daccess B =1 access (dflatten B).
   Proof.
@@ -451,7 +408,7 @@ Section query.
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size. 
+    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
   Qed.
 
   Lemma dselect0K nums ones d c (B : tree nums ones d c) i :
@@ -460,20 +417,19 @@ Section query.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
     by rewrite select_cat -dflatten_zeroes IHl IHr -dflatten_size.
   Qed.
-  
+
 End query.
 
 (* Section added by Xuanrui
  * because I wanted to experiment with this version as well...
- * 
+ *
  * Feel free to comment this out or remove this...
  *)
-
 
 Section set_clear.
 
   Obligation Tactic := idtac.
-  
+
   Program Fixpoint bset {num ones d c} (B : tree num ones d c) i
     {measure (size_of_tree B)} :
     { B'b : tree num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
@@ -494,7 +450,7 @@ Section set_clear.
   Next Obligation. intros. by rewrite size_bit_set. Qed.
 
   Next Obligation. intros. by rewrite size_bit_set. Qed.
-  
+
   Next Obligation. intros; apply: size_bit_set. Qed.
 
   Next Obligation.
@@ -603,6 +559,7 @@ Section delete.
     by apply: (H0 (i1 - s1) H3).
   Qed.
 
+  (* NB: move? *)
   Lemma sizeW (arr : seq bool) : w ^ 2 %/ 2 <= size arr -> 0 < size arr.
   Proof.
     move/eqP: (wordsize_sqrn_div2_neq0 _ wordsize_gt1).
@@ -654,7 +611,7 @@ Section delete.
     case arr'' => //.
   Qed.
 
-  Lemma cons_delete {i} (arr arr' : seq bool) : 0 < size arr' -> 
+  Lemma cons_delete {i} (arr arr' : seq bool) : 0 < size arr' ->
                                                 (rcons (delete arr i) (access arr' 0)) ++ (delete arr' 0) = (delete arr i) ++ arr'.
   Proof. move => H. rewrite !cat_rcons -!catA -cat_cons take0 drop1 /= cons_head_behead //. Qed.
 
@@ -665,33 +622,6 @@ Section delete.
     case_eq i => [H|i' H]. by rewrite H in G.
     rewrite H in G.
     exact: (ltn_trans (ltn0Sn i') G).
-  Qed.
-
-  Lemma leq_size_catr (a : nat) (arr0 arr1 : seq bool) : a <= size arr1 -> a <= size (arr0 ++ arr1).
-  Proof.
-    rewrite size_cat.
-    move => leq.
-    apply: (leq_trans leq (leq_addl (size arr0) (size arr1))).
-  Qed.
-
-  Lemma ltn_size_cat (a b : nat) (arr0 arr1 : seq bool) : size arr0 < a ->
-                                                          size arr1 < b ->
-                                                          size (arr0 ++ arr1) < a + b.
-  Proof.
-    rewrite size_cat.
-    move => ltn1 ltn2.
-    rewrite -(ltn_add2r b) in ltn1.
-    rewrite -(ltn_add2l (size arr0)) in ltn2.
-    exact: (ltn_trans ltn2 ltn1).
-  Qed.
-
-  Lemma ltn_size_catb (a : nat) (arr0 arr1 : seq bool) : size arr0 < a ->
-                                                         size arr1 < a ->
-                                                         size (arr0 ++ arr1) < a.*2.
-  Proof.
-    move => H1 H2.
-    rewrite -addnn.
-    exact: (ltn_size_cat _ _ arr0 arr1 H1 H2).
   Qed.
 
   Lemma size_delete1 {arr : seq bool} (i : nat) : size arr = (size (delete arr i)) + (i < size arr).
@@ -725,21 +655,10 @@ Section delete.
     by rewrite /= leq0n.
   Qed.
 
-  Lemma divn2n0 {a} : (a %/ 2 == a) = (a == 0).
-  Proof.
-    case a => // a'.
-    case a' => // a''.
-    by rewrite -addn1 addn_eq0 addn1 {2}(divn_eq a''.+2 2) muln2 -addnn -addnA -{1}[a''.+2 %/ 2]addn0 eqn_add2l -addn1 andbF addn1 -addn2 divnDr // divnn /= eq_sym !addn_eq0 andbF andFb.
-  Qed.
-
-  Lemma leq_divn2n_mul2 : forall(a : nat),a > 0 -> a %/ 2 + a %/ 2 < 2 * a.
-  Proof.
-    move => // a H0.
-    move: (leq_div a 2).
-    rewrite leq_eqVlt.
-    case/orP. rewrite divn2n0. move/eqP => H1. by rewrite H1 in H0.
-    by rewrite mulnC addnn -muln2 ltn_mul2r /=.
-  Qed.
+Lemma leq_divn2n_mul2 (a : nat) : a > 0 -> a %/ 2 + a %/ 2 < 2 * a.
+Proof.
+by move=> ?; rewrite mul2n divn2 addnn ltn_double -{1}(add0n a) avg_ltn_l.
+Qed.
 
   Lemma ltn_subln a b c : c > 0 -> a < b + c = (a - b < c).
   Proof.
@@ -757,7 +676,7 @@ Section delete.
   Lemma sizeW' {s o d c} (tr : tree s o d c) : s > 0.
   Proof. elim tr; intros; first apply sizeW => //; rewrite ltn_addr //. Qed.
 
-  Inductive near_tree' : nat -> nat -> nat -> color -> Type := 
+  Inductive near_tree' : nat -> nat -> nat -> color -> Type :=
   | Stay : forall {s o d c} p,
       color_ok c (inv p) ->
       tree s o d c -> near_tree' s o d p
@@ -844,14 +763,14 @@ Section delete.
       rewrite count_delete -count_cat -cat_head_behead // count_cat size_cat.
       case: p;
         [ exists (Stay Red xir_ok (rnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr))))
-        | exists (Stay Black (bx_ok Red) (bnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr)))) ];
+        | exists (Stay Black (black_any_ok Red) (bnode (Leaf (rcons (delete al i) (access ar 0)) leql ueql) (Leaf (delete ar 0) leqr (ltnW ueqr)))) ];
       by rewrite delete_cat Hl /= cat_head_behead.
      rewrite leq_eqVlt bcl (size_delete1 i) Hl /= addn1 in leql,ueql.
      rewrite addnC -addnBA // ltn_addl // subn1 -(size_delete Hl) /= addnC addnBAC;last exact: leq_nth_count.
      rewrite count_delete.
       case: p;
         [ exists (Stay Red xir_ok (rnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr)))
-        | exists (Stay Black (bx_ok Red) (bnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr))) ];
+        | exists (Stay Black (black_any_ok Red) (bnode (Leaf (delete al i) leql (ltnW ueql)) (Leaf ar leqr ueqr))) ];
      by rewrite delete_cat Hl.
     case Hrl : (i < size al + size ar).
      case bcr : (w ^ 2 %/ 2 == size ar).
@@ -870,7 +789,7 @@ Section delete.
      rewrite count_delete -count_cat /= subn1 [size ar](size_delete1 (i - size al)) -ltn_subln // Hrl -subn1 -addnBA // subnn addn0 -size_cat -cat_last_belast // size_cat count_cat.
       case: p;
         [ exists (Stay Red xir_ok (rnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr')))
-        | exists (Stay Black (bx_ok Red) (bnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))) ];
+        | exists (Stay Black (black_any_ok Red) (bnode (Leaf (delete al (size al).-1) leql (ltnW ueql)) (Leaf ((access al (size al).-1) :: (delete ar (i - size al))) leqr' ueqr'))) ];
      by rewrite delete_cat Hl /= cat_last_belast.
     rewrite /=.
     rewrite leq_eqVlt bcr (size_delete1 (i - size al)) -ltn_subln // Hrl addn1 /= in leqr,ueqr.
@@ -879,13 +798,13 @@ Section delete.
     rewrite -ltn_subln // Hrl -subn1 -addnBA // subnn addn0.
     case: p;
       [ exists (Stay Red xir_ok (rnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr))))
-      | exists (Stay Black (bx_ok Red) (bnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr)))) ];
+      | exists (Stay Black (black_any_ok Red) (bnode (Leaf al leql ueql) (Leaf (delete ar (i - size al)) leqr (ltnW ueqr)))) ];
     by rewrite delete_cat Hl.
    rewrite /= nth_default;last rewrite ltn_subln // in Hrl;last by rewrite leqNgt Hrl.
    rewrite !subn0.
    case: p;
      [ exists (Stay Red xir_ok (rnode (Leaf al leql ueql) (Leaf ar leqr ueqr)))
-     | exists (Stay Black (bx_ok Red) (bnode (Leaf al leql ueql) (Leaf ar leqr ueqr))) ];
+     | exists (Stay Black (black_any_ok Red) (bnode (Leaf al leql ueql) (Leaf ar leqr ueqr))) ];
    by rewrite -delete_oversize // size_cat leqNgt Hrl.
   Defined.
 
@@ -916,7 +835,7 @@ Section delete.
      rewrite -!addnA -catA.
      by exists (Stay Red xir_ok (bnode ll (rnode lr dr))).
     move => /= ? ?.
-    move: dr l => [? ? d' c ? ? dr|? ? d' dr] l; first by exists (Stay Black (bx_ok Red) (bnode l dr)).
+    move: dr l => [? ? d' c ? ? dr|? ? d' dr] l; first by exists (Stay Black (black_any_ok Red) (bnode l dr)).
     move: dr l => /=; move deq : (d'.+1) => d'' dr l.
     move: l deq dr => [//| ? oo ? ? ? cll clr c cllok clrok ll lr] /=.
     move: clr clrok lr => [] clrok lr.
@@ -925,7 +844,7 @@ Section delete.
      move: lr ceq dr ll => /= [//|? ? ? ? ? cl' cr' ? okl okr lrl lrr] ceq dr ll.
      move: ceq cl' cr' ll lrl lrr okl okr dr => <- [] [] //= ll lrl lrr ? ? dr.
      rewrite !addnA -![_ + _ + _ + _]addnA.
-     exists (Stay Black (bx_ok Red) (bnode (bnode ll lrl) (bnode lrr dr))).
+     exists (Stay Black (black_any_ok Red) (bnode (bnode ll lrl) (bnode lrr dr))).
      by rewrite /= -!catA.
     move: c cllok clrok => [] /= cllok clrok.
      move: cll cllok ll => [] // ? ll deq.
@@ -934,13 +853,13 @@ Section delete.
      move: ceq deq lrl lrr ll dr okl okr => /= <- [] <- lrl lrr ll dr /= ? ?.
      move: cr' lrr  => [] lrr;last first.
       rewrite -!addnA.
-      exists (Stay Black (bx_ok Red) (bnode ll (bnode lrl (rnode lrr dr)))).
+      exists (Stay Black (black_any_ok Red) (bnode ll (bnode lrl (rnode lrr dr)))).
       by rewrite /= -!catA.
      move: lrr => /=; move ceq : (Red) => c lrr {c'}.
      move: lrr ceq lrl ll dr => [//| ? ? ? ? ? clrrl clrr c' okl okr lrrl lrrr] ceq lrl ll dr.
      move: ceq clrrl clrr lrrl lrrr lrl ll dr okl okr => <- [] [] // lrrl lrrr lrl ll dr ? ?.
      rewrite -!addnA [X in (_ + X)]addnA [X in (oo + X)]addnA.
-     exists (Stay Black (bx_ok Red) (bnode ll (rnode (bnode lrl lrrl) (bnode lrrr dr)))).
+     exists (Stay Black (black_any_ok Red) (bnode ll (rnode (bnode lrl lrrl) (bnode lrrr dr)))).
      by rewrite /= -!catA.
     move => [] -> dr.
     rewrite -!addnA -!catA.
@@ -971,10 +890,10 @@ Section delete.
       rewrite !addnA -![_ + _ + _ + _]addnA.
       exists (Stay Red xir_ok (rnode (bnode dl rll) (bnode rlr rr))).
       by rewrite /= !catA.
-     rewrite !addnA /= !catA. 
+     rewrite !addnA /= !catA.
      by exists (Stay Red xir_ok (bnode (rnode dl rl) rr)).
     move => /= ? ?.
-    move: dl r => [? ? d' c ? ? dl|? ? d' dl] r; first by exists (Stay Black (bx_ok Red) (bnode dl r)).
+    move: dl r => [? ? d' c ? ? dl|? ? d' dl] r; first by exists (Stay Black (black_any_ok Red) (bnode dl r)).
     move: dl r => /=; move deq : (d'.+1) => d'' dl r.
     move: r deq dl => [//| ? ? ? ? ? crl crr c crlok crrok rl rr] /=.
     move: crl crlok rl => [] crlok rl.
@@ -983,7 +902,7 @@ Section delete.
      move: rl ceq dl rr => /= [//|? ? ? ? ? cl' cr' crl okl okr rll rlr] ceq dl rr.
      move: ceq cl' cr' rr rll rlr okl okr dl => <- [] [] //= rr rll rlr ? ? dl.
      rewrite !addnA -![_ + _ + _ + _]addnA.
-     exists (Stay Black (bx_ok Red) (bnode (bnode dl rll) (bnode rlr rr))).
+     exists (Stay Black (black_any_ok Red) (bnode (bnode dl rll) (bnode rlr rr))).
      by rewrite /= -!catA.
     move: c crrok crlok => [] /= crrok crlok.
      move: crr crrok rr => [] // ? rr deq.
@@ -992,13 +911,13 @@ Section delete.
      move: ceq deq rll rlr rr dl okl okr => /= <- [] <- rll rlr rr dl /= ? ?.
      move: cl' rll  => [] rll;last first.
       rewrite !addnA.
-      exists (Stay Black (bx_ok Red) (bnode (bnode (rnode dl rll) rlr) rr)).
+      exists (Stay Black (black_any_ok Red) (bnode (bnode (rnode dl rll) rlr) rr)).
       by rewrite /= -!catA.
      move: rll; move ceq : (Red) => c rll {c'}.
      move: rll ceq rlr rr dl=> [//| ? ? ? o3 ? crll crlr c' okl okr rlll rllr] ceq rlr rr dl.
      move: ceq crll crlr rlll rllr rlr rr dl okl okr => <- [] [] // rlll rllr rlr rr dl ? ?.
      rewrite -!addnA ![_ + ( _ + (_ + (_ + _)))]addnA [X in _ + _ + X]addnA [o3 + (_ + _)]addnA.
-     exists (Stay Black (bx_ok Red) (bnode (bnode dl rlll) (rnode (bnode rllr rlr) rr))).
+     exists (Stay Black (black_any_ok Red) (bnode (bnode dl rlll) (rnode (bnode rllr rlr) rr))).
      by rewrite /= -!catA.
     move => [] -> dl.
     rewrite !addnA !catA.
@@ -1007,19 +926,6 @@ Section delete.
 
   Lemma access_cat s t i : access (s ++ t) i = (if i < size s then access s i else access t (i - size s)).
   Proof. by rewrite /access nth_cat. Qed.
-
-(*  Lemma ltn_trans1 (l m n : nat) : l < m -> m < n.+1 -> l < n.
-  Proof.
-    move => H1; case: leqP => // H2 ?.
-    exact (leq_trans H1 H2).
-  Qed.
-
-  Lemma wf_nat' : forall n : nat, (forall m : nat, m < n -> Acc lt m).
-  Proof.
-    elim => [?|? IH ? H1]; first by rewrite ltn0.
-    apply Acc_intro => ?; move/leP => H2.
-    exact (IH _ (ltn_trans1 _ _ _ H2 H1)).
-  Qed.*)
 
   Lemma cic_ok {c} : color_ok c (inv c).
   Proof. by destruct c. Qed.
@@ -1167,8 +1073,6 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     congr (_ ++ _); by apply: (proj2_sig (dr _)).
   Qed.
 End delete.
-
-Require Import Compare_dec.
 
 End dynamic_dependent.
 Extract Inductive tree => tree_ml [ "LeafML" "(function (s1,o1,s2,o2,d,c,cl,cr,l,r) -> NodeML (s1, o1, s2, o2, c, l, r))" ]

@@ -1,6 +1,7 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 Require Import compact_data_structures rank_select insert_delete set_clear.
+Require Import dynamic.
 
 (** * A formalization of succinct dynamic bit vectors *)
 
@@ -29,8 +30,6 @@ Ltac decomp ok := move: ok => /=; repeat decompose_rewrite.
 Section btree.
 
 Variables D A : Type.
-
-Inductive color := Red | Black.
 
 Inductive btree : Type :=
   | Bnode : color -> btree -> D -> btree -> btree
@@ -1466,22 +1465,6 @@ Proof. by []. Qed.
 End example.
 
 Section eq_btree.
-
-Definition eq_color c1 c2 :=
-  match c1,c2 with
-  | Black,Black | Red,Red => true
-  | _,_ => false
-  end.
-
-Lemma color_eqP : Equality.axiom eq_color.
-Proof.
-  move; case; case => /=;
-  try apply ReflectT => //;
-  apply ReflectF => //. 
-Qed.
-
-Canonical color_eqMixin := EqMixin color_eqP.
-Canonical color_eqType := Eval hnf in EqType color color_eqMixin.
 
 Variables D A : eqType.
 

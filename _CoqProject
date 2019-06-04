@@ -6,8 +6,8 @@ pred_succ.v
 louds.v
 insert_delete.v
 set_clear.v
+dynamic.v
 dynamic_redblack.v
-dynamic_dependent.v
 dynamic_dependent_tactic.v
 dynamic_dependent_program.v
 -R . compact
