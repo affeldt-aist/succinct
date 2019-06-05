@@ -13,41 +13,10 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-  (* Xuanrui: I see no point to define fix_color in Ltac...
-   * Gallina would be much more readable here
-   * Kazunari: I totally agree. sorry for being lazy.
-   *)
-
-  Definition fix_color {nl ml d c} (l : near_tree w nl ml d c) :=
-    match l with
-    | Bad _ _ _ _ _ _ _ _ _ _ => Red
-    | Good _ _ _ _ _ _ => Black
-    end.
-
-  (* Xuanrui: same, programming those in Ltac makes little sense to me *)
-
-  Definition black_of_bad {nl ml d c} (l : near_tree w nl ml d c) :=
-    match l with
-    | Bad _ _ _ _ _ _ _ _ _ _ => Black
-    | Good _ _ _ c _ _ => c
-    end.
-
-  Definition real_tree {nl ml d c} (t : near_tree w nl ml d c) : tree w nl ml (incr_black d (inv (fix_color t))) (black_of_bad t) :=
-    match t with
-    | Bad _ _ _ _ _ _ _ x y z => bnode (rnode x y) z
-    | Good _ _ _ _ _ t' => t'
-    end.
-
-  Definition dflattenn {n m d c} (B : near_tree w n m d c) :=
-    match B with
-    | Bad _ _ _ _ _ _ _ x y z => dflatten x ++ dflatten y ++ dflatten z
-    | Good _ _ _ _ _ t => dflatten t
-    end.
-
   Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree w nl ml d cl) (r : tree w nr mr d cr) :
     color_ok p (fix_color l) (* important claim! *) ->
     color_ok p cr ->
-    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflattenn l ++ dflatten r}.
+    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflatteni tr = dflatteni l ++ dflatten r}.
 
     destruct l as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc l'].
     (* l is bad *)
@@ -71,7 +40,7 @@ Section insert.
   Definition balanceR {nl ml d cl cr nr mr} (p : color) (l : tree w nl ml d cl) (r : near_tree w nr mr d cr):
     color_ok p cl ->
     color_ok p (fix_color r) ->  (* important claim! *)
-    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflatten l ++ dflattenn r}.
+    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflatteni tr = dflatten l ++ dflatteni r}.
 
     destruct r as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc r'].
     (* r is bad *)
@@ -94,7 +63,7 @@ Section insert.
 
   Program Fixpoint dinsert' {n m d c} (B : tree w n m d c) (b : bool) i
           {measure (size_of_tree B)} : { B' : near_tree w n.+1 (m + b) d c
-                              | dflattenn B' = insert1 (dflatten B) b i } :=
+                              | dflatteni B' = insert1 (dflatten B) b i } :=
     match B with
     | Leaf s _ _ =>
       let s' := insert1 s b i in
@@ -156,7 +125,7 @@ Section insert.
   Qed.
 
   Next Obligation.
-    rewrite /dflattenn /insert1.
+    rewrite /dflatteni /insert1.
     destruct dinsert'_func_obligation_5, dinsert'_func_obligation_6 => /=.
     by rewrite cat_take_drop.
   Qed.
@@ -178,7 +147,7 @@ Section insert.
   Next Obligation. rewrite /count_one count_insert1. by destruct b. Qed.
 
   Next Obligation.
-    rewrite /dflattenn /insert1.
+    rewrite /dflatteni /insert1.
     by destruct dinsert'_func_obligation_11, dinsert'_func_obligation_12, dinsert'_func_obligation_13 => /=.
   Qed.
 
@@ -208,23 +177,23 @@ Section insert.
       destruct dinsert' => /=.
       by rewrite e /insert1 /insert take_cat drop_cat size_dflatten H -!catA.
     - set B' := balanceR _ _ _ _ _.
-      rewrite /dflattenn /eq_rect => /=.
+      rewrite /dflatteni /eq_rect => /=.
       destruct dinsert'_func_obligation_23, dinsert'_func_obligation_22, dinsert'_func_obligation_21.
-      rewrite -/(dflattenn (proj1_sig B')) (proj2_sig B') {B'}.
+      rewrite -/(dflatteni (proj1_sig B')) (proj2_sig B') {B'}.
       destruct dinsert' => /=.
       by rewrite e /insert1 /insert take_cat drop_cat size_dflatten H -!catA.
   Qed.
 
   Definition dinsert n m d c (B : tree w n m d c) (b : bool) (i : nat) :=
-    real_tree (proj1_sig (dinsert' B b i)).
+    fix_near_tree (proj1_sig (dinsert' B b i)).
 
-  Lemma real_treeK nl ol d c (t : near_tree w nl ol d c) :
-    dflatten (real_tree t) = dflattenn t.
+  Lemma fix_near_treeK nl ol d c (t : near_tree w nl ol d c) :
+    dflatten (fix_near_tree t) = dflatteni t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
 
   Lemma dinsertK n m d c (B : tree w n m d c) b i :
     dflatten (dinsert B b i) = insert1 (dflatten B) b i.
-  Proof. by rewrite /dinsert real_treeK (proj2_sig (dinsert' B b i)). Qed.
+  Proof. by rewrite /dinsert fix_near_treeK (proj2_sig (dinsert' B b i)). Qed.
 
 End insert.
 
@@ -597,7 +566,7 @@ Qed.
   | Down : forall {s o d},
       tree w s o d Black -> near_tree' s o d.+1 Black.
 
-  Definition dflattenn' {s o d c} (tr : near_tree' s o d c) :=
+  Definition dflatteni' {s o d c} (tr : near_tree' s o d c) :=
     match tr with
     | Stay _ _ _ _ _ _ t => dflatten t
     | Down _ _ _ t =>  dflatten t
@@ -657,7 +626,7 @@ Qed.
 
   Definition delete_leaves2 {s1 o1 s2 o2} p (l : tree w s1 o1 0 Black) (r : tree w s2 o2 0 Black) (i : nat) :
     {B' : near_tree' (s1 + s2 - (i < s1 + s2))
-                    (o1 + o2 - access (dflatten l ++ dflatten r) i) (incr_black 0 p) p | dflattenn' B' = delete (dflatten l ++ dflatten r) i}.
+                    (o1 + o2 - access (dflatten l ++ dflatten r) i) (incr_black 0 p) p | dflatteni' B' = delete (dflatten l ++ dflatten r) i}.
 
     move/eqP : (wordsize_sqrn_div2_neq0 _ wordsize_gt1) (sizeW' l) (sizeW' r); rewrite -lt0n => pos posl posr.
     remember_eq 0 d' deq; remember_eq Black c' ceq; move: l r; rewrite -ceq -deq => l; destruct l as [al leql ueql|]; last rewrite ceq /= // in deq.
@@ -728,7 +697,7 @@ Qed.
     color_ok p cl ->
     color_ok p cr ->
   {B' : near_tree' (s1 + s2) (o1 + o2) (incr_black d p) p |
-  dflattenn' B' = dflatten l ++ dflattenn' dr}.
+  dflatteni' B' = dflatten l ++ dflatteni' dr}.
 
     move: p => [].
      move: cl cr l dr => [] [] // l dr ? ?.
@@ -786,7 +755,7 @@ Qed.
     color_ok p cl ->
     color_ok p cr ->
   {B' : near_tree' (s1 + s2) (o1 + o2) (incr_black d p) p |
-  dflattenn' B' = dflattenn' dl ++ dflatten r}.
+  dflatteni' B' = dflatteni' dl ++ dflatten r}.
 
     move: p => [].
      move: cl cr dl r => [] [] // dl r ? ?.
@@ -868,7 +837,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
   Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addr leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW'.
 
   Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w num ones (incr_black d c) c) :
-      { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (incr_black d c) c | dflattenn' B' = delete (dflatten B) i }.
+      { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (incr_black d c) c | dflatteni' B' = delete (dflatten B) i }.
     case val : (i < num);last first.
      move/negP/negP : val;
      rewrite ltnNge; move/negPn => val;

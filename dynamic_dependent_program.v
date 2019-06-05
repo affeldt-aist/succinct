@@ -13,38 +13,6 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-(*  Inductive ins_tree : nat -> nat -> nat -> color -> Type :=
-  | Fix : forall {num1 ones1 num2 ones2 num3 ones3 d},
-      tree w num1 ones1 d Black -> tree w num2 ones2 d Black ->
-      tree w num3 ones3 d Black ->
-      ins_tree (num1 + num2 + num3) (ones1 + ones2 + ones3) d Red
-  | Tr : forall {num ones d c} pc, tree w num ones d c -> ins_tree num ones d pc.*)
-
-  Definition near_tree_color {nums ones d c} (t : near_tree w nums ones d c) :=
-    match t with
-    | Bad _ _ _ _ _ _ _ _ _ _ => Red
-    | Good _ _ _ _ _ _ => Black
-    end.
-
-  Definition black_of_fix {num ones d c} (t : near_tree w num ones d c) :=
-    match t with
-    | Bad _ _ _ _ _ _ _ _ _ _ => Black
-    | Good _ _ _ c _ _ => c
-    end.
-
-  Definition fix_near_tree {num ones d c} (t : near_tree w num ones d c) :
-    tree w num ones (incr_black d (inv (near_tree_color t))) (black_of_fix t) :=
-    match t with
-    | Bad _ _ _ _ _ _ _ t1 t2 t3 => bnode (rnode t1 t2) t3
-    | Good _ _ _ _ _ t' => t'
-    end.
-
-  Definition dflatteni {num ones d c} (B : near_tree w num ones d c) :=
-    match B with
-    | Bad _ _ _ _ _ _ _ t1 t2 t3 => dflatten t1 ++ dflatten t2 ++ dflatten t3
-    | Good _ _ _ _ _ t' => dflatten t'
-    end.
-
   (*
    * Translated from https://github.com/xuanruiqi/dtp/blob/master/RedBlack.idr
    * which in turn is translated from dynamic_dependent.v
@@ -52,7 +20,7 @@ Section insert.
   Program Definition balanceL {lnum lones rnum rones d cl cr} (c : color)
             (l : near_tree w lnum lones d cl)
             (r : tree w rnum rones d cr)
-            (ok_l : color_ok c (near_tree_color l))
+            (ok_l : color_ok c (fix_color l))
             (ok_r : color_ok c cr) :
     { t' : near_tree w (lnum + rnum) (lones + rones) (incr_black d c) c
     | dflatteni t' = dflatteni l ++ dflatten r } :=
@@ -117,7 +85,7 @@ Section insert.
             (l : tree w lnum lones d cl)
             (r : near_tree w rnum rones d cr)
             (ok_l : color_ok c cl)
-            (ok_r : color_ok c (near_tree_color r)) :
+            (ok_r : color_ok c (fix_color r)) :
     { t' : near_tree w (lnum + rnum) (lones + rones) (incr_black d c) c |
       dflatteni t' = dflatten l ++ dflatteni r } :=
     match c with

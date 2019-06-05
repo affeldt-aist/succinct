@@ -140,4 +140,29 @@ Inductive near_tree : nat -> nat -> nat -> color -> Type :=
     tree s o d c ->
     near_tree s o d p.
 
+Definition fix_color {nl ml d c} (l : near_tree nl ml d c) :=
+  match l with
+  | Bad _ _ _ _ _ _ _ _ _ _ => Red
+  | Good _ _ _ _ _ _ => Black
+  end.
+
+Definition black_of_bad {nl ml d c} (l : near_tree nl ml d c) :=
+  match l with
+  | Bad _ _ _ _ _ _ _ _ _ _ => Black
+  | Good _ _ _ c _ _ => c
+  end.
+
+Definition fix_near_tree {num ones d c} (t : near_tree num ones d c) :
+  tree num ones (incr_black d (inv (fix_color t))) (black_of_bad t) :=
+  match t with
+  | Bad _ _ _ _ _ _ _ t1 t2 t3 => bnode (rnode t1 t2) t3
+  | Good _ _ _ _ _ t' => t'
+  end.
+
+Definition dflatteni {num ones d c} (B : near_tree num ones d c) :=
+  match B with
+  | Bad _ _ _ _ _ _ _ t1 t2 t3 => dflatten t1 ++ dflatten t2 ++ dflatten t3
+  | Good _ _ _ _ _ t' => dflatten t'
+  end.
+
 End wordsize.
