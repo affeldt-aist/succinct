@@ -592,7 +592,7 @@ Qed.
   Lemma xir_ok {c} : color_ok c (inv Red).
   Proof. move: c => [] //. Qed.
 
-  Definition delete_leaves2 {s1 o1 s2 o2} p (l : tree w s1 o1 0 Black) (r : tree w s2 o2 0 Black) (i : nat) :
+  Definition delete_from_leaves {s1 o1 s2 o2} p (l : tree w s1 o1 0 Black) (r : tree w s2 o2 0 Black) (i : nat) :
     {B' : near_tree' (s1 + s2 - (i < s1 + s2))
                     (o1 + o2 - access (dflatten l ++ dflatten r) i) (incr_black 0 p) p | dflatteni' B' = delete (dflatten l ++ dflatten r) i}.
 
@@ -659,7 +659,7 @@ Qed.
    by rewrite -delete_oversize // size_cat leqNgt Hrl.
   Defined.
 
-  Definition balanceR2 {s1 s2 o1 o2 d cl cr} (p : color)
+  Definition balright {s1 s2 o1 o2 d cl cr} (p : color)
              (l : tree w s1 o1 d cl)
              (dr : near_tree' s2 o2 d cr) :
     color_ok p cl ->
@@ -717,7 +717,7 @@ Qed.
     by exists (Down (bnode ll (rnode lr dr))).
   Defined.
 
-  Definition balanceL2 {s1 s2 o1 o2 d cl cr} (p : color)
+  Definition balleft {s1 s2 o1 o2 d cl cr} (p : color)
              (dl : near_tree' s1 o1 d cl)
              (r : tree w s2 o2 d cr) :
     color_ok p cl ->
@@ -822,12 +822,12 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     try (move: (IHl d erefl i H) => dl;
          rewrite !addnBAC; eauto;
          apply: exist; apply: etrans;
-         first (by apply (proj2_sig (balanceL2 Black (`dl) r erefl erefl)));
+         first (by apply (proj2_sig (balleft Black (`dl) r erefl erefl)));
          congr (_ ++ _); by apply: (proj2_sig dl));
     try (move: (IHr d erefl (i - s1)) => dr;
          rewrite -!addnBA; eauto;
          apply: exist; apply: etrans;
-         first (apply: (proj2_sig (balanceR2 Black l _ erefl erefl));
+         first (apply: (proj2_sig (balright Black l _ erefl erefl));
                 apply: (` (dr _)); apply: ltn_subLN; by eauto);
          congr (_ ++ _); by apply: (proj2_sig (dr _))).
 
@@ -836,11 +836,11 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
      move cbeq: (Black) => c'; move deq: (0) => d r l.
      case: l creq cbeq deq r => // ? ? ? ? ? [] [] [] // ? ? ll lr ? <- /= deq r {c} _ _ val H.
      move: deq ll lr r val H => <- ll lr r val H.
-     move: (delete_leaves2 Red lr r (i - (size (dflatten ll)))).
+     move: (delete_from_leaves Red lr r (i - (size (dflatten ll)))).
      rewrite delete_cat access_cat -!daccessK !size_dflatten -!ltn_subln ; eauto.
      rewrite H !addnA val subnDA /= -!addnA -!addnBA; eauto => dr.
      apply: exist; apply: etrans.
-     apply (proj2_sig (balanceR2 Black ll (proj1_sig dr) erefl erefl)).
+     apply (proj2_sig (balright Black ll (proj1_sig dr) erefl erefl)).
      rewrite -!catA; congr (_ ++ _).
      apply: (proj2_sig dr).
     (* ordinal case *)
@@ -848,7 +848,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     move: (IHr d erefl (i - s1)) => dr.
     rewrite -!addnBA; eauto.
     apply: exist; apply: etrans;
-     first (apply: (proj2_sig (balanceR2 Black l (proj1_sig (dr _)) erefl erefl));
+     first (apply: (proj2_sig (balright Black l (proj1_sig (dr _)) erefl erefl));
             apply: ltn_subLN; by eauto).
     congr (_ ++ _); by apply: (proj2_sig (dr _)).
 
@@ -857,14 +857,14 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
      move cbeq: (Black) => c'; move deq: (0) => d r l.
      case: r creq cbeq deq l => // ? ? ? ? ? [] [] [] // ? ? rl rr ? <- /= deq l {c} _ _ val H.
      move: deq rl rr l val H => <- rl rr l val H.
-     move: (delete_leaves2 Red l rl i).
+     move: (delete_from_leaves Red l rl i).
      rewrite delete_cat access_cat -!daccessK !size_dflatten; eauto.
      rewrite ltn_addr H /=; auto => dl.
      rewrite !addnA.
      rewrite [s1 + _ + _ - _]addnBAC; eauto.
      rewrite [o1 + _ + _ - _]addnBAC; eauto.
      apply: exist; apply: etrans.
-     apply (proj2_sig (balanceL2 Black (proj1_sig dl) rr erefl erefl)).
+     apply (proj2_sig (balleft Black (proj1_sig dl) rr erefl erefl)).
      rewrite !catA; congr (_ ++ _).
      exact: (proj2_sig dl).
      by rewrite (leq_trans _ (leq_addr _ _)) // leq_access_count.
@@ -874,52 +874,52 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     move: (IHl d erefl i H) => dl;
     rewrite !addnBAC; eauto;
     apply: exist; apply: etrans;
-    first (by apply (proj2_sig (balanceL2 Black (`dl) r erefl erefl)));
+    first (by apply (proj2_sig (balleft Black (`dl) r erefl erefl)));
     congr (_ ++ _); by apply: (proj2_sig dl).
 
     case: d l r IHl IHr => [| d].
      move => l r _ _.
-     move: (delete_leaves2 Red l r i).
+     move: (delete_from_leaves Red l r i).
      rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r IHl _.
     move: (IHl d erefl i H) => dl;
     rewrite !addnBAC; eauto;
     apply: exist; apply: etrans.
-    apply (proj2_sig (balanceL2 Red (`dl) r erefl erefl)).
+    apply (proj2_sig (balleft Red (`dl) r erefl erefl)).
     congr (_ ++ _); by apply: (proj2_sig dl).
 
     case: d l r IHl IHr => [| d].
      move => l r _ _.
-     move: (delete_leaves2 Red l r i).
+     move: (delete_from_leaves Red l r i).
      rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r _ IHr.
     move: (IHr d erefl (i - s1)) => dr.
     rewrite -!addnBA; eauto.
     apply: exist; apply: etrans;
-     first (apply: (proj2_sig (balanceR2 Red l (proj1_sig (dr _)) erefl erefl));
+     first (apply: (proj2_sig (balright Red l (proj1_sig (dr _)) erefl erefl));
             apply: ltn_subLN; by eauto).
     congr (_ ++ _); by apply: (proj2_sig (dr _)).
 
     case: d l r IHl IHr => [| d].
      move => l r _ _.
-     move: (delete_leaves2 Black l r i).
+     move: (delete_from_leaves Black l r i).
      rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r IHl _.
     move: (IHl d erefl i H) => dl;
     rewrite !addnBAC; eauto;
     apply: exist; apply: etrans.
-    apply (proj2_sig (balanceL2 Black (`dl) r erefl erefl)).
+    apply (proj2_sig (balleft Black (`dl) r erefl erefl)).
     congr (_ ++ _); by apply: (proj2_sig dl).
 
     case: d l r IHl IHr => [| d].
      move => l r _ _.
-     move: (delete_leaves2 Black l r i).
+     move: (delete_from_leaves Black l r i).
      rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r _ IHr.
     move: (IHr d erefl (i - s1)) => dr.
     rewrite -!addnBA; eauto.
     apply: exist; apply: etrans;
-     first (apply: (proj2_sig (balanceR2 Black l (proj1_sig (dr _)) erefl erefl));
+     first (apply: (proj2_sig (balright Black l (proj1_sig (dr _)) erefl erefl));
             apply: ltn_subLN; by eauto).
     congr (_ ++ _); by apply: (proj2_sig (dr _)).
   Qed.
