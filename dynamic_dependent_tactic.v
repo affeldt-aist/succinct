@@ -802,127 +802,117 @@ Proof. by move/leq_trans; apply; rewrite leq_addr. Qed.
 Lemma leq_addrn a b c : a <= c -> a <= b + c.
 Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
 
-  Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addr leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW'.
+Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addr leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW'.
 
-  Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w num ones (incr_black d c) c) :
-      { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (incr_black d c) c | dflatteni' B' = delete (dflatten B) i }.
-    case val : (i < num);last first.
-     move/negP/negP : val;
-     rewrite ltnNge; move/negPn => val;
-     rewrite daccess_default // !subn0 -delete_oversize;
-     last by rewrite size_dflatten.
-     apply: (exist _ (Stay _ _ B)) => //.
+Lemma ordinal_caseL {s1 o1 s2 o2 d i cl cr} c
+      (lok : color_ok c cl)
+      (rok : color_ok c cr)
+      (l : tree w s1 o1 d cl)
+      (r : tree w s2 o2 d cr) :
+      i < s1 -> 
+      {B' : near_tree' (s1 - 1) (o1 - daccess l i) d cl | dflatteni' B' = delete (dflatten l) i} ->
+      {B' : near_tree' (s1 + s2 - 1) (o1 + o2 - daccess l i) (incr_black d c) c | dflatteni' B' = delete (dflatten l) i ++ dflatten r }.
+Proof.
+  move=> H dl.
+  rewrite !addnBAC; eauto.
+  apply: exist; apply: etrans;
+  first by (apply (proj2_sig (balleft c (proj1_sig dl) r lok rok))).
+  congr (_ ++ _); by apply: (proj2_sig dl).
+Qed.
 
-    move: B; move dceq: (incr_black d c) => d' B;
-    elim: B d dceq i val => // [s1 o1 ? ? d'' [] [] [] // g1 g2 l IHl r IHr] d [] dceq i val;
-    move: dceq l r IHl IHr => /= <- l r IHl IHr;
-    rewrite delete_cat size_dflatten;
-    case: ifP => H;
-    (* most general cases *)
-    try (move: (IHl d erefl i H) => dl;
-         rewrite !addnBAC; eauto;
-         apply: exist; apply: etrans;
-         first (by apply (proj2_sig (balleft Black (`dl) r erefl erefl)));
-         congr (_ ++ _); by apply: (proj2_sig dl));
-    try (move: (IHr d erefl (i - s1)) => dr;
-         rewrite -!addnBA; eauto;
-         apply: exist; apply: etrans;
-         first (apply: (proj2_sig (balright Black l _ erefl erefl));
-                apply: (` (dr _)); apply: ltn_subLN; by eauto);
-         congr (_ ++ _); by apply: (proj2_sig (dr _))).
+Lemma ordinal_caseR {s1 o1 s2 o2 d i cl cr} c
+      (lok : color_ok c cl)
+      (rok : color_ok c cr)
+      (l : tree w s1 o1 d cl)
+      (r : tree w s2 o2 d cr) :
+      i < s1 + s2 -> 
+      {B' : near_tree' (s2 - 1) (o2 - daccess r (i - s1)) d cr | dflatteni' B' = delete (dflatten r) (i - s1)} ->
+      {B' : near_tree' (s1 + s2 - 1) (o1 + o2 - daccess r (i - s1)) (incr_black d c) c | dflatteni' B' = dflatten l ++ delete (dflatten r) (i - s1)}.
+Proof.
+  move=> H dr.
+  rewrite -!addnBA; eauto.
+  apply: exist; apply: etrans;
+  first (apply: (proj2_sig (balright c l (proj1_sig dr) lok rok));
+         apply: ltn_subLN; by eauto);
+  congr (_ ++ _); by apply: (proj2_sig dr).
+Qed.
 
-    case: d r l IHl IHr val H => {c d' d''} [| d] /=.
-     move creq: (Red) => c;
-     move cbeq: (Black) => c'; move deq: (0) => d r l.
-     case: l creq cbeq deq r => // ? ? ? ? ? [] [] [] // ? ? ll lr ? <- /= deq r {c} _ _ val H.
-     move: deq ll lr r val H => <- ll lr r val H.
-     move: (delete_from_leaves Red lr r (i - (size (dflatten ll)))).
-     rewrite delete_cat access_cat -!daccessK !size_dflatten -!ltn_subln ; eauto.
-     rewrite H !addnA val subnDA /= -!addnA -!addnBA; eauto => dr.
-     apply: exist; apply: etrans.
-     apply (proj2_sig (balright Black ll (proj1_sig dr) erefl erefl)).
-     rewrite -!catA; congr (_ ++ _).
-     apply: (proj2_sig dr).
-    (* ordinal case *)
-    move=> r l _ IHr val H.
-    move: (IHr d erefl (i - s1)) => dr.
-    rewrite -!addnBA; eauto.
-    apply: exist; apply: etrans;
-     first (apply: (proj2_sig (balright Black l (proj1_sig (dr _)) erefl erefl));
-            apply: ltn_subLN; by eauto).
-    congr (_ ++ _); by apply: (proj2_sig (dr _)).
+(* Lemma case_couple {s1 o1 s2 o2 d i cl cr} c *)
 
-    case: d r l IHl IHr val H => {c d' d''} [| d] /=.
-     move creq: (Red) => c;
-     move cbeq: (Black) => c'; move deq: (0) => d r l.
-     case: r creq cbeq deq l => // ? ? ? ? ? [] [] [] // ? ? rl rr ? <- /= deq l {c} _ _ val H.
-     move: deq rl rr l val H => <- rl rr l val H.
-     move: (delete_from_leaves Red l rl i).
-     rewrite delete_cat access_cat -!daccessK !size_dflatten; eauto.
-     rewrite ltn_addr H /=; auto => dl.
-     rewrite !addnA.
-     rewrite [s1 + _ + _ - _]addnBAC; eauto.
-     rewrite [o1 + _ + _ - _]addnBAC; eauto.
-     apply: exist; apply: etrans.
-     apply (proj2_sig (balleft Black (proj1_sig dl) rr erefl erefl)).
-     rewrite !catA; congr (_ ++ _).
-     exact: (proj2_sig dl).
-     by rewrite (leq_trans _ (leq_addr _ _)) // leq_access_count.
 
-    (* ordinal case *)
-    move=> r l IHl _ val H.
-    move: (IHl d erefl i H) => dl;
-    rewrite !addnBAC; eauto;
-    apply: exist; apply: etrans;
-    first (by apply (proj2_sig (balleft Black (`dl) r erefl erefl)));
-    congr (_ ++ _); by apply: (proj2_sig dl).
+Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w num ones (incr_black d c) c) :
+    { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (incr_black d c) c | dflatteni' B' = delete (dflatten B) i }.
+  case val : (i < num);last first.
+   move/negP/negP : val;
+   rewrite ltnNge; move/negPn => val;
+   rewrite daccess_default // !subn0 -delete_oversize;
+   last by rewrite size_dflatten.
+   apply: (exist _ (Stay _ _ B)) => //.
 
-    case: d l r IHl IHr => [| d].
-     move => l r _ _.
-     move: (delete_from_leaves Red l r i).
-     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
-    move => l r IHl _.
-    move: (IHl d erefl i H) => dl;
-    rewrite !addnBAC; eauto;
-    apply: exist; apply: etrans.
-    apply (proj2_sig (balleft Red (`dl) r erefl erefl)).
-    congr (_ ++ _); by apply: (proj2_sig dl).
+  move: B; move dceq: (incr_black d c) => d' B;
+  elim: B d dceq i val => {c} // [s1 o1 ? ? d'' [] [] c // g1 g2 l IHl r IHr] d [] dceq i val;
+  (have dceq' : d = d'' by case: c dceq g1 g2 => //=; case => //);
+  move: dceq' l r IHl IHr => /= <- l r IHl IHr {dceq};
+  rewrite delete_cat size_dflatten;
+  case: ifP => H;
+  (* most general cases *)
+  try (apply: (ordinal_caseL c _ _ l r H (IHl d erefl i H)); by eauto);
+  try (apply: (ordinal_caseR c _ _ l r val (IHr d erefl (i - s1) _));
+       eauto; apply: ltn_subLN; by eauto).
 
-    case: d l r IHl IHr => [| d].
-     move => l r _ _.
-     move: (delete_from_leaves Red l r i).
-     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
-    move => l r _ IHr.
-    move: (IHr d erefl (i - s1)) => dr.
-    rewrite -!addnBA; eauto.
-    apply: exist; apply: etrans;
-     first (apply: (proj2_sig (balright Red l (proj1_sig (dr _)) erefl erefl));
-            apply: ltn_subLN; by eauto).
-    congr (_ ++ _); by apply: (proj2_sig (dr _)).
+  case: d r l IHl IHr val H => {d' d''} [| d] /=.
+   move creq: (Red) => cr;
+   move cbeq: (Black) => cb; move deq: (0) => d r l.
+   case: l creq cbeq deq r => // ? ? ? ? ? [] [] [] // ? ? ll lr ? <- /= deq r _ _ val H.
+   move: deq ll lr r val H => <- ll lr r val H.
+   move: (delete_from_leaves Red lr r (i - (size (dflatten ll)))).
+   rewrite delete_cat access_cat -!daccessK !size_dflatten -!ltn_subln ; eauto.
+   rewrite H !addnA val subnDA /= -!addnA -!addnBA; eauto => dr.
+   apply: exist; apply: etrans.
+   apply: (proj2_sig (balright c ll (proj1_sig dr) _ _)); eauto.
+   rewrite -!catA; congr (_ ++ _).
+   apply: (proj2_sig dr).
+   
+  move=> r l _ IHr val H.
+  apply: (ordinal_caseR c _ _ l r val (IHr d erefl (i - s1) _));
+   eauto; apply: ltn_subLN; by eauto.
+  
+  case: d r l IHl IHr val H => {d' d''} [| d] /=.
+   move creq: (Red) => cr;
+   move cbeq: (Black) => cb'; move deq: (0) => d r l.
+   case: r creq cbeq deq l => // ? ? ? ? ? [] [] [] // ? ? rl rr ? <- /= deq l _ _ val H.
+   move: deq rl rr l val H => <- rl rr l val H.
+   move: (delete_from_leaves Red l rl i).
+   rewrite delete_cat access_cat -!daccessK !size_dflatten; eauto.
+   rewrite ltn_addr H /=; auto => dl.
+   rewrite !addnA.
+   rewrite [s1 + _ + _ - _]addnBAC; eauto.
+   rewrite [o1 + _ + _ - _]addnBAC; eauto.
+   apply: exist; apply: etrans.
+   apply: (proj2_sig (balleft c (proj1_sig dl) rr _ _ )); eauto.
+   rewrite !catA; congr (_ ++ _).
+   exact: (proj2_sig dl).
+   by rewrite (leq_trans _ (leq_addr _ _)) // leq_access_count.
 
-    case: d l r IHl IHr => [| d].
-     move => l r _ _.
-     move: (delete_from_leaves Black l r i).
-     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
-    move => l r IHl _.
-    move: (IHl d erefl i H) => dl;
-    rewrite !addnBAC; eauto;
-    apply: exist; apply: etrans.
-    apply (proj2_sig (balleft Black (`dl) r erefl erefl)).
-    congr (_ ++ _); by apply: (proj2_sig dl).
+  (* ordinal case *)
+  move=> r l IHl _ val H;
+  apply: (ordinal_caseL c _ _ l r H (IHl d erefl i H)); by eauto.
 
-    case: d l r IHl IHr => [| d].
-     move => l r _ _.
-     move: (delete_from_leaves Black l r i).
-     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
-    move => l r _ IHr.
-    move: (IHr d erefl (i - s1)) => dr.
-    rewrite -!addnBA; eauto.
-    apply: exist; apply: etrans;
-     first (apply: (proj2_sig (balright Black l (proj1_sig (dr _)) erefl erefl));
-            apply: ltn_subLN; by eauto).
-    congr (_ ++ _); by apply: (proj2_sig (dr _)).
-  Qed.
+  case: d l r IHl IHr => [| d].
+   move => l r _ _.
+   move: (delete_from_leaves c l r i).
+   by rewrite access_cat delete_cat size_dflatten H val /= daccessK.
+  move => l r IHl _.
+  apply: (ordinal_caseL c _ _ l r H (IHl d erefl i H)); by eauto.
+
+  case: d l r IHl IHr => [| d].
+   move => l r _ _.
+   move: (delete_from_leaves c l r i).
+   by rewrite access_cat delete_cat size_dflatten H val /= daccessK.
+  move => l r _ IHr.
+  apply: (ordinal_caseR c _ _ l r val (IHr d erefl (i - s1) _));
+   eauto; apply: ltn_subLN; by eauto.
+Qed.
 End delete.
 
 End dynamic_dependent.
