@@ -837,9 +837,6 @@ Proof.
   congr (_ ++ _); by apply: (proj2_sig dr).
 Qed.
 
-(* Lemma case_couple {s1 o1 s2 o2 d i cl cr} c *)
-
-
 Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w num ones (incr_black d c) c) :
     { B' : near_tree' (num - (i < num)) (ones - (daccess B i)) (incr_black d c) c | dflatteni' B' = delete (dflatten B) i }.
   case val : (i < num);last first.
@@ -861,8 +858,8 @@ Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w nu
        eauto; apply: ltn_subLN; by eauto).
 
   case: d r l IHl IHr val H => {d' d''} [| d r l _ IHr val H] /=.
-   move creq: (Red) => cr;
-   move cbeq: (Black) => cb; move deq: (0) => d r l.
+   move creq: Red => cr;
+   move cbeq: Black => cb; move deq: 0 => d r l.
    case: l creq cbeq deq r => // ? ? ? ? ? [] [] [] // ? ? ll lr ? <- /= deq r _ _ val H.
    move: deq ll lr r val H => <- ll lr r val H.
    move: (delete_from_leaves Red lr r (i - (size (dflatten ll)))).
@@ -876,8 +873,8 @@ Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w nu
    eauto; apply: ltn_subLN; by eauto.
   
   case: d r l IHl IHr val H => {d' d''} [| d r l IHl _ val H] /=.
-   move creq: (Red) => cr;
-   move cbeq: (Black) => cb'; move deq: (0) => d r l.
+   move creq: Red => cr;
+   move cbeq: Black => cb'; move deq: 0 => d r l.
    case: r creq cbeq deq l => // ? ? ? ? ? [] [] [] // ? ? rl rr ? <- /= deq l _ _ val H.
    move: deq rl rr l val H => <- rl rr l val H.
    move: (delete_from_leaves Red l rl i).
