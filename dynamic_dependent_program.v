@@ -13,45 +13,36 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-  Definition RNode {lnum lones rnum rones d} (l : tree w lnum lones d Black)
-    (r : tree w rnum rones d Black) : tree w (lnum + rnum) (lones + rones) d Red :=
-    Node red_black_ok red_black_ok l r.
-
-  Definition BNode {lnum lones rnum rones d cl cr}
-    (l : tree w lnum lones d cl) (r : tree w rnum rones d cr) :
-    tree w (lnum + rnum) (lones + rones) d.+1 Black :=
-    Node (black_any_ok cl) (black_any_ok cr) l r.
-
-  Inductive ins_tree : nat -> nat -> nat -> color -> Type :=
+(*  Inductive ins_tree : nat -> nat -> nat -> color -> Type :=
   | Fix : forall {num1 ones1 num2 ones2 num3 ones3 d},
       tree w num1 ones1 d Black -> tree w num2 ones2 d Black ->
       tree w num3 ones3 d Black ->
       ins_tree (num1 + num2 + num3) (ones1 + ones2 + ones3) d Red
-  | Tr : forall {num ones d c} pc, tree w num ones d c -> ins_tree num ones d pc.
+  | Tr : forall {num ones d c} pc, tree w num ones d c -> ins_tree num ones d pc.*)
 
-  Definition ins_tree_color {nums ones d c} (t : ins_tree nums ones d c) :=
+  Definition near_tree_color {nums ones d c} (t : near_tree w nums ones d c) :=
     match t with
-    | Fix _ _ _ _ _ _ _ _ _ _ => Red
-    | Tr _ _ _ _ _ _ => Black
+    | Bad _ _ _ _ _ _ _ _ _ _ => Red
+    | Good _ _ _ _ _ _ => Black
     end.
 
-  Definition black_of_fix {num ones d c} (t : ins_tree num ones d c) :=
+  Definition black_of_fix {num ones d c} (t : near_tree w num ones d c) :=
     match t with
-    | Fix _ _ _ _ _ _ _ _ _ _ => Black
-    | Tr _ _ _ c _ _ => c
+    | Bad _ _ _ _ _ _ _ _ _ _ => Black
+    | Good _ _ _ c _ _ => c
     end.
 
-  Definition fix_ins_tree {num ones d c} (t : ins_tree num ones d c) :
-    tree w num ones (incr_black d (inv (ins_tree_color t))) (black_of_fix t) :=
+  Definition fix_near_tree {num ones d c} (t : near_tree w num ones d c) :
+    tree w num ones (incr_black d (inv (near_tree_color t))) (black_of_fix t) :=
     match t with
-    | Fix _ _ _ _ _ _ _ t1 t2 t3 => BNode (RNode t1 t2) t3
-    | Tr _ _ _ _ _ t' => t'
+    | Bad _ _ _ _ _ _ _ t1 t2 t3 => bnode (rnode t1 t2) t3
+    | Good _ _ _ _ _ t' => t'
     end.
 
-  Definition dflatteni {num ones d c} (B : ins_tree num ones d c) :=
+  Definition dflatteni {num ones d c} (B : near_tree w num ones d c) :=
     match B with
-    | Fix _ _ _ _ _ _ _ t1 t2 t3 => dflatten t1 ++ dflatten t2 ++ dflatten t3
-    | Tr _ _ _ _ _ t' => dflatten t'
+    | Bad _ _ _ _ _ _ _ t1 t2 t3 => dflatten t1 ++ dflatten t2 ++ dflatten t3
+    | Good _ _ _ _ _ t' => dflatten t'
     end.
 
   (*
@@ -59,23 +50,23 @@ Section insert.
    * which in turn is translated from dynamic_dependent.v
    *)
   Program Definition balanceL {lnum lones rnum rones d cl cr} (c : color)
-            (l : ins_tree lnum lones d cl)
+            (l : near_tree w lnum lones d cl)
             (r : tree w rnum rones d cr)
-            (ok_l : color_ok c (ins_tree_color l))
+            (ok_l : color_ok c (near_tree_color l))
             (ok_r : color_ok c cr) :
-    { t' : ins_tree (lnum + rnum) (lones + rones) (incr_black d c) c
+    { t' : near_tree w (lnum + rnum) (lones + rones) (incr_black d c) c
     | dflatteni t' = dflatteni l ++ dflatten r } :=
     match c with
     | Black =>
       match l with
-      | Fix _ _ _ _ _ _ _ t1 t2 t3 => Tr Black (RNode (BNode t1 t2) (BNode t3 r))
-      | Tr _ _ _ _ _ l' => Tr Black (BNode l' r)
+      | Bad _ _ _ _ _ _ _ t1 t2 t3 => Good Black (rnode (bnode t1 t2) (bnode t3 r))
+      | Good _ _ _ _ _ l' => Good Black (bnode l' r)
       end
     | Red => match cr with
             | Red => _ (* impossible *)
             | Black => match l with
-                      | Fix _ _ _ _ _ _ _ _ _ _ => _ (* impossible *)
-                      | @Tr _ _ _ c' _ l' =>
+                      | Bad _ _ _ _ _ _ _ _ _ _ => _ (* impossible *)
+                      | @Good _ _ _ _ c' _ l' =>
                         match c' with
                         | Red =>
                           match l' with
@@ -83,13 +74,13 @@ Section insert.
                           | @Node _ _ _ _ _ _ cll clr _ _ _ t1 t2 =>
                             match cll with
                             | Black => match clr with
-                                      | Black => Fix t1 t2 r
+                                      | Black => Bad t1 t2 r
                                       | Red => _ (* impossible *)
                                       end
                             | Red => _ (* impossible *)
                             end
                           end
-                        | Black => Tr Red (RNode l' r)
+                        | Black => Good Red (rnode l' r)
                         end
                       end
             end
@@ -124,22 +115,22 @@ Section insert.
 
   Program Definition balanceR {lnum lones rnum rones d cl cr} (c : color)
             (l : tree w lnum lones d cl)
-            (r : ins_tree rnum rones d cr)
+            (r : near_tree w rnum rones d cr)
             (ok_l : color_ok c cl)
-            (ok_r : color_ok c (ins_tree_color r)) :
-    { t' : ins_tree (lnum + rnum) (lones + rones) (incr_black d c) c |
+            (ok_r : color_ok c (near_tree_color r)) :
+    { t' : near_tree w (lnum + rnum) (lones + rones) (incr_black d c) c |
       dflatteni t' = dflatten l ++ dflatteni r } :=
     match c with
     | Black =>
       match r with
-      | Fix _ _ _ _ _ _ _ t1 t2 t3 => Tr Black (RNode (BNode l t1) (BNode t2 t3))
-      | Tr _ _ _ _ _ r' => Tr Black (BNode l r')
+      | Bad _ _ _ _ _ _ _ t1 t2 t3 => Good Black (rnode (bnode l t1) (bnode t2 t3))
+      | Good _ _ _ _ _ r' => Good Black (bnode l r')
       end
     | Red => match cl with
             | Red => _ (* impossible *)
             | Black => match r with
-                      | Fix _ _ _ _ _ _ _ _ _ _ => _ (* impossible *)
-                      | @Tr _ _ _ c' _ r' =>
+                      | Bad _ _ _ _ _ _ _ _ _ _ => _ (* impossible *)
+                      | @Good _ _ _ _ c' _ r' =>
                         match c' with
                         | Red =>
                           match r' with
@@ -147,13 +138,13 @@ Section insert.
                           | @Node _ _ _ _ _ _ cll clr _ _ _ t1 t2 =>
                             match cll with
                             | Black => match clr with
-                                      | Black => Fix l t1 t2
+                                      | Black => Bad l t1 t2
                                       | Red => _ (* impossible *)
                                       end
                             | Red => _ (* impossible *)
                             end
                           end
-                        | Black => Tr Red (RNode l r')
+                        | Black => Good Red (rnode l r')
                         end
                       end
             end
@@ -201,7 +192,7 @@ Section insert.
   Program Fixpoint dins {num ones d c}
     (B : tree w num ones d c)
     (b : bool) (i : nat) {measure (size_of_tree B) } :
-    { B' : ins_tree num.+1 (ones + b) d c |
+    { B' : near_tree w num.+1 (ones + b) d c |
       dflatteni B' = insert1 (dflatten B) b i } :=
     match B with
     | Leaf s _ _ =>
@@ -212,8 +203,8 @@ Section insert.
         let n := (size s') %/ 2 in
         let sl := take n s' in
         let sr := drop n s' in
-        Tr c (RNode (Leaf _ sl _ _) (Leaf _ sr _ _))
-      | false => Tr c (Leaf _ s' _ _)
+        Good c (rnode (Leaf _ sl _ _) (Leaf _ sr _ _))
+      | false => Good c (Leaf _ s' _ _)
       end
     | Node lnum _ _ _ _ _ _ _ ok_l ok_r l r =>
       if i < lnum
@@ -320,7 +311,7 @@ Section insert.
      dflatten B' = dflatten B } :=
    match B with
    | Leaf _ _ _ => B
-   | Node _ _ _ _ _ _ _ _ _ _ l r => BNode l r
+   | Node _ _ _ _ _ _ _ _ _ _ l r => bnode l r
    end.
 
  Next Obligation.
@@ -334,20 +325,19 @@ Section insert.
 
  Definition dinsert {num ones d c}
    (B : tree w num ones d c) (b : bool) (i : nat) :=
-   (` (paint_black (fix_ins_tree (` (dins B b i))))).
+   (` (paint_black (fix_near_tree (` (dins B b i))))).
 
- Lemma fix_ins_treeK {num ones d c} (t : ins_tree num ones d c) :
-   dflatten (fix_ins_tree t) = dflatteni t.
+ Lemma fix_near_treeK {num ones d c} (t : near_tree w num ones d c) :
+   dflatten (fix_near_tree t) = dflatteni t.
  Proof.
-   case: t => //= num1 ones1 num2 ones2 num3 ones3 d' t1 t2 t3.
-   by rewrite catA.
+ case: t => //= num1 ones1 num2 ones2 num3 ones3 d' t1 t2 t3;  by rewrite catA.
  Qed.
 
  Theorem dinsertK {num ones d c} (B : tree w num ones d c) (b : bool) (i : nat) :
    dflatten (dinsert B b i) = insert1 (dflatten B) b i.
  Proof.
    rewrite /dinsert. destruct dins, paint_black => //=.
-   by rewrite e0 //= fix_ins_treeK e.
+   by rewrite e0 //= fix_near_treeK e.
  Qed.
 
 End insert.
@@ -850,21 +840,21 @@ Section delete.
                     end
                   else
                     match pc with
-                    | Red => Stay Red _ (RNode
+                    | Red => Stay Red _ (rnode
                                           (Leaf _ (rcons (delete arr1 i)
                                                        (access arr2 0)) _ _)
                                           (Leaf _ (delete arr2 0) _ _))
-                    | Black => Stay Black _ (BNode
+                    | Black => Stay Black _ (bnode
                                               (Leaf _ (rcons (delete arr1 i)
                                                            (access arr2 0)) _ _)
                                               (Leaf _ (delete arr2 0) _ _))
                     end
              else
                match pc with
-               | Red => Stay Red _ (RNode
+               | Red => Stay Red _ (rnode
                                      (Leaf _ (delete arr1 i) _ _)
                                      (Leaf _ arr2 _ _))
-               | Black => Stay Black _ (BNode
+               | Black => Stay Black _ (bnode
                                          (Leaf _ (delete arr1 i) _ _)
                                          (Leaf _ arr2 _ _))
                end
@@ -881,27 +871,27 @@ Section delete.
                     else
                       match pc with
                       | Red => Stay Red _
-                                   (RNode (Leaf _ (delete_last arr1) _ _)
+                                   (rnode (Leaf _ (delete_last arr1) _ _)
                                           (Leaf _ ((blast arr1) ::
                                                  (delete arr2 (i - size arr1)))
                                             _ _))
                       | Black => Stay Black _
-                                     (BNode (Leaf _ (delete_last arr1) _ _)
+                                     (bnode (Leaf _ (delete_last arr1) _ _)
                                             (Leaf _ ((blast arr1) ::
                                                    (delete arr2 (i - size arr1)))
                                               _ _))
                       end
                else
                  match pc with
-                 | Red => Stay Red _ (RNode (Leaf _ arr1 _ _)
+                 | Red => Stay Red _ (rnode (Leaf _ arr1 _ _)
                                            (Leaf _ (delete arr2 (i - size arr1)) _ _))
-                 | Black => Stay Black _ (BNode (Leaf _ arr1 _ _)
+                 | Black => Stay Black _ (bnode (Leaf _ arr1 _ _)
                                                (Leaf _ (delete arr2 (i - size arr1)) _ _))
                  end
           else
             match pc with
-            | Red => Stay Red _ (RNode (Leaf _ arr1 _ _) (Leaf _ arr2 _ _))
-            | Black => Stay Black _ (BNode (Leaf _ arr1 _ _) (Leaf _ arr2 _ _))
+            | Red => Stay Red _ (rnode (Leaf _ arr1 _ _) (Leaf _ arr2 _ _))
+            | Black => Stay Black _ (bnode (Leaf _ arr1 _ _) (Leaf _ arr2 _ _))
             end
       | Node _ _ _ _ _ _ _ _ _ _ _ _  => _
       end
@@ -1440,7 +1430,7 @@ Section delete.
     match c with
     | Red =>
       match r with
-      | Stay _ _ _ _ _ _ r' => Stay Red _ (RNode l r')
+      | Stay _ _ _ _ _ _ r' => Stay Red _ (rnode l r')
       | Down _ _ _ r' =>
         match l with
         | Leaf _ _ _ => _
@@ -1449,11 +1439,11 @@ Section delete.
           | Red => _
           | Black =>
             match clr with
-            | Black => Stay Red _ (BNode ll (RNode lr r'))
+            | Black => Stay Red _ (bnode ll (rnode lr r'))
             | Red => match lr with
                     | Leaf _ _ _ => _
                     | Node _ _ _ _ _ _ _ _ _ _ lrl lrr =>
-                      Stay Red _ (RNode (BNode ll lrl) (BNode lrr r'))
+                      Stay Red _ (rnode (bnode ll lrl) (bnode lrr r'))
                     end
             end
           end
@@ -1461,7 +1451,7 @@ Section delete.
       end
     | Black =>
       match r with
-      | Stay _ _ _ _ _ _ r' => Stay Black _ (BNode l r')
+      | Stay _ _ _ _ _ _ r' => Stay Black _ (bnode l r')
       | Down _ _ _ r' =>
         match l with
         | Leaf _ _ _ => _
@@ -1473,7 +1463,7 @@ Section delete.
                     match lr with
                     | Leaf _ _ _ => _
                     | Node _ _ _ _ _ _ _ _ _ _ lrl lrr =>
-                      Stay Black _ (BNode (BNode ll lrl) (BNode lrr r'))
+                      Stay Black _ (bnode (bnode ll lrl) (bnode lrr r'))
                     end
                   end
           | Black => match cl with
@@ -1486,7 +1476,7 @@ Section delete.
                         | Node _ _ _ _ _ clrl clrr _ _ _ lrl lrr =>
                           match clrr with
                           | Black =>
-                            Stay Black _ (BNode ll (BNode lrl (RNode lrr r')))
+                            Stay Black _ (bnode ll (bnode lrl (rnode lrr r')))
                           | Red =>
                             match lrr with
                             | Leaf _ _ _ => _
@@ -1497,17 +1487,17 @@ Section delete.
                                 match clrrr with
                                 | Red => _
                                 | Black =>
-                                  Stay Black _ (BNode ll
-                                                 (RNode
-                                                    (BNode lrl lrrl)
-                                                    (BNode lrrr r')))
+                                  Stay Black _ (bnode ll
+                                                 (rnode
+                                                    (bnode lrl lrrl)
+                                                    (bnode lrrr r')))
                                 end
                               end
                             end
                           end
                         end
                       end
-                    | Black => Down (BNode ll (RNode lr r'))
+                    | Black => Down (bnode ll (rnode lr r'))
                     end
           end
         end
@@ -1654,7 +1644,7 @@ Section delete.
           | Stay _ _ _ cl' _ _ l' =>
             match cl' with
             | Red => _
-            | Black => Stay Red _ (RNode l' r)
+            | Black => Stay Red _ (rnode l' r)
             end
           | Down _ _ _ l' =>
             match r with
@@ -1670,11 +1660,11 @@ Section delete.
                   | Black =>
                     match crlr with
                     | Red => _
-                    | Black => Stay Red _ (RNode (BNode l' rll) (BNode rlr rr))
+                    | Black => Stay Red _ (rnode (bnode l' rll) (bnode rlr rr))
                     end
                   end
                 end
-              | Black => Stay Red _ (BNode (RNode l' rl) rr)
+              | Black => Stay Red _ (bnode (rnode l' rl) rr)
               end
             end
           end
@@ -1682,7 +1672,7 @@ Section delete.
       end
     | Black =>
       match l with
-      | Stay _ _ _ _ _ _ l' => Stay Black _ (BNode l' r)
+      | Stay _ _ _ _ _ _ l' => Stay Black _ (bnode l' r)
       | Down _ _ _ l' =>
         match r with
         | Leaf _ _ _ => _
@@ -1700,7 +1690,7 @@ Section delete.
                 | Black =>
                   match crlr with
                   | Red => _
-                  | Black => Stay Black _ (BNode (BNode l' rll) (BNode rlr rr))
+                  | Black => Stay Black _ (bnode (bnode l' rll) (bnode rlr rr))
                   end
                 end
               end
@@ -1725,16 +1715,16 @@ Section delete.
                         match crllr with
                         | Red => _
                         | Black =>
-                          Stay Black _ (BNode (BNode l' rlll)
-                                              (RNode (BNode rllr rlr) rr))
+                          Stay Black _ (bnode (bnode l' rlll)
+                                              (rnode (bnode rllr rlr) rr))
                         end
                       end
                     end
-                  | Black => Stay Black _ (BNode (BNode (RNode l' rll) rlr) rr)
+                  | Black => Stay Black _ (bnode (bnode (rnode l' rll) rlr) rr)
                   end
                 end
               end
-            | Black => Down (BNode (RNode l' rl) rr)
+            | Black => Down (bnode (rnode l' rl) rr)
             end
           end
         end
@@ -1892,7 +1882,7 @@ Section delete.
                       let (lres, _) := delete_from_leaves Red ll lr i in
                       match lres with
                       | Stay _ _ _ _ _ _ lres' =>
-                        Stay Black _ (BNode lres' r)
+                        Stay Black _ (bnode lres' r)
                       | Down _ _ _ _ => _
                       end
                     end
@@ -1914,7 +1904,7 @@ Section delete.
                     let (res, _) := balleft Black l' r _ _ in
                     res
                   | Black =>
-                    let (l', _) := ddelete (RNode l rl) i _ in
+                    let (l', _) := ddelete (rnode l rl) i _ in
                     let (res, _) := balleft Black l' rr _ _ in
                     res
                   end
@@ -1943,7 +1933,7 @@ Section delete.
                       let (r', _) := delete_from_leaves Red rl rr (i - lnum) in
                       match r' with
                       | Stay _ _ _ _ _ _ r' =>
-                        Stay Black _ (BNode l r')
+                        Stay Black _ (bnode l r')
                       | Down _ _ _ _ => _
                       end
                     end
@@ -1968,7 +1958,7 @@ Section delete.
                       let (res, _) := balright Black l r' _ _ in
                       res
                     | Black =>
-                      let (r', _) := ddelete (RNode lr r) (i - llnum) _ in
+                      let (r', _) := ddelete (rnode lr r) (i - llnum) _ in
                       let (res, _) := balright Black ll r' _ _ in
                       res
                     end

@@ -122,4 +122,22 @@ rewrite /count_one in IHl,IHr.
 by rewrite /count_one count_cat IHl IHr.
 Qed.
 
+Definition rnode {s1 s2 o1 o2 d} (l : tree s1 o1 d Black)
+  (r : tree s2 o2 d Black) : tree (s1 + s2) (o1 + o2) d Red :=
+  Node red_black_ok red_black_ok l r.
+
+Definition bnode {s1 s2 o1 o2 d cl cr} (l : tree s1 o1 d cl)
+  (r : tree s2 o2 d cr) : tree (s1 + s2) (o1 + o2) (incr_black d Black) Black :=
+  Node (black_any_ok cl) (black_any_ok cr) l r.
+
+Inductive near_tree : nat -> nat -> nat -> color -> Type :=
+| Bad : forall {s1 o1 s2 o2 s3 o3 d},
+    tree s1 o1 d Black ->
+    tree s2 o2 d Black ->
+    tree s3 o3 d Black ->
+    near_tree (s1 + s2 + s3) (o1 + o2 + o3) d Red
+| Good: forall {s o d c} p,
+    tree s o d c ->
+    near_tree s o d p.
+
 End wordsize.

@@ -13,31 +13,12 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-  Definition rnode {s1 s2 o1 o2 d} (l : tree w s1 o1 d Black)
-             (r : tree w s2 o2 d Black) : tree w (s1 + s2) (o1 + o2) d Red :=
-    Node red_black_ok red_black_ok l r.
-
-  Definition bnode {s1 s2 o1 o2 d cl cr} (l : tree w s1 o1 d cl)
-             (r : tree w s2 o2 d cr)
-           : tree w (s1 + s2) (o1 + o2) (incr_black d Black) Black :=
-    Node (black_any_ok cl) (black_any_ok cr) l r.
-
-  Inductive near_tree : nat -> nat -> nat -> color -> Type :=
-  | Bad : forall {s1 o1 s2 o2 s3 o3 d},
-      tree w s1 o1 d Black ->
-      tree w s2 o2 d Black ->
-      tree w s3 o3 d Black ->
-      near_tree (s1 + s2 + s3) (o1 + o2 + o3) d Red
-  | Good: forall {s o d c} p,
-      tree w s o d c ->
-      near_tree s o d p.
-
   (* Xuanrui: I see no point to define fix_color in Ltac...
    * Gallina would be much more readable here
    * Kazunari: I totally agree. sorry for being lazy.
    *)
 
-  Definition fix_color {nl ml d c} (l : near_tree nl ml d c) :=
+  Definition fix_color {nl ml d c} (l : near_tree w nl ml d c) :=
     match l with
     | Bad _ _ _ _ _ _ _ _ _ _ => Red
     | Good _ _ _ _ _ _ => Black
@@ -45,28 +26,28 @@ Section insert.
 
   (* Xuanrui: same, programming those in Ltac makes little sense to me *)
 
-  Definition black_of_bad {nl ml d c} (l : near_tree nl ml d c) :=
+  Definition black_of_bad {nl ml d c} (l : near_tree w nl ml d c) :=
     match l with
     | Bad _ _ _ _ _ _ _ _ _ _ => Black
     | Good _ _ _ c _ _ => c
     end.
 
-  Definition real_tree {nl ml d c} (t : near_tree nl ml d c) : tree w nl ml (incr_black d (inv (fix_color t))) (black_of_bad t) :=
+  Definition real_tree {nl ml d c} (t : near_tree w nl ml d c) : tree w nl ml (incr_black d (inv (fix_color t))) (black_of_bad t) :=
     match t with
     | Bad _ _ _ _ _ _ _ x y z => bnode (rnode x y) z
     | Good _ _ _ _ _ t' => t'
     end.
 
-  Definition dflattenn {n m d c} (B : near_tree n m d c) :=
+  Definition dflattenn {n m d c} (B : near_tree w n m d c) :=
     match B with
     | Bad _ _ _ _ _ _ _ x y z => dflatten x ++ dflatten y ++ dflatten z
     | Good _ _ _ _ _ t => dflatten t
     end.
 
-  Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree nl ml d cl) (r : tree w nr mr d cr) :
+  Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree w nl ml d cl) (r : tree w nr mr d cr) :
     color_ok p (fix_color l) (* important claim! *) ->
     color_ok p cr ->
-    {tr : near_tree (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflattenn l ++ dflatten r}.
+    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflattenn l ++ dflatten r}.
 
     destruct l as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc l'].
     (* l is bad *)
@@ -87,10 +68,10 @@ Section insert.
         by exists (Good Red (rnode l' r)).
   Defined.
 
-  Definition balanceR {nl ml d cl cr nr mr} (p : color) (l : tree w nl ml d cl) (r : near_tree nr mr d cr):
+  Definition balanceR {nl ml d cl cr nr mr} (p : color) (l : tree w nl ml d cl) (r : near_tree w nr mr d cr):
     color_ok p cl ->
     color_ok p (fix_color r) ->  (* important claim! *)
-    {tr : near_tree (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflatten l ++ dflattenn r}.
+    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflattenn tr = dflatten l ++ dflattenn r}.
 
     destruct r as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc r'].
     (* r is bad *)
@@ -112,7 +93,7 @@ Section insert.
   Defined.
 
   Program Fixpoint dinsert' {n m d c} (B : tree w n m d c) (b : bool) i
-          {measure (size_of_tree B)} : { B' : near_tree n.+1 (m + b) d c
+          {measure (size_of_tree B)} : { B' : near_tree w n.+1 (m + b) d c
                               | dflattenn B' = insert1 (dflatten B) b i } :=
     match B with
     | Leaf s _ _ =>
@@ -237,7 +218,7 @@ Section insert.
   Definition dinsert n m d c (B : tree w n m d c) (b : bool) (i : nat) :=
     real_tree (proj1_sig (dinsert' B b i)).
 
-  Lemma real_treeK nl ol d c (t : near_tree nl ol d c) :
+  Lemma real_treeK nl ol d c (t : near_tree w nl ol d c) :
     dflatten (real_tree t) = dflattenn t.
   Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
 
