@@ -12,7 +12,6 @@ Variable w : nat.
 Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
-
   (*
    * Translated from https://github.com/xuanruiqi/dtp/blob/master/RedBlack.idr
    * which in turn is translated from dynamic_dependent.v
