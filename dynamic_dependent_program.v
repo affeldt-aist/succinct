@@ -63,7 +63,7 @@ Section insert.
     end.
 
   Lemma incr_black_prop d c : incr_black d c = d + (c == Black).
-  Proof. case: c => //=. by rewrite addn1. Qed.
+  Proof. case: c => //=; by rewrite ?addn0 ?addn1. Qed.
 
   Definition inv c := if c is Black then Red else Black.
 
@@ -1543,7 +1543,7 @@ Section delete.
     destruct delete_from_leaves_obligation_103, delete_from_leaves_obligation_102 => //=.
     rewrite -Heq_l -Heq_r //= delete_oversize //= leqNgt size_cat.
     by move/eqP/eqnP/eqP: H0 => ->.
-  Qed.    
+  Qed.
 
   Obligation Tactic := idtac.
 
@@ -2551,7 +2551,7 @@ Section delete.
   Qed.
 
   Next Obligation. intros; subst. by subst wildcard'. Qed.
-  
+
 End delete.
 
 End dynamic_dependent.
