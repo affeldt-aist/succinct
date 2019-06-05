@@ -150,13 +150,6 @@ Section insert.
     by rewrite -Heq_r.
   Qed.
 
-  Lemma dflatten_size num ones d c (B : tree w num ones d c) :
-    num = size (dflatten B).
-  Proof.
-    elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
-    by rewrite size_cat -IHl -IHr.
-  Qed.
-
   Program Fixpoint dins {num ones d c}
     (B : tree w num ones d c)
     (b : bool) (i : nat) {measure (size_of_tree B) } :
@@ -265,13 +258,13 @@ Section insert.
       destruct dins_func_obligation_23.
       rewrite (proj2_sig B') {B'}.
       destruct dins => /=.
-      by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
+      by rewrite e /insert1 /insert take_cat drop_cat size_dflatten H -!catA.
     - set B' := balanceR _ _ _ _ _.
       rewrite /dflatteni /eq_rect => //=.
       destruct dins_func_obligation_23, dins_func_obligation_22, dins_func_obligation_21.
       rewrite -/(dflatteni (proj1_sig B')) (proj2_sig B') {B'}.
       destruct dins => //=.
-      by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
+      by rewrite e /insert1 /insert take_cat drop_cat size_dflatten H -!catA.
   Qed.
 
  Program Definition paint_black {num ones d c} (B : tree w num ones d c) :
@@ -294,12 +287,6 @@ Section insert.
  Definition dinsert {num ones d c}
    (B : tree w num ones d c) (b : bool) (i : nat) :=
    (` (paint_black (fix_near_tree (` (dins B b i))))).
-
- Lemma fix_near_treeK {num ones d c} (t : near_tree w num ones d c) :
-   dflatten (fix_near_tree t) = dflatteni t.
- Proof.
- case: t => //= num1 ones1 num2 ones2 num3 ones3 d' t1 t2 t3;  by rewrite catA.
- Qed.
 
  Theorem dinsertK {num ones d c} (B : tree w num ones d c) (b : bool) (i : nat) :
    dflatten (dinsert B b i) = insert1 (dflatten B) b i.
@@ -349,47 +336,19 @@ Section query.
       else s1 + dselect_1 r (i - o1)
     end.
 
-  Lemma dflatten_ones {num ones d c} (B : tree w num ones d c) :
-    ones = count_mem true (dflatten B).
-  Proof.
-    elim: B => //= s1 o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr.
-    by rewrite count_cat -IHl -IHr.
-  Qed.
-
-  Lemma ones_lt_num num ones d c (B : tree w num ones d c) :
-    ones <= num.
-  Proof.
-    by rewrite (dflatten_ones B) [in X in _ <= X](dflatten_size B) count_size.
-  Qed.
-
-  Lemma dflatten_zeroes num ones d c (B : tree w num ones d c) :
-    num - ones = count_mem false (dflatten B).
-  Proof.
-    rewrite [in LHS](dflatten_ones B) [in X in X - _](dflatten_size B).
-    apply/eqP. rewrite -(eqn_add2r (count_mem true (dflatten B))) subnK.
-      by rewrite -(count_predC (pred1 false)) eqn_add2l; apply/eqP/eq_count; case.
-    by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
-  Qed.
-
-  Lemma dflatten_rank num ones d c (B : tree w num ones d c) :
-    ones = rank true num (dflatten B).
-  Proof.
-    by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
-  Qed.
-
   Lemma daccessK nums ones d c (B : tree w nums ones d c) :
     daccess B =1 access (dflatten B).
   Proof.
     rewrite /access.
     elim: B => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite nth_cat -dflatten_size -IHl -IHr.
+    by rewrite nth_cat size_dflatten -IHl -IHr.
   Qed.
 
   Lemma drankK nums ones d c (B : tree w nums ones d c) i :
     drank B i = rank true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite rank_cat -dflatten_size IHl -IHr -dflatten_rank.
+    by rewrite rank_cat size_dflatten IHl -IHr -dflatten_rank.
   Qed.
 
   Lemma drank_ones num ones d c (B : tree w num ones d c) :
@@ -402,14 +361,14 @@ Section query.
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
+    by rewrite select_cat -dflatten_ones IHl IHr size_dflatten.
   Qed.
 
   Lemma dselect0K nums ones d c (B : tree w nums ones d c) i :
     dselect_0 B i = select false i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_zeroes IHl IHr -dflatten_size.
+    by rewrite select_cat -dflatten_zeroes IHl IHr size_dflatten.
   Qed.
 
   Lemma access_leq_count (s : seq bool) i : i < size s -> access s i <= count_one s.
@@ -497,7 +456,7 @@ Section set_clear.
     destruct bset as [[l' flip][Hl' Hf]] => /=.
     rewrite /= in Hl'.
     move/ltP: (H).
-    rewrite Hl' /bit_set update_cat -{1}(dflatten_size l) => Hi.
+    rewrite Hl' /bit_set update_cat {1}size_dflatten => Hi.
     by rewrite ifT.
   Qed.
 
@@ -524,7 +483,7 @@ Section set_clear.
     destruct bset as [[r' flip][Hr' Hf]] => /=.
     rewrite /= in Hr'.
     move/ltP: (H).
-    rewrite Hr' /bit_set update_cat -(dflatten_size l) => Hi.
+    rewrite Hr' /bit_set update_cat size_dflatten => Hi.
     by rewrite -if_neg Hi.
   Qed.
 
@@ -617,7 +576,7 @@ Section set_clear.
     destruct bclear as [[r' tgt][Hr' Hf]] => /=.
     rewrite /= in Hr'.
     move/ltP: (H).
-    rewrite Hr' /bit_clear update_cat -(dflatten_size l) => Hi.
+    rewrite Hr' /bit_clear update_cat (size_dflatten l) => Hi.
     by rewrite -if_neg Hi.
   Qed.
 
@@ -2037,8 +1996,8 @@ Section delete.
     destruct ddelete_func_obligation_38, ddelete_func_obligation_37.
     destruct ddelete_func_obligation_36, ddelete_func_obligation_35 => //=.
     rewrite H2. subst filtered_var.
-    rewrite delete_catR. by rewrite H1 {2}(dflatten_size l).
-    rewrite -(dflatten_size l). move/eqP/eqnP/eqP: H0. by rewrite -leqNgt.
+    rewrite delete_catR. by rewrite H1 {1}(size_dflatten l).
+    rewrite (size_dflatten l). move/eqP/eqnP/eqP: H0. by rewrite -leqNgt.
   Qed.
 
   Next Obligation.

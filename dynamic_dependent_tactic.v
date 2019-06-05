@@ -187,10 +187,6 @@ Section insert.
   Definition dinsert n m d c (B : tree w n m d c) (b : bool) (i : nat) :=
     fix_near_tree (proj1_sig (dinsert' B b i)).
 
-  Lemma fix_near_treeK nl ol d c (t : near_tree w nl ol d c) :
-    dflatten (fix_near_tree t) = dflatteni t.
-  Proof. case: t => //= n1 o1 n2 o2 n3 o3 d' x y z. by rewrite catA. Qed.
-
   Lemma dinsertK n m d c (B : tree w n m d c) b i :
     dflatten (dinsert B b i) = insert1 (dflatten B) b i.
   Proof. by rewrite /dinsert fix_near_treeK (proj2_sig (dinsert' B b i)). Qed.
@@ -237,34 +233,6 @@ Section query.
     end.
 
   Definition access (s : seq bool) i := nth false s i.
-
-  Lemma dflatten_ones num ones d c (B : tree w num ones d c) :
-    ones = count_mem true (dflatten B).
-  Proof.
-    elim: B => //= s1 o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr.
-    by rewrite count_cat -IHl -IHr.
-  Qed.
-
-  Lemma ones_lt_num num ones d c (B : tree w num ones d c) :
-    ones <= num.
-  Proof.
-    by rewrite (dflatten_ones B) -[in X in _ <= X](size_dflatten B) count_size.
-  Qed.
-
-  Lemma dflatten_zeroes num ones d c (B : tree w num ones d c) :
-    num - ones = count_mem false (dflatten B).
-  Proof.
-    rewrite [in LHS](dflatten_ones B) -[in X in X - _](size_dflatten B).
-    apply/eqP. rewrite -(eqn_add2r (count_mem true (dflatten B))) subnK.
-      by rewrite -(count_predC (pred1 false)) eqn_add2l; apply/eqP/eq_count; case.
-    by rewrite -(dflatten_ones B) (size_dflatten B)(ones_lt_num B).
-  Qed.
-
-  Lemma dflatten_rank num ones d c (B : tree w num ones d c) :
-    ones = rank true num (dflatten B).
-  Proof.
-    by rewrite /rank -[X in take X _](size_dflatten B) take_size -dflatten_ones.
-  Qed.
 
   Lemma daccessK nums ones d c (B : tree w nums ones d c) :
     daccess B =1 access (dflatten B).

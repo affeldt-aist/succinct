@@ -398,7 +398,7 @@ Lemma dflatten_node c l d r :
   dflatten (Bnode c l d r) = dflatten l ++ dflatten r.
 Proof. by []. Qed.
 
-Lemma balanceE c l r d : dflatten (balance c l r d) = dflatten l ++ dflatten r.
+Lemma dflatten_balance c l r d : dflatten (balance c l r d) = dflatten l ++ dflatten r.
 Proof.
   rewrite /balance. case: c. exact: dflatten_node.
   case: l => [[[[] lll llD llr|llA] lD [[] lrl lrD lrr|lrA]|ll lD lr]|lA] /=;
@@ -406,14 +406,14 @@ Proof.
     try done; by rewrite !catA.
 Qed.
 
-Lemma balanceLE c l r d: dflatten (balanceL c l r d) = dflatten l ++ dflatten r.
+Lemma dflatten_balanceL c l r d: dflatten (balanceL c l r d) = dflatten l ++ dflatten r.
 Proof.
   rewrite /balanceL. case: c. exact: dflatten_node.
   case: l => [[[[] lll llD llr|llA] lD [[] lrl lrD lrr|lrA]|ll lD lr]|lA] //=;
     by rewrite !catA.
 Qed.
 
-Lemma balanceRE c l r d: dflatten (balanceR c l r d) = dflatten l ++ dflatten r.
+Lemma dflatten_balanceR c l r d: dflatten (balanceR c l r d) = dflatten l ++ dflatten r.
 Proof.
   rewrite /balanceR. case: c. exact: dflatten_node.
   case: r => [[[[] rll rlD rlr|rlA] rD [[] rrl rrD rrr|rrA]|rl rD rr]|rA] //=;
@@ -435,7 +435,7 @@ Proof.
 Qed.
 
 Lemma wf_dtree'_node c l d r :
-  wf_dtree' (Bnode c l d r) = wf_dtree low high (Bnode c l d r). 
+  wf_dtree' (Bnode c l d r) = wf_dtree low high (Bnode c l d r).
 Proof. by []. Qed.
 
 Lemma dins_leafE s b i :
@@ -451,8 +451,8 @@ Proof.
   move => wf; move: B wf b i. apply: dtree_ind => //.
   + move => c l r num ones Hnum Hones _ IHl IHr /= b i.
     case: ifPn => ?.
-     - by rewrite balanceLE IHl /insert1 insert_catL -?Hnum.
-     - by rewrite balanceRE IHr /insert1 insert_catR -?Hnum // leqNgt.
+     - by rewrite dflatten_balanceL IHl /insert1 insert_catL -?Hnum.
+     - by rewrite dflatten_balanceR IHr /insert1 insert_catR -?Hnum // leqNgt.
   + move => s /andP [_] Hs b i /=.
     by rewrite dins_leafE.
 Qed.
