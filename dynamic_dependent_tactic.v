@@ -860,7 +860,7 @@ Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w nu
   try (apply: (ordinal_caseR c _ _ l r val (IHr d erefl (i - s1) _));
        eauto; apply: ltn_subLN; by eauto).
 
-  case: d r l IHl IHr val H => {d' d''} [| d] /=.
+  case: d r l IHl IHr val H => {d' d''} [| d r l _ IHr val H] /=.
    move creq: (Red) => cr;
    move cbeq: (Black) => cb; move deq: (0) => d r l.
    case: l creq cbeq deq r => // ? ? ? ? ? [] [] [] // ? ? ll lr ? <- /= deq r _ _ val H.
@@ -872,12 +872,10 @@ Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w nu
    apply: (proj2_sig (balright c ll (proj1_sig dr) _ _)); eauto.
    rewrite -!catA; congr (_ ++ _).
    apply: (proj2_sig dr).
-   
-  move=> r l _ IHr val H.
   apply: (ordinal_caseR c _ _ l r val (IHr d erefl (i - s1) _));
    eauto; apply: ltn_subLN; by eauto.
   
-  case: d r l IHl IHr val H => {d' d''} [| d] /=.
+  case: d r l IHl IHr val H => {d' d''} [| d r l IHl _ val H] /=.
    move creq: (Red) => cr;
    move cbeq: (Black) => cb'; move deq: (0) => d r l.
    case: r creq cbeq deq l => // ? ? ? ? ? [] [] [] // ? ? rl rr ? <- /= deq l _ _ val H.
@@ -893,23 +891,16 @@ Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w nu
    rewrite !catA; congr (_ ++ _).
    exact: (proj2_sig dl).
    by rewrite (leq_trans _ (leq_addr _ _)) // leq_access_count.
-
-  (* ordinal case *)
-  move=> r l IHl _ val H;
   apply: (ordinal_caseL c _ _ l r H (IHl d erefl i H)); by eauto.
 
-  case: d l r IHl IHr => [| d].
-   move => l r _ _.
+  case: d l r IHl IHr => [l r _ _| d l r IHl _].
    move: (delete_from_leaves c l r i).
    by rewrite access_cat delete_cat size_dflatten H val /= daccessK.
-  move => l r IHl _.
   apply: (ordinal_caseL c _ _ l r H (IHl d erefl i H)); by eauto.
 
-  case: d l r IHl IHr => [| d].
-   move => l r _ _.
+  case: d l r IHl IHr => [l r _ _| d l r _ IHr].
    move: (delete_from_leaves c l r i).
    by rewrite access_cat delete_cat size_dflatten H val /= daccessK.
-  move => l r _ IHr.
   apply: (ordinal_caseR c _ _ l r val (IHr d erefl (i - s1) _));
    eauto; apply: ltn_subLN; by eauto.
 Qed.
