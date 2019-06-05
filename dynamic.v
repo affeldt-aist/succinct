@@ -71,6 +71,12 @@ Proof.
 by move/eqP; rewrite gtn_eqF // divn_gt0 // (ltn_trans _ wordsize_sqrn_gt2).
 Qed.
 
+(* due to technical reason, to generate OCaml code in dynamic_dependent_tactic.v *)
+Inductive tree_ml : Type :=
+| LeafML : forall(arr : seq bool), tree_ml
+| NodeML : forall(s1 s2 o1 o2 : nat) (c : color) (l r : tree_ml), tree_ml.
+(*                         *)
+
 (* work around for program fixpoint *)
 (*Definition count_one arr := count_mem true arr.*)
 
@@ -95,6 +101,25 @@ Lemma size_of_tree_pos num ones d c (B : tree num ones d c) :
 Proof.
 elim: B => //= lnum lones rnum rones d' cl cr c' ok_l ok_r l IHl r IHr.
 by rewrite addn_gt0 IHl orTb.
+Qed.
+
+Fixpoint dflatten {n m d c} (B : tree n m d c) :=
+  match B with
+  | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
+  | Leaf s _ _ => s
+  end.
+
+Lemma size_dflatten {n m d c} (B : tree n m d c) : size (dflatten B) = n.
+Proof.
+elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
+by rewrite size_cat IHl IHr.
+Qed.
+
+Lemma count_one_dflatten {n m d c} (B : tree n m d c) : count_one (dflatten B) = m.
+Proof.
+elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
+rewrite /count_one in IHl,IHr.
+by rewrite /count_one count_cat IHl IHr.
 Qed.
 
 End wordsize.

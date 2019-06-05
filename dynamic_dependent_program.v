@@ -13,30 +13,6 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-(*  Inductive tree : nat -> nat -> nat -> color -> Type :=
-  | Leaf : forall (arr : seq bool),
-      (w ^ 2) %/ 2 <= size arr ->
-      2 * (w ^ 2) > size arr ->
-      tree (size arr) (count_one arr) 0 Black
-  | Node : forall {lnum lones rnum rones d cl cr c},
-      color_ok c cl -> color_ok c cr ->
-      tree lnum lones d cl -> tree rnum rones d cr ->
-      tree (lnum + rnum) (lones + rones) (incr_black d c) c.*)
-
-(*  Fixpoint tree_size {num ones d c} (t : tree w num ones d c) : nat :=
-    match t with
-    | @Leaf _ _ _ _ => 1
-    | @Node _ _ _ _ _ _ _ _ _ _ _ l r =>
-      tree_size l + tree_size r
-    end.*)
-
-  Lemma tree_size_pos {num ones d c} (B : tree w num ones d c) :
-    size_of_tree B > 0.
-  Proof.
-    elim: B => //= lnum lones rnum rones d' cl cr c' _ _ l IHl r IHr.
-    by rewrite addn_gt0 IHl.
-  Qed.
-
   Definition RNode {lnum lones rnum rones d} (l : tree w lnum lones d Black)
     (r : tree w rnum rones d Black) : tree w (lnum + rnum) (lones + rones) d Red :=
     Node red_black_ok red_black_ok l r.
@@ -71,25 +47,6 @@ Section insert.
     | Fix _ _ _ _ _ _ _ t1 t2 t3 => BNode (RNode t1 t2) t3
     | Tr _ _ _ _ _ t' => t'
     end.
-
-  Fixpoint dflatten {n m d c} (B : tree w n m d c) :=
-    match B with
-    | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
-    | Leaf s _ _ => s
-    end.
-
-  Lemma dflatten_sizeE {n m d c} (B : tree w n m d c) : size (dflatten B) = n.
-  Proof.
-    elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
-    by rewrite size_cat IHl IHr.
-  Qed.
-
-  Lemma dflatten_countE {n m d c} (B : tree w n m d c) : count_one (dflatten B) = m.
-  Proof.
-    elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
-    rewrite /count_one in IHl,IHr.
-    by rewrite /count_one count_cat IHl IHr.
-  Qed.
 
   Definition dflatteni {num ones d c} (B : ins_tree num ones d c) :=
     match B with
@@ -326,13 +283,13 @@ Section insert.
   Qed.
 
   Next Obligation.
-    apply/ltP. by rewrite -Heq_B /= -[X in X < _]addn0 ltn_add2l tree_size_pos.
+    apply/ltP. by rewrite -Heq_B /= -[X in X < _]addn0 ltn_add2l size_of_tree_pos.
   Qed.
 
   Next Obligation. by destruct dins, x, c. Qed.
 
   Next Obligation.
-    apply/ltP. by rewrite -Heq_B /= -[X in X < _]add0n ltn_add2r tree_size_pos.
+    apply/ltP. by rewrite -Heq_B /= -[X in X < _]add0n ltn_add2r size_of_tree_pos.
   Qed.
 
   Next Obligation. by destruct dins, x, c. Qed.
@@ -563,7 +520,7 @@ Section set_clear.
   Next Obligation.
     intros; subst. apply /ltP.
     rewrite -Heq_B /=.
-    by rewrite -addn1 leq_add2l tree_size_pos.
+    by rewrite -addn1 leq_add2l size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -589,7 +546,7 @@ Section set_clear.
   Next Obligation.
     intros; subst. apply /ltP.
     rewrite -Heq_B /=.
-    by rewrite -add1n leq_add2r tree_size_pos.
+    by rewrite -add1n leq_add2r size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -654,7 +611,7 @@ Section set_clear.
 
   Next Obligation.
     intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -addn1 leq_add2l tree_size_pos.
+    by rewrite -Heq_B //= -addn1 leq_add2l size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -670,14 +627,14 @@ Section set_clear.
     move/ltP : (H) => Hi /=.
     rewrite /proj1_sig; subst l'b. destruct bclear => //=.
     split.
-    + rewrite (proj1 a) /bit_clear update_cat dflatten_sizeE.
+    + rewrite (proj1 a) /bit_clear update_cat size_dflatten.
       by rewrite Hi.
     + by rewrite (proj2 a) Hi.
   Qed.
 
   Next Obligation.
     intros; subst. rewrite -Heq_B //=. apply/ltP.
-    by rewrite -[X in X < _]add0n ltn_add2r tree_size_pos.
+    by rewrite -[X in X < _]add0n ltn_add2r size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2051,7 +2008,7 @@ Section delete.
 
   Next Obligation.
     intros; subst. apply/ltP. rewrite -Heq_B -Heq_l //= -[X in X < _]addn0.
-    by rewrite -!addnA !ltn_add2l tree_size_pos.
+    by rewrite -!addnA !ltn_add2l size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2059,7 +2016,7 @@ Section delete.
     rewrite [in LHS]addnC -addnA [X in _ = _ + X - _]addnC addnCA addnBA //=.
     by apply: (leq_ltn_trans (n := i)).
   Qed.
- 
+
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0 => //=.
     rewrite -Heq_anonymous [in LHS]addnC -addnA [X in _ = _ + X - _]addnC.
@@ -2072,7 +2029,7 @@ Section delete.
     destruct ddelete_func_obligation_20, ddelete_func_obligation_19 => //=.
     subst filtered_var.
     rewrite H1 //= delete_catL. by rewrite H0.
-    by rewrite -Heq_l //= size_cat //= !dflatten_sizeE.
+    by rewrite -Heq_l //= size_cat //= !size_dflatten.
   Qed.
 
   Next Obligation.
@@ -2098,7 +2055,7 @@ Section delete.
   Next Obligation.
     intros; subst. apply/ltP.
     rewrite -Heq_B -Heq_l //= -[X in X < _]add0n.
-    by rewrite ltn_add2r ltn_addr //= tree_size_pos.
+    by rewrite ltn_add2r ltn_addr //= size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2139,7 +2096,7 @@ Section delete.
     destruct ddelete_func_obligation_43, ddelete_func_obligation_42.
     destruct ddelete_func_obligation_45 => //=.
     subst filtered_var filtered_var0.
-    by rewrite daccessK /access nth_cat (dflatten_sizeE l) -Heq_anonymous.
+    by rewrite daccessK /access nth_cat (size_dflatten l) -Heq_anonymous.
   Qed.
 
   Next Obligation.
@@ -2162,14 +2119,14 @@ Section delete.
     move: Heq_wildcard'2 lres H0 lres' Heq_lres.
     rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     destruct Heq_wildcard'2 => //= lres H0 lres' Heq_lres.
-    rewrite -Heq_anonymous3 -Heq_l //= /access nth_cat dflatten_sizeE.
+    rewrite -Heq_anonymous3 -Heq_l //= /access nth_cat size_dflatten.
     case: ifP => Hif;
     rewrite daccessK /access -addnA [in LHS]addnC;
     rewrite [X in _ = _ + X - _]addnC addnCA addnBA //=;
-    [ rewrite -{2}(dflatten_countE ll) | rewrite -{2}(dflatten_countE lr) ];
+    [ rewrite -{2}(count_one_dflatten ll) | rewrite -{2}(count_one_dflatten lr) ];
     [ apply: (leq_trans (n := (count_one (dflatten ll)))) |
       apply: (leq_trans (n := (count_one (dflatten lr)))) ];
-    try rewrite -/access access_leq_count //= dflatten_sizeE //=;
+    try rewrite -/access access_leq_count //= size_dflatten //=;
     try by rewrite ?leq_addr ?leq_addl.
     rewrite -(ltn_add2r (wildcard'17)) subnK. rewrite addnC //=.
     by rewrite leqNgt Hif.
@@ -2183,13 +2140,13 @@ Section delete.
     rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     destruct Heq_wildcard'2 => lres lres' Heq_lres.
     subst lres => //= ->. rewrite -Heq_l //= [in RHS]delete_catL //=.
-    by rewrite size_cat !dflatten_sizeE.
+    by rewrite size_cat !size_dflatten.
   Qed.
 
   Next Obligation.
     intros; subst. apply/ltP.
     rewrite -Heq_B -Heq_r //= -[X in X < _]addn0.
-    by rewrite ltn_add2l ltn_addr //= tree_size_pos.
+    by rewrite ltn_add2l ltn_addr //= size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2210,13 +2167,13 @@ Section delete.
     intros; subst. rewrite /eq_rect.
     destruct ddelete_func_obligation_75, ddelete_func_obligation_74.
     destruct ddelete_func_obligation_73, ddelete_func_obligation_72 => //=.
-    rewrite H1 H0 delete_catL //=. rewrite dflatten_sizeE. by subst filtered_var.
+    rewrite H1 H0 delete_catL //=. rewrite size_dflatten. by subst filtered_var.
   Qed.
 
   Next Obligation.
     intros; subst. rewrite /eq_rect //=. apply/ltP.
     rewrite -Heq_B -Heq_r //= -[X in X < _]addn0.
-    by rewrite addnA ltn_add2l tree_size_pos.
+    by rewrite addnA ltn_add2l size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2234,9 +2191,9 @@ Section delete.
     rewrite /eq_rect //= -Heq_anonymous.
     rewrite addnC addnBA //=.
     by rewrite addnCA addnA [X in _ = _ + X - _]addnC addnA.
-    rewrite -{2}(dflatten_countE l).
+    rewrite -{2}(count_one_dflatten l).
     apply: (leq_trans (n := count_one (dflatten l))).
-    by rewrite daccessK access_leq_count //= dflatten_sizeE.
+    by rewrite daccessK access_leq_count //= size_dflatten.
     by rewrite leq_addr.
   Qed.
 
@@ -2245,14 +2202,14 @@ Section delete.
     destruct ddelete_func_obligation_88, ddelete_func_obligation_87.
     destruct ddelete_func_obligation_86, ddelete_func_obligation_85 => //=.
     rewrite H1 H0 /eq_rect //= -Heq_r //=.
-    by rewrite !delete_catL ?catA //= dflatten_sizeE.
+    by rewrite !delete_catL ?catA //= size_dflatten.
   Qed.
 
   Next Obligation. intros; subst. by destruct cl. Qed.
 
   Next Obligation.
     intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -{1}(addn0 (size_of_tree l)) ltn_add2l tree_size_pos.
+    by rewrite -Heq_B //= -{1}(addn0 (size_of_tree l)) ltn_add2l size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2267,9 +2224,9 @@ Section delete.
     rewrite -Heq_anonymous.
     rewrite addnC addnBA //=.
     by rewrite addnCA [X in _ = _ + X - _]addnC addnA.
-    rewrite -{2}(dflatten_countE l).
+    rewrite -{2}(count_one_dflatten l).
     apply: (leq_trans (n := count_one (dflatten l))).
-    by rewrite daccessK access_leq_count //= dflatten_sizeE.
+    by rewrite daccessK access_leq_count //= size_dflatten.
     by rewrite leqnn.
   Qed.
 
@@ -2277,7 +2234,7 @@ Section delete.
     intros; subst. subst filtered_var. rewrite /eq_rect.
     destruct ddelete_func_obligation_97, ddelete_func_obligation_96.
     destruct ddelete_func_obligation_95, ddelete_func_obligation_94 => //=.
-    by rewrite H1 H0 delete_catL //= dflatten_sizeE -Heq_anonymous.
+    by rewrite H1 H0 delete_catL //= size_dflatten -Heq_anonymous.
   Qed.
 
   Next Obligation.
@@ -2299,11 +2256,11 @@ Section delete.
     rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     destruct Heq_wildcard'2 => //= Heq_r r'0 H1 r' Heq_r'.
     rewrite -Heq_r //= addnA addnBA //=. rewrite addnA //=.
-    rewrite -{2}(dflatten_countE rl) -{2}(dflatten_countE rr).
+    rewrite -{2}(count_one_dflatten rl) -{2}(count_one_dflatten rr).
     have Hcount: (count_one (dflatten rl) + count_one (dflatten rr) = count_one (dflatten rl ++ dflatten rr)).
     by rewrite /count_one count_cat.
     rewrite Hcount access_leq_count //=.
-    rewrite size_cat !dflatten_sizeE -(ltn_add2r (size wildcard'10)) subnK //=.
+    rewrite size_cat !size_dflatten -(ltn_add2r (size wildcard'10)) subnK //=.
     by rewrite addnC -Heq_anonymous4. move/eqP/eqnP/eqP: (H0).
     by rewrite leqNgt.
   Qed.
@@ -2316,8 +2273,8 @@ Section delete.
     rewrite /eq_rect //= /eq_ind_r /eq_ind //=.
     destruct Heq_wildcard'2 => //= Heq_r r'0 H1 r' Heq_r'.
     move: H1. rewrite -Heq_r -Heq_r' //= => ->.
-    rewrite [in RHS]delete_catR. by rewrite dflatten_sizeE.
-    rewrite leqNgt dflatten_sizeE. by move/eqP/eqnP/eqP: H0.
+    rewrite [in RHS]delete_catR. by rewrite size_dflatten.
+    rewrite leqNgt size_dflatten. by move/eqP/eqnP/eqP: H0.
   Qed.
 
   Next Obligation.
@@ -2329,7 +2286,7 @@ Section delete.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
     destruct ddelete_func_obligation_116, ddelete_func_obligation_115 => //=.
     move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0' daccessK /access.
-    by rewrite nth_cat dflatten_sizeE -if_neg H0'.
+    by rewrite nth_cat size_dflatten -if_neg H0'.
   Qed.
 
   Next Obligation.
@@ -2340,7 +2297,7 @@ Section delete.
 
   Next Obligation.
     intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -{1}(add0n (size_of_tree r)) ltn_add2r tree_size_pos.
+    by rewrite -Heq_B //= -{1}(add0n (size_of_tree r)) ltn_add2r size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2356,8 +2313,8 @@ Section delete.
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0 => //=.
     move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0'.
-    rewrite addnBA //= -{2}(dflatten_countE r) daccessK access_leq_count //=.
-    rewrite dflatten_sizeE. rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
+    rewrite addnBA //= -{2}(count_one_dflatten r) daccessK access_leq_count //=.
+    rewrite size_dflatten. rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
     by rewrite addnC -Heq_anonymous0. by rewrite leqNgt H0'.
   Qed.
 
@@ -2365,7 +2322,7 @@ Section delete.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
     destruct ddelete_func_obligation_132, ddelete_func_obligation_131.
     destruct ddelete_func_obligation_130, ddelete_func_obligation_129 => //=.
-    rewrite H2 H1 delete_catR dflatten_sizeE //= leqNgt.
+    rewrite H2 H1 delete_catR size_dflatten //= leqNgt.
     by move/eqP/eqnP/eqP: (H0) => ->.
   Qed.
 
@@ -2373,7 +2330,7 @@ Section delete.
     intros; subst. subst filtered_var filtered_var0.
     rewrite /eq_rect //=. apply/ltP.
     rewrite -Heq_B -Heq_l //= -(add0n (size_of_tree lr + size_of_tree r)).
-    by rewrite -addnA ltn_add2r tree_size_pos.
+    by rewrite -addnA ltn_add2r size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2401,9 +2358,9 @@ Section delete.
     rewrite -(eqn_add2r wildcard'0) subnK //= -(eqn_add2r llnum) subnK //=.
     rewrite -addnA [X in _ == _ - X + _]addnC subnK //=.
     by rewrite leqNgt addnC H0'.
-    by rewrite (eqP Hi'). rewrite -{2}(dflatten_countE r).
+    by rewrite (eqP Hi'). rewrite -{2}(count_one_dflatten r).
     apply: (leq_trans (n := count_one (dflatten r))).
-    rewrite dflatten_countE daccess_leq_ones //=.
+    rewrite count_one_dflatten daccess_leq_ones //=.
     rewrite -(ltn_add2r wildcard'0) subnK //= -(ltn_add2r llnum) subnK //=.
     by rewrite addnC [X in _ < _ + X]addnC addnA. by rewrite leq_addl.
   Qed.
@@ -2413,8 +2370,8 @@ Section delete.
     destruct ddelete_func_obligation_144, ddelete_func_obligation_143.
     destruct ddelete_func_obligation_142, ddelete_func_obligation_141.
     rewrite H2 H1 //= -Heq_l //= -[in RHS]catA [in RHS]delete_catR.
-    by rewrite dflatten_sizeE.
-    rewrite dflatten_sizeE. apply: (leq_trans (n := llnum + wildcard'0)).
+    by rewrite size_dflatten.
+    rewrite size_dflatten. apply: (leq_trans (n := llnum + wildcard'0)).
     by rewrite leq_addr. move/eqP/eqnP/eqP: (H0) => H0'. by rewrite leqNgt H0'.
   Qed.
 
@@ -2422,7 +2379,7 @@ Section delete.
 
   Next Obligation.
     intros; subst. apply/ltP.
-    by rewrite -Heq_B //= -{1}(add0n (size_of_tree r)) ltn_add2r tree_size_pos.
+    by rewrite -Heq_B //= -{1}(add0n (size_of_tree r)) ltn_add2r size_of_tree_pos.
   Qed.
 
   Next Obligation.
@@ -2438,8 +2395,8 @@ Section delete.
   Next Obligation.
     intros; subst. subst filtered_var filtered_var0 => //=.
     move/eqP/eqnP/eqP: (H0) => H0'. rewrite -if_neg H0'.
-    rewrite addnBA //= -{2}(dflatten_countE r) daccessK access_leq_count //=.
-    rewrite dflatten_sizeE. rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
+    rewrite addnBA //= -{2}(count_one_dflatten r) daccessK access_leq_count //=.
+    rewrite size_dflatten. rewrite -(ltn_add2r (llnum + wildcard'0)) subnK //=.
     by rewrite addnC -Heq_anonymous0. by rewrite leqNgt H0'.
   Qed.
 
@@ -2447,7 +2404,7 @@ Section delete.
     intros; subst. subst filtered_var filtered_var0. rewrite /eq_rect.
     destruct ddelete_func_obligation_153, ddelete_func_obligation_152.
     destruct ddelete_func_obligation_151, ddelete_func_obligation_150 => //=.
-    rewrite H2 H1 delete_catR dflatten_sizeE //= leqNgt.
+    rewrite H2 H1 delete_catR size_dflatten //= leqNgt.
     by move/eqP/eqnP/eqP: (H0) => ->.
   Qed.
 
@@ -2464,13 +2421,13 @@ Section delete.
   Next Obligation.
     intros; subst. subst filtered_var.
     rewrite daccessK /access nth_default //=. by rewrite subn0.
-    rewrite dflatten_sizeE leqNgt. by move/eqP/eqnP/eqP: H0.
+    rewrite size_dflatten leqNgt. by move/eqP/eqnP/eqP: H0.
   Qed.
 
   Next Obligation.
     intros; subst. subst filtered_var. rewrite /eq_rect.
     destruct ddelete_func_obligation_158, ddelete_func_obligation_157 => //=.
-    rewrite delete_oversize //= dflatten_sizeE leqNgt. by move/eqP/eqnP/eqP: H0.
+    rewrite delete_oversize //= size_dflatten leqNgt. by move/eqP/eqnP/eqP: H0.
   Qed.
 
   Next Obligation. intros; subst. by subst wildcard'. Qed.

@@ -13,12 +13,6 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-  (* due to technical reason *)
-  Inductive tree_ml : Type :=
-  | LeafML : forall(arr : seq bool), tree_ml
-  | NodeML : forall(s1 s2 o1 o2 : nat) (c : color) (l r : tree_ml), tree_ml.
-  (*                         *)
-
   Definition rnode {s1 s2 o1 o2 d} (l : tree w s1 o1 d Black)
              (r : tree w s2 o2 d Black) : tree w (s1 + s2) (o1 + o2) d Red :=
     Node red_black_ok red_black_ok l r.
@@ -62,25 +56,6 @@ Section insert.
     | Bad _ _ _ _ _ _ _ x y z => bnode (rnode x y) z
     | Good _ _ _ _ _ t' => t'
     end.
-
-  Fixpoint dflatten {n m d c} (B : tree w n m d c) :=
-    match B with
-    | Node _ _ _ _ _ _ _ _ _ _ l r => dflatten l ++ dflatten r
-    | Leaf s _ _ => s
-    end.
-
-  Lemma dflatten_sizeK {n m d c} (B : tree w n m d c) : size (dflatten B) = n.
-  Proof.
-    elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
-    by rewrite size_cat IHl IHr.
-  Qed.
-
-  Lemma dflatten_countK {n m d c} (B : tree w n m d c) : count_one (dflatten B) = m.
-  Proof.
-    elim: B => //= nl ol nr or d' cl cr c' Hok Hok' l IHl r IHr.
-    rewrite /count_one in IHl,IHr.
-    by rewrite /count_one count_cat IHl IHr.
-  Qed.
 
   Definition dflattenn {n m d c} (B : near_tree n m d c) :=
     match B with
@@ -135,13 +110,6 @@ Section insert.
       - subst c'; destruct cl => //.
         by exists (Good Red (rnode l r')).
   Defined.
-
-  Lemma dflatten_size num ones d c (B : tree w num ones d c) :
-    num = size (dflatten B).
-  Proof.
-    elim: B => //= s1 o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr.
-    by rewrite size_cat -IHl -IHr.
-  Qed.
 
   Program Fixpoint dinsert' {n m d c} (B : tree w n m d c) (b : bool) i
           {measure (size_of_tree B)} : { B' : near_tree n.+1 (m + b) d c
@@ -257,13 +225,13 @@ Section insert.
       destruct dinsert'_func_obligation_23.
       rewrite (proj2_sig B') {B'}.
       destruct dinsert' => /=.
-      by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
+      by rewrite e /insert1 /insert take_cat drop_cat size_dflatten H -!catA.
     - set B' := balanceR _ _ _ _ _.
       rewrite /dflattenn /eq_rect => /=.
       destruct dinsert'_func_obligation_23, dinsert'_func_obligation_22, dinsert'_func_obligation_21.
       rewrite -/(dflattenn (proj1_sig B')) (proj2_sig B') {B'}.
       destruct dinsert' => /=.
-      by rewrite e /insert1 /insert take_cat drop_cat -dflatten_size H -!catA.
+      by rewrite e /insert1 /insert take_cat drop_cat size_dflatten H -!catA.
   Qed.
 
   Definition dinsert n m d c (B : tree w n m d c) (b : bool) (i : nat) :=
@@ -330,22 +298,22 @@ Section query.
   Lemma ones_lt_num num ones d c (B : tree w num ones d c) :
     ones <= num.
   Proof.
-    by rewrite (dflatten_ones B) [in X in _ <= X](dflatten_size B) count_size.
+    by rewrite (dflatten_ones B) -[in X in _ <= X](size_dflatten B) count_size.
   Qed.
 
   Lemma dflatten_zeroes num ones d c (B : tree w num ones d c) :
     num - ones = count_mem false (dflatten B).
   Proof.
-    rewrite [in LHS](dflatten_ones B) [in X in X - _](dflatten_size B).
+    rewrite [in LHS](dflatten_ones B) -[in X in X - _](size_dflatten B).
     apply/eqP. rewrite -(eqn_add2r (count_mem true (dflatten B))) subnK.
       by rewrite -(count_predC (pred1 false)) eqn_add2l; apply/eqP/eq_count; case.
-    by rewrite -(dflatten_ones B) -(dflatten_size B)(ones_lt_num B).
+    by rewrite -(dflatten_ones B) (size_dflatten B)(ones_lt_num B).
   Qed.
 
   Lemma dflatten_rank num ones d c (B : tree w num ones d c) :
     ones = rank true num (dflatten B).
   Proof.
-    by rewrite /rank [X in take X _](dflatten_size B) take_size -dflatten_ones.
+    by rewrite /rank -[X in take X _](size_dflatten B) take_size -dflatten_ones.
   Qed.
 
   Lemma daccessK nums ones d c (B : tree w nums ones d c) :
@@ -353,14 +321,14 @@ Section query.
   Proof.
     rewrite /access.
     elim: B => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite nth_cat -dflatten_size -IHl -IHr.
+    by rewrite nth_cat size_dflatten -IHl -IHr.
   Qed.
 
   Lemma drankK nums ones d c (B : tree w nums ones d c) i :
     drank B i = rank true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite rank_cat -dflatten_size IHl -IHr -dflatten_rank.
+    by rewrite rank_cat size_dflatten IHl -IHr -dflatten_rank.
   Qed.
 
   Lemma drank_ones num ones d c (B : tree w num ones d c) :
@@ -373,14 +341,14 @@ Section query.
     dselect_1 B i = select true i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_ones IHl IHr -dflatten_size.
+    by rewrite select_cat -dflatten_ones IHl IHr size_dflatten.
   Qed.
 
   Lemma dselect0K nums ones d c (B : tree w nums ones d c) i :
     dselect_0 B i = select false i (dflatten B).
   Proof.
     elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_zeroes IHl IHr -dflatten_size.
+    by rewrite select_cat -dflatten_zeroes IHl IHr size_dflatten.
   Qed.
 
 End query.
@@ -452,7 +420,7 @@ Section set_clear.
     destruct bset as [[l' flip][Hl' Hf]] => /=.
     rewrite /= in Hl'.
     move/ltP: (H).
-    rewrite Hl' /bit_set update_cat -{1}(dflatten_size l) => Hi.
+    rewrite Hl' /bit_set update_cat {1}(size_dflatten l) => Hi.
     by rewrite ifT.
   Qed.
 
@@ -479,7 +447,7 @@ Section set_clear.
     destruct bset as [[r' flip][Hr' Hf]] => /=.
     rewrite /= in Hr'.
     move/ltP: (H).
-    rewrite Hr' /bit_set update_cat -(dflatten_size l) => Hi.
+    rewrite Hr' /bit_set update_cat (size_dflatten l) => Hi.
     by rewrite -if_neg Hi.
   Qed.
 
@@ -924,13 +892,13 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
      move/negP/negP : val;
      rewrite ltnNge; move/negPn => val;
      rewrite daccess_default // !subn0 -delete_oversize;
-     last by rewrite dflatten_sizeK.
+     last by rewrite size_dflatten.
      apply: (exist _ (Stay _ _ B)) => //.
 
     move: B; move dceq: (incr_black d c) => d' B;
     elim: B d dceq i val => // [s1 o1 ? ? d'' [] [] [] // g1 g2 l IHl r IHr] d [] dceq i val;
     move: dceq l r IHl IHr => /= <- l r IHl IHr;
-    rewrite delete_cat dflatten_sizeK;
+    rewrite delete_cat size_dflatten;
     case: ifP => H;
     (* most general cases *)
     try (move: (IHl d erefl i H) => dl;
@@ -951,7 +919,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
      case: l creq cbeq deq r => // ? ? ? ? ? [] [] [] // ? ? ll lr ? <- /= deq r {c} _ _ val H.
      move: deq ll lr r val H => <- ll lr r val H.
      move: (delete_leaves2 Red lr r (i - (size (dflatten ll)))).
-     rewrite delete_cat access_cat -!daccessK !dflatten_sizeK -!ltn_subln ; eauto.
+     rewrite delete_cat access_cat -!daccessK !size_dflatten -!ltn_subln ; eauto.
      rewrite H !addnA val subnDA /= -!addnA -!addnBA; eauto => dr.
      apply: exist; apply: etrans.
      apply (proj2_sig (balanceR2 Black ll (proj1_sig dr) erefl erefl)).
@@ -972,7 +940,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
      case: r creq cbeq deq l => // ? ? ? ? ? [] [] [] // ? ? rl rr ? <- /= deq l {c} _ _ val H.
      move: deq rl rr l val H => <- rl rr l val H.
      move: (delete_leaves2 Red l rl i).
-     rewrite delete_cat access_cat -!daccessK !dflatten_sizeK; eauto.
+     rewrite delete_cat access_cat -!daccessK !size_dflatten; eauto.
      rewrite ltn_addr H /=; auto => dl.
      rewrite !addnA.
      rewrite [s1 + _ + _ - _]addnBAC; eauto.
@@ -994,7 +962,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     case: d l r IHl IHr => [| d].
      move => l r _ _.
      move: (delete_leaves2 Red l r i).
-     rewrite access_cat delete_cat dflatten_sizeK H val /= daccessK //.
+     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r IHl _.
     move: (IHl d erefl i H) => dl;
     rewrite !addnBAC; eauto;
@@ -1005,7 +973,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     case: d l r IHl IHr => [| d].
      move => l r _ _.
      move: (delete_leaves2 Red l r i).
-     rewrite access_cat delete_cat dflatten_sizeK H val /= daccessK //.
+     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r _ IHr.
     move: (IHr d erefl (i - s1)) => dr.
     rewrite -!addnBA; eauto.
@@ -1017,7 +985,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     case: d l r IHl IHr => [| d].
      move => l r _ _.
      move: (delete_leaves2 Black l r i).
-     rewrite access_cat delete_cat dflatten_sizeK H val /= daccessK //.
+     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r IHl _.
     move: (IHl d erefl i H) => dl;
     rewrite !addnBAC; eauto;
@@ -1028,7 +996,7 @@ Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
     case: d l r IHl IHr => [| d].
      move => l r _ _.
      move: (delete_leaves2 Black l r i).
-     rewrite access_cat delete_cat dflatten_sizeK H val /= daccessK //.
+     rewrite access_cat delete_cat size_dflatten H val /= daccessK //.
     move => l r _ IHr.
     move: (IHr d erefl (i - s1)) => dr.
     rewrite -!addnBA; eauto.
