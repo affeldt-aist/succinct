@@ -54,7 +54,7 @@ rewrite (@big_morph nat (seq (seq (seq bool)))
          (fun i => size (flatten (flatten i))) 0 addn nil) //; first last.
   elim; first by move=> ?; rewrite add0n.
   move=> x xs IHx [/=|y ys]; first by rewrite addn0.
-  by rewrite !flatten_cat !size_cat IHx !addnA (addnAC (size (flatten x))).
+  by rewrite /= !flatten_cat !size_cat IHx !addnA (addnAC (size _)).
 rewrite big_seq_cond /=.
 rewrite (eq_bigr (fun t => (number_of_nodes t).*2.-1)) /=; last first.
   by move=> i /andP [Hi _]; rewrite IH.
@@ -103,13 +103,14 @@ Section lo_traversal.
 Variable B : Type.
 Variable f : tree A -> B.
 
+Definition split {T} n (s : seq T) := (take n s, drop n s).
+
 Fixpoint lo_traversal_lt (w : forest A) (p : seq nat) : seq B :=
   match p, w with
   | nil, _ | _, nil => nil
   | n :: p', t :: w' =>
-    let cl := children_of_node t in
-    map f (w ++ take n cl) ++
-    lo_traversal_lt (drop n cl ++ children_of_forest (w' ++ take n cl)) p'
+    let (fs, ls) := split n (children_of_node t) in
+    map f (w ++ fs) ++ lo_traversal_lt (ls ++ children_of_forest (w' ++ fs)) p'
   end.
 
 Fixpoint lo_fringe (w : forest A) (p : seq nat) : forest A :=
@@ -117,8 +118,8 @@ Fixpoint lo_fringe (w : forest A) (p : seq nat) : forest A :=
   | nil, _ => w
   | _, nil => nil
   | n :: p', t :: w' =>
-    let cl := children_of_node t in
-    lo_fringe (drop n cl ++ children_of_forest (w' ++ take n cl)) p'
+    let (fs, ls) := split n (children_of_node t) in
+    lo_fringe (ls ++ children_of_forest (w' ++ fs)) p'
   end.
 
 Lemma lo_traversal_lt_cat w p1 p2 :
