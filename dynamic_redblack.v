@@ -590,48 +590,28 @@ Hypothesis Hlow : low.*2 <= high.
 Hypothesis Hhigh : 1 < high.
 Local Notation wf_dtree' := (wf_dtree' low high).
 
+Variable bit : bool.
+
 Fixpoint bset (B : dtree) i : (dtree * bool) :=
   match B with
-  | Bleaf s => (Bleaf _ (bit_set s i), ~~ (nth true s i))
+  | Bleaf s => (Bleaf _ (update s bit i), nth false s i)
   | Bnode c l (num, ones) r =>
     if i < num
-    then let (l', flip) := bset l i
-         in  (Bnode c l' (num, ones + flip) r, flip)
-    else let (r', flip) := bset r (i - num)
-         in  (Bnode c l (num, ones) r', flip)
-  end.
-
-Fixpoint bclear (B : dtree) i : (dtree * bool) :=
-  match B with
-  | Bleaf s => (Bleaf _ (bit_clear s i), nth true s i)
-  | Bnode c l (num, ones) r =>
-    if i < num
-    then let (l', flip) := bclear l i
-         in (Bnode c l' (num, ones - flip) r, flip)
-    else let (r', flip) := bclear r (i - num)
-         in  (Bnode c l (num, ones) r', flip)
+    then let (l', orig) := bset l i in
+         (Bnode c l' (num, ones - orig + bit) r, orig)
+    else let (r', orig) := bset r (i - num) in
+         (Bnode c l (num, ones) r', orig)
   end.
 
 Definition dbitset (B : dtree) i := fst (bset B i).
 
-Definition dbitclear (B : dtree) i := fst (bclear B i).
-
 Lemma dbitsetE (B : dtree) i :
-  wf_dtree' B -> dflatten (dbitset B i) = bit_set (dflatten B) i.
+  wf_dtree' B -> dflatten (dbitset B i) = update (dflatten B) bit i.
 Proof.
   move=> /wf_dtree'_dtree wf; move: B wf i; rewrite /bit_set.
   apply: dtree_ind => // c l r num ones -> -> _ IHl IHr i /=.
   rewrite update_cat -IHl -IHr /dbitset /=.
   by case: ifP => Hi; case: bset => // l' [].
-Qed.
-
-Lemma dbitclearE (B : dtree) i :
-  wf_dtree' B -> dflatten (dbitclear B i) = bit_clear (dflatten B) i.
-Proof.
-  move=> /wf_dtree'_dtree wf; move: B wf i; rewrite /bit_clear.
-  apply: dtree_ind => // c l r num ones -> -> _ IHl IHr i /=.
-  rewrite update_cat -IHl -IHr /dbitclear /=.
-  by case: ifP => Hi; case: bclear => // l' [].
 Qed.
 
 Lemma size_bset (B : dtree) i : size_df (bset B i).1 = size_df B.
@@ -642,19 +622,8 @@ Proof.
     rewrite size_cat -H -size_cat; by case: bset.
 Qed.
 
-Lemma size_bclear (B : dtree) i : size_df (bclear B i).1 = size_df B.
-Proof.
-  elim: B i => [c l IHl [num ones] r IHr | s] //= i; last first.
-    by rewrite -size_update.
-  case: ifP => Hi; [move: (IHl i) | move: (IHr (i-num))] => H;
-    rewrite size_cat -H -size_cat; by case: bclear.
-Qed.
-
 Lemma size_dbitset (B : dtree) i : size_df (dbitset B i) = size_df B.
 Proof. by rewrite /dbitset size_bset. Qed.
-
-Lemma size_dbitclear (B : dtree) i : size_df (dbitclear B i) = size_df B.
-Proof. by rewrite /dbitclear size_bclear. Qed.
 
 Lemma is_redblack_dbitset (B : dtree) i c n :
   is_redblack B c n = is_redblack (dbitset B i) c n.
@@ -666,22 +635,11 @@ Proof.
   case: ifP => _ /=; by rewrite -!(IHl, IHr).
 Qed.
 
-Lemma is_redblack_dbitclear (B : dtree) i c n :
-  is_redblack B c n = is_redblack (dbitclear B i) c n.
-Proof.
-  rewrite /dbitclear.
-  elim: B i c n => //= cB l IHl [nn o] r IHr i c n //.
-  rewrite (surjective_pairing (_ l i)).
-  rewrite (surjective_pairing (_ r _)) !(fun_if fst) /=.
-  case: ifP => _ /=; by rewrite -!(IHl, IHr).
-Qed.
-
-Lemma flip_bit_bset (B : dtree) i :
-  wf_dtree low high B -> i < size_df B -> (bset B i).2 = ~~ (daccess B i).
+Lemma bset_orig (B : dtree) i :
+  wf_dtree low high B -> i < size_df B -> (bset B i).2 = daccess B i.
 Proof.
   move=> wf; move: B wf i.
-  apply: dtree_ind; last first.
-    move=> s Hs i Hi; congr negb; by apply set_nth_default.
+  apply: dtree_ind; last by move=> s Hs i Hi; apply set_nth_default.
   move=> c l r num ones Hnum Hones [wfl wfr] IHl IHr i /=.
   rewrite size_cat Hnum => Hsz.
   case: ifP => Hi.
@@ -690,107 +648,59 @@ Proof.
   by rewrite -subSn ?leq_subLR // leqNgt Hi.
 Qed.
 
-Lemma flip_bit_bclear (B : dtree) i :
-  wf_dtree low high B -> i < size_df B -> (bclear B i).2 = daccess B i.
+Lemma nth_count_true s i : nth false s i <= count_mem true s.
 Proof.
-  move=> wf; move: B wf i.
-  apply: dtree_ind; last first.
-    move => s Hs i Hi; by apply set_nth_default.
-  move => c l r num ones Hnum Hones [wfl wfr] IHl IHr i /=.
-  rewrite size_cat Hnum => Hsz.
-  case: ifP => Hi.
-    by rewrite -IHl; case: bclear.
-  rewrite -IHr; case: bclear => // _ _.
-  by rewrite -subSn ?leq_subLR // leqNgt Hi.
+  elim: s i => [|b s IH] [|i] //=; first by rewrite eqb_id leq_addr.
+  apply /(leq_trans (IH _)) /leq_addl.
+Qed.
+
+Lemma count_update s i :
+  i < size s ->
+  count_mem true (update s bit i) = count_mem true s - nth false s i + bit.
+Proof.
+  move=> Hi; rewrite /update Hi.
+  elim: s i Hi => [|b s IH] [_|i] //=.
+    by rewrite !eqb_id addKn addnC.
+  rewrite ltnS => /IH ->.
+  by rewrite !addnA addnBA // nth_count_true.
 Qed.
 
 Lemma ones_dbitset (B : dtree) i :
   wf_dtree low high B -> i < size_df B ->
-  ones_df (dbitset B i) = ones_df B + ~~ daccess B i.
+  ones_df (dbitset B i) = ones_df B - daccess B i + bit.
 Proof.
   rewrite /dbitset.
   move=> wf Hsize; move: B wf i Hsize.
   apply: dtree_ind => //= [ c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi
-                          | s Hs i Hi ]; last by rewrite addnC -count_bit_set.
+                          | s Hs i Hi ]; last by apply count_update.
   case: ifP => Hil.
     move Hbset: (bset l i) => [l' b] /=.
-    by rewrite !count_cat addnAC -IHl // Hbset.
+    rewrite !count_cat (addnC (ones_df l)) -addnBA.
+      by rewrite -addnA -IHl // Hbset addnC.
+    by rewrite (daccessE wfl) nth_count_true.
   move Hbset: (bset r _) => [r' b] /=.
-  rewrite !count_cat -addnA -IHr ?Hbset //.
-  by rewrite -(ltn_add2l (size_df l)) subnKC -?size_cat // leqNgt Hil.
-Qed.
-
-Lemma flipped_count_pos (B : dtree) i :
-  wf_dtree low high B -> i < size_df B -> (bclear B i).2 -> ones_df B > 0.
-Proof.
-  move=> wf Hsize; rewrite flip_bit_bclear // (daccessE wf) /access => H.
-  by rewrite (true_count_pos _ H).
-Qed.
-
-Lemma ones_dbitclear (B : dtree) i :
-  wf_dtree low high B -> i < size_df B ->
-  ones_df (dbitclear B i) = ones_df B - daccess B i.
-Proof.
-  rewrite /dbitclear.
-  move=> wf Hsize; move: B wf i Hsize.
-  apply: dtree_ind => //=
-    [c l r num ones -> -> [wfl wfr] IHl IHr i /= Hi | s Hs i Hi];
-    last by rewrite -count_bit_clear.
-  case: ifP => Hil.
-    case_eq (bclear l i) => l' b Hbclear /=.
-      rewrite !count_cat [in RHS]addnC -addnBA.
-      by rewrite -IHl // Hbclear addnC.
-    rewrite -flip_bit_bclear // Hbclear /=.
-    destruct b => //.
-    by rewrite (flipped_count_pos wfl Hil) // Hbclear.
-  have Hilr: i - size_df l < size_df r.
+  rewrite !count_cat -addnBA.
+    rewrite -addnA -IHr ?Hbset //.
     by rewrite -(ltn_add2l (size_df l)) subnKC -?size_cat // leqNgt Hil.
-  case_eq (bclear r (i - size_df l)) => r' b Hbclear /=.
-    rewrite !count_cat -addnBA. by rewrite -IHr // Hbclear.
-  rewrite -flip_bit_bclear // Hbclear /=.
-  destruct b => //.
-  by rewrite (@flipped_count_pos _ (i - size_df l)) // Hbclear.
+  by rewrite (daccessE wfr) nth_count_true.
 Qed.
 
 Lemma wf_dbitset (B : dtree) i :
   wf_dtree' B -> wf_dtree' (dbitset B i).
 Proof.
-  case: B => [c l d r | s] wf; last by rewrite /= size_bit_set.
+  case: B => [c l d r | s] wf; last by rewrite /= -size_update.
   apply wf_dtree_dtree'.
   move: wf i; rewrite wf_dtree'_node; move: {c l d r} (Bnode _ _ _ _).
   apply: dtree_ind => //= [c l r num ones -> -> [wfl wfr] IHl IHr|s Hs] i;
-    last by rewrite size_bit_set.
-  rewrite /dbitset //=.
+    last by rewrite -size_update.
+  rewrite /dbitset /=.
   case: ifP => Hi.
-    case_eq (bset l i) => l' b Hbset /=; rewrite wfr andbT.
+    move Hbset: (bset l i) => [l' b] /=; rewrite wfr andbT.
     move/(f_equal fst): (Hbset) => /= Hbset1.
     move/(_ i) in IHl; rewrite /dbitset Hbset1 in IHl.
-    rewrite -Hbset1 size_bset.
-    rewrite ?[in wf_dtree _ _ _]Hbset1 //.
-    rewrite ones_dbitset // -?flip_bit_bset //.
-    by rewrite Hbset !eqxx.
+    rewrite -Hbset1 size_bset [in wf_dtree _ _ _]Hbset1 //.
+    by rewrite ones_dbitset // -(bset_orig wfl Hi) Hbset !eqxx.
   case_eq (bset r (i - (size_df l))) => r' b /(f_equal fst) /= <-.
-  by rewrite wfl !eqxx /= IHr.
-Qed.
-
-Lemma wf_dbitclear (B : dtree) i :
-  wf_dtree' B -> wf_dtree' (dbitclear B i).
-Proof.
-  case: B => [c l d r | s] wf; last by rewrite /= size_bit_clear.
-  apply wf_dtree_dtree'.
-  move: wf i; rewrite wf_dtree'_node; move: {c l d r} (Bnode _ _ _ _).
-  apply: dtree_ind => [c l r num ones -> -> [wfl wfr] IHl IHr|s Hs] i /=;
-    last by rewrite size_bit_clear.
-  rewrite /dbitclear //=.
-  case: ifP => Hi.
-    case_eq (bclear l i) => l' b Hbclear /=; rewrite wfr andbT.
-    move/(f_equal fst): (Hbclear) => /= Hbclear1.
-    move/(_ i) in IHl; rewrite /dbitclear Hbclear1 in IHl.
-    rewrite -Hbclear1 size_bclear.
-    rewrite [in wf_dtree _ _ _]Hbclear1 //.
-    rewrite ones_dbitclear // -?flip_bit_bclear //;
-    by rewrite Hbclear !eqxx.
-  case_eq (bclear r (i - (size_df l))) => r' b /(f_equal fst) /= <-.
   by rewrite wfl !eqxx /= IHr.
 Qed.
 
