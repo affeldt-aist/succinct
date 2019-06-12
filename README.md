@@ -17,7 +17,7 @@ A tentative formalization of compact data structures following [1]
 - [dynamic_dependent_program.v](dynamic_dependent_program.v)
 - [dynamic_dependent_tactic.v](dynamic_dependent_tactic.v)
 
-## Requirements
+# Requirements
 
 - Coq 8.9.1
 - MathComp 1.9.0
