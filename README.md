@@ -38,6 +38,12 @@ Or, if opam is installed, do:
 
 opam takes care of the dependencies.
 
+# External Axioms
+
+We do not explicitly introduce any additional axioms. However, [dynamic_dependent_program.v](dynamic_dependent_program.v) and (to a lesser 
+extent) [dynamic_dependent_tactic.v](dynamic_dependent_tactic.v) uses the `Program` framework and thus implicitly depends on `Coq.Logic.JMEq.JMEq_eq`, 
+which is in turn equivalent to Streicher's Axiom K (i.e., dependent pattern matching).
+
 # Accompanying material
 
 - Most recent [draft paper](201903/compact-20190331.pdf) ([arXiv version](https://arxiv.org/pdf/1904.02809.pdf))
