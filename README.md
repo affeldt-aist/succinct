@@ -17,15 +17,26 @@ A tentative formalization of compact data structures following [1]
 - [dynamic_dependent_program.v](dynamic_dependent_program.v)
 - [dynamic_dependent_tactic.v](dynamic_dependent_tactic.v)
 
-# Compilation
-
-1. `coq_makefile -f _CoqProject -o Makefile`
-2. `make`
-
 ## Requirements
 
 - Coq 8.9.1
 - MathComp 1.9.0
+
+# Compilation
+
+1. `git clone git@github.com:affeldt-aist/succinct.git`
+2. `cd succinct`
+
+If the Requirements (see above) are already met, do:
+
+3. `coq_makefile -f _CoqProject -o Makefile`
+4. `make`
+
+Or, if opam is installed, do:
+
+3. `opam install .`
+
+opam takes care of the dependencies.
 
 # Accompanying material
 
