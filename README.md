@@ -46,7 +46,13 @@ which is in turn equivalent to Streicher's Axiom K (i.e., dependent pattern matc
 
 # Accompanying material
 
-- Most recent [draft paper](201903/compact-20190331.pdf) ([arXiv version](https://arxiv.org/pdf/1904.02809.pdf))
+- Most recent [draft paper](201903/compact-20190331.pdf) ([arXiv version](https://arxiv.org/pdf/1904.02809.pdf)), accepted to the 10th International Conference on 
+  Interactive Theorem Proving (ITP 2019)
 - TPP 2018 slides for [LOUDS](tpp2018/slides_louds_en.pdf) and [dynamic
   bit vectors](tpp2018/slides_dynamic.pdf)
 - JSSST 2018 [draft paper](jssst2018/compact.pdf)
+- Earlier papers:
+  * "[Formal Verification of the *rank* Algorithm for Succinct Data Structures](http://www.math.nagoya-u.ac.jp/~garrigue/papers/succinct-icfem2016.pdf)", in 
+    18th International Conference on Formal Engineering Methods (ICFEM 2016)
+  * "[Safe Low-level Code Generation in Coq Using Monomorphization and Monadification](http://www.math.nagoya-u.ac.jp/~garrigue/papers/JIP-26_54.pdf)", in 
+    *Journal of Information Processing*, vol. 26 (2018)
