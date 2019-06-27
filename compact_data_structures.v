@@ -70,10 +70,6 @@ Qed.
 
 End seq_ext.
 
-(* TODO: move? *)
-Lemma sumnE (s : seq nat) : sumn s = \sum_(i <- s) i.
-Proof. elim: s => /= => [|h t ->]; by [rewrite big_nil | rewrite big_cons]. Qed.
-
 Module idx.
 
 Record t (n : nat) : Type := mkt {
@@ -493,7 +489,7 @@ End mzip.
 Section lo_traversal_st.
 Variables (A : eqType) (B : Type) (f : tree A -> B).
 
-Definition mzip_cat := mzip_monoid (cat_monoid B).
+Definition mzip_cat : Monoid.law [::] := mzip_monoid (cat_monoid B).
 
 Fixpoint level_traversal t :=
   [:: f t] :: foldr (mzip_cat \o level_traversal) nil (children_of_node t).
