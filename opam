@@ -1,4 +1,5 @@
 opam-version: "2.0"
+name: "coq-succinct"
 maintainer: "reynald.affeldt@aist.go.jp"
 homepage: "https://github.com/affeldt-aist/succinct"
 bug-reports: "https://github.com/affeldt-aist/succinct/issues"
