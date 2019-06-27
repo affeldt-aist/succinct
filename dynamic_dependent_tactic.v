@@ -847,7 +847,7 @@ Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w nu
    apply: (exist _ (Stay _ _ B)) => //.
 
   move: B; move dceq: (incr_black d c) => d' B;
-  elim: B d dceq i val => {c} // [s1 o1 ? ? d'' [] [] c // g1 g2 l IHl r IHr] d [] dceq i val;
+  elim: B d dceq i val => {c} // [s1 o1 ? ? d'' [] [] c // g1 g2 l IHl r IHr] d dceq i val;
   (have dceq' : d = d'' by case: c dceq g1 g2 => //=; case => //);
   move: dceq' l r IHl IHr => /= <- l r IHl IHr {dceq};
   rewrite delete_cat size_dflatten;
