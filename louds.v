@@ -196,7 +196,7 @@ refine (@lo_traversal_lt_max0 [::] [:: t] (height t) p _) => t'.
 by rewrite inE => /eqP ->.
 Qed.
 
-Theorem lo_traversal_lt_ok (t : tree A) p :
+Theorem lo_traversal_ltE (t : tree A) p :
   size p >= height t -> lo_traversal_st f t = lo_traversal_lt [:: t] p.
 Proof.
 rewrite /lo_traversal_st level_traversal_forest => /lo_traversal_lt_max -> {p}.
@@ -251,9 +251,9 @@ End tests.
 
 Definition LOUDS_position w p := size (LOUDS_lt w p).
 
-Theorem LOUDS_lt_ok t p :
+Theorem LOUDS_ltE t p :
   size p >= height t -> LOUDS t = LOUDS_lt [:: t] p.
-Proof. by rewrite /LOUDS /LOUDS_lt => /lo_traversal_lt_ok ->. Qed.
+Proof. by rewrite /LOUDS /LOUDS_lt => /lo_traversal_ltE ->. Qed.
 
 Lemma LOUDS_lt_cons w n p :
   LOUDS_lt w (n :: p) =

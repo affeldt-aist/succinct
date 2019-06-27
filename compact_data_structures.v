@@ -537,7 +537,7 @@ rewrite -!(foldr_map level_traversal mzip_cat).
 by rewrite foldr1_mulr.
 Qed.
 
-Theorem lo_traversal_st_ok t :
+Theorem lo_traversal_stE t :
   lo_traversal f t = lo_traversal_st t.
 Proof.
 rewrite /lo_traversal_st level_traversal_forest /lo_traversal.
