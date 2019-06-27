@@ -1,8 +1,7 @@
 (* Xuanrui Qi, Kazunari Tanaka, Jacques Garrigue *)
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-
-Require Import compact_data_structures rank_select insert_delete Program.
+Require Import tree_traversal rank_select insert_delete Program.
 Require Import set_clear Compare_dec ExtrOcamlNatInt dynamic.
 
 Set Implicit Arguments.

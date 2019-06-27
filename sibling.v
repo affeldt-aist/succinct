@@ -1,7 +1,6 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun bigop finset.
-
-Require Import compact_data_structures.
+Require Import tree_traversal.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

@@ -1,7 +1,7 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
 Require Import Omega Reals Rpower Lra.
-Require Import compact_data_structures rank_select.
+Require Import tree_traversal rank_select.
 
 (** * Space complexity of the rank algorithm *)
 

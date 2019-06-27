@@ -6,7 +6,7 @@ A tentative formalization of compact data structures following [1]
 
 # Files
 
-- [compact_data_structures.v](compact_data_structures.v)
+- [tree_traversal.v](tree_traversal.v)
 - [rank_select.v](rank_select.v)
 - [jacobson_rank_complexity.v](jacobson_rank_complexity.v)
 - [pred_succ.v](pred_succ.v)
@@ -37,6 +37,10 @@ Or, if opam is installed, do:
 3. `opam install .`
 
 opam takes care of the dependencies.
+
+# License
+
+MIT
 
 # External Axioms
 

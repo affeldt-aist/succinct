@@ -1,6 +1,6 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-Require Import compact_data_structures.
+Require Import tree_traversal.
 
 (** A formalization of the rank and select functions *)
 

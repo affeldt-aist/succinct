@@ -1,7 +1,6 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-
-Require Import compact_data_structures rank_select insert_delete.
+Require Import tree_traversal rank_select insert_delete.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -11,7 +10,7 @@ Section update.
 
   Variable T : Type.
 
-  (* Simple wrapper around set_nth to stop the padding behavior 
+  (* Simple wrapper around set_nth to stop the padding behavior
    * of set_nth, which is confusing
    *)
   Definition update (s : seq T) x i :=
@@ -20,7 +19,7 @@ Section update.
   Lemma set_nth_default_sizel (s : seq T) y y' x i :
     i < size s -> set_nth y s i x = set_nth y' s i x.
   Proof. elim: s i => [|h t IHt] [|j] //= H. by rewrite IHt. Qed.
-  
+
   Lemma size_update (s : seq T) x i :
     size s = size (update s x i).
   Proof.

@@ -1,7 +1,6 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-Require Import compact_data_structures rank_select insert_delete set_clear.
-Require Import dynamic.
+Require Import tree_traversal rank_select insert_delete set_clear dynamic.
 
 (** * A formalization of succinct dynamic bit vectors *)
 
