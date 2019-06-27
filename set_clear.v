@@ -101,11 +101,12 @@ Section bit_set_clear.
   Qed.
     
   Lemma true_count_pos (s : seq bool) b0 i :
-    i < size s -> nth b0 s i -> count_mem true s > 0.
+    i < size s -> nth b0 s i <= count_mem true s.
   Proof.
-    elim: s i => [|b s IHs] //= [|i] Hi /= Hnth.
-      by rewrite Hnth.
-    by rewrite addn_gt0 (IHs i) // orbT.
+    elim: s i => [|b s IHs] //= [|i] Hi /=.
+      by case: b => //; rewrite eqxx.
+    move: Hi; rewrite ltnS => /IHs /leq_trans; apply.
+    by apply leq_addl.
   Qed.
   
   Lemma count_bit_clear (s : seq bool) b0 i : i < size s ->
@@ -114,9 +115,7 @@ Section bit_set_clear.
     elim: s i => [|b s IHs] [|j] //=.
       case: b => /=; by rewrite ?addKn ?subn0.
     rewrite ltnS => /= Hj.
-    rewrite -addnBA; last first.
-      case Hnth: (nth b0 s j) => //.
-      exact: (true_count_pos Hj Hnth).
+    rewrite -addnBA; last by apply true_count_pos.
     by rewrite -IHs // /bit_clear update_cons.
   Qed.
 
@@ -131,7 +130,8 @@ Section bit_set_clear.
       by case Hb: b => //=; rewrite add1n add0n ?addn1 // subn1 succnK.
     rewrite ltnS => H.
     rewrite IHs //; case: ifP => Hnth.
-      by rewrite addnBA // (true_count_pos H Hnth).
+      move: (true_count_pos b0 H); rewrite Hnth => Ht.
+      by rewrite addnBA.
     by rewrite addnA.
   Qed.
 
