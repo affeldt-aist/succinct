@@ -49,7 +49,7 @@ Proof.
 rewrite /LOUDS.
 elim/tree_ind_eqType: t => a l IH /=.
 rewrite size_cat size_node_description addSn; congr S.
-rewrite -doubleE foldr_big_eq.
+rewrite -doubleE foldr_bigE.
 rewrite (@big_morph nat (seq (seq (seq bool)))
          (fun i => size (flatten (flatten i))) 0 addn nil) //; first last.
   elim; first by move=> ?; rewrite add0n.
@@ -206,7 +206,7 @@ have Hh : forall t, t \in w -> height t <= h.
 elim: {t} h w Hh => [|h IH] w Hh.
   case: w Hh => // t w /(_ t (mem_head _ _)); by rewrite leqNgt height_gt0.
 rewrite [nseq _ _]/= lo_traversal_lt_cons0 -IH.
-  by case/boolP: (nilp w) => [/nilP | /level_traversal_eq] ->.
+  by case/boolP: (nilp w) => [/nilP | /level_traversalE] ->.
 by move=> t /flattenP [s] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
 Qed.
 End lo_traversal.
