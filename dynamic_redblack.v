@@ -865,60 +865,60 @@ Fixpoint bdel B (i : nat) { struct B } : deleted_btree :=
     MkD (Bleaf _ leaf) false ret
   end.
 
-Definition is_nearly_redblack' tr c bh :=
+Definition is_deleted_redblack tr c bh :=
   if d_down tr
   then is_redblack tr Red bh.-1
   else is_redblack tr c bh.
 
 Hypothesis Hdelete_from_leaves : forall c l d r i c' n,
   is_redblack (Bnode c (Bleaf D l) d (Bleaf D r)) c' n ->
-  is_nearly_redblack' (delete_from_leaves c l r i) c' n.
+  is_deleted_redblack (delete_from_leaves c l r i) c' n.
   
-Lemma is_nearly_redblack'_Red_Black B n :
-  is_nearly_redblack' B Red n -> is_nearly_redblack' B Black n.
+Lemma is_deleted_redblack_Red_Black B n :
+  is_deleted_redblack B Red n -> is_deleted_redblack B Black n.
 Proof. by case: B => [[[]???|?] [] ?]. Qed.
 
-Lemma balanceL'_Black_nearly_is_redblack l d r n c :
-  0 < n -> is_nearly_redblack' l Black n.-1 -> is_redblack r Black n.-1 ->
-  is_nearly_redblack' (balanceL' Black l d r) c n.
+Lemma balanceL'_Black_deleted_is_redblack l d r n c :
+  0 < n -> is_deleted_redblack l Black n.-1 -> is_redblack r Black n.-1 ->
+  is_deleted_redblack (balanceL' Black l d r) c n.
 Proof.
   case: l => [l [] ?] Hn okl okr;
   case: c n r l okr okl Hn => [] [//|n]
     [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l;
-    rewrite /balanceL' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    rewrite /balanceL' /is_deleted_redblack //=; repeat decompose_rewrite;
     by rewrite // !is_redblack_Red_Black.
 Qed.
   
-Lemma balanceL'_Red_nearly_is_redblack l d r n :
-  is_nearly_redblack' l Red n -> is_redblack r Red n ->
-  is_nearly_redblack' (balanceL' Red l d r) Black n.
+Lemma balanceL'_Red_deleted_is_redblack l d r n :
+  is_deleted_redblack l Red n -> is_redblack r Red n ->
+  is_deleted_redblack (balanceL' Red l d r) Black n.
 Proof.
   case: l => [l [] ?] okl okr;
   case: n r l okr okl => [//|n]
     [[[[] [[] rlll ? rllr|?] ? rlr|?] ? rr| [[] rll ? rlr| ?] ? rr]|?] l;
-    rewrite /balanceL' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    rewrite /balanceL' /is_deleted_redblack //=; repeat decompose_rewrite;
     by rewrite // !is_redblack_Red_Black.
 Qed.
 
-Lemma balanceR'_Black_nearly_is_redblack l d r n c :
-  0 < n -> is_redblack l Black n.-1 -> is_nearly_redblack' r Black n.-1 ->
-  is_nearly_redblack' (balanceR' Black l d r) c n.
+Lemma balanceR'_Black_deleted_is_redblack l d r n c :
+  0 < n -> is_redblack l Black n.-1 -> is_deleted_redblack r Black n.-1 ->
+  is_deleted_redblack (balanceR' Black l d r) c n.
 Proof.
   case: r => [r [] ?];
   case: c n l => [] [//|n] [[[[] lll ? llr|?] ?
     [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=;
-    rewrite /balanceR' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    rewrite /balanceR' /is_deleted_redblack //=; repeat decompose_rewrite;
     by rewrite // !is_redblack_Red_Black.
 Qed.
   
-Lemma balanceR'_Red_nearly_is_redblack l d r n :
-  is_redblack l Red n -> is_nearly_redblack' r Red n ->
-  is_nearly_redblack' (balanceR' Red l d r) Black n.
+Lemma balanceR'_Red_deleted_is_redblack l d r n :
+  is_redblack l Red n -> is_deleted_redblack r Red n ->
+  is_deleted_redblack (balanceR' Red l d r) Black n.
 Proof.
   case: r => [r [] ?];
   case: l => [[[[] lll ? llr|?] ?
     [[] lrl ? [[] lrrl ? lrrr|?]|?]|ll ? [[] lrl ? lrr|?]]|?] /=;
-    rewrite /balanceR' /is_nearly_redblack' //=; repeat decompose_rewrite;
+    rewrite /balanceR' /is_deleted_redblack //=; repeat decompose_rewrite;
     by rewrite // !is_redblack_Red_Black.
 Qed.
   
@@ -927,25 +927,25 @@ Qed.
 Ltac close_branch d H IHl IHr :=
  rewrite /=;
  try case:ifP=>?;
- repeat (apply balanceL'_Red_nearly_is_redblack ||
-         apply balanceL'_Red_nearly_is_redblack ||
-         apply balanceR'_Red_nearly_is_redblack ||
-         apply balanceL'_Black_nearly_is_redblack ||
-         apply balanceR'_Black_nearly_is_redblack ||
+ repeat (apply balanceL'_Red_deleted_is_redblack ||
+         apply balanceL'_Red_deleted_is_redblack ||
+         apply balanceR'_Red_deleted_is_redblack ||
+         apply balanceL'_Black_deleted_is_redblack ||
+         apply balanceR'_Black_deleted_is_redblack ||
          apply IHl ||
          apply IHr ||
          apply (Hdelete_from_leaves (d:=d)));
  decomp H.
 
-Lemma bdel_is_nearly_redblack' B i n c :
-  is_redblack B c n -> is_nearly_redblack' (bdel B i) c n.
+Lemma bdel_is_deleted_redblack B i n c :
+  is_redblack B c n -> is_deleted_redblack (bdel B i) c n.
 Proof.
 elim: B c i n => [c l IHl d r IHr |a] p i n H //.
 time (case: p c l IHl H => [] []// [[]//[[]//???|?]?[[]//???|?]|?] IHl H;
   try (by close_branch d H IHl IHr);
   case: r IHr H => [[]//[[]//???|?]?[[]//???|?]|?] IHr H;
   close_branch d H IHl IHr => //).
-  rewrite /is_nearly_redblack' /=;
+  rewrite /is_deleted_redblack /=;
   case: (delete_leaf a i) => //=.
 (* 153s -> 73s by rewrite ? -> repeat apply || *)
 Qed.
@@ -1003,12 +1003,12 @@ Definition delete_from_leaves (p : color) l r (i : nat) : deleted_dtree :=
              (1, access r (i - (size l)) : nat)
        end.
 
-Lemma delete_from_leaves_nearly_redblack' c l d r i c' n :
+Lemma delete_from_leaves_deleted_redblack c l d r i c' n :
   is_redblack (Bnode c (leaf l) d (leaf r)) c' n ->
-  is_nearly_redblack' (delete_from_leaves c l r i) c' n.
+  is_deleted_redblack (delete_from_leaves c l r i) c' n.
 Proof.
   case: c c' => -[] //;
-  rewrite /is_nearly_redblack' /delete_from_leaves;
+  rewrite /is_deleted_redblack /delete_from_leaves;
   repeat case: ifP; repeat decompose_rewrite => //=.
 Qed.
 
@@ -1017,10 +1017,10 @@ Notation ddel := (bdel addD subD lt_index right_index
                        delete_from_leaves).
 
 (* Red-blackness invariant *)
-Lemma ddel_is_nearly_redblack' B i n c :
-  is_redblack B c n -> is_nearly_redblack' (ddel B i) c n.
+Lemma ddel_is_deleted_redblack B i n c :
+  is_redblack B c n -> is_deleted_redblack (ddel B i) c n.
 Proof.
-  apply /bdel_is_nearly_redblack' /delete_from_leaves_nearly_redblack'.
+  apply /bdel_is_deleted_redblack /delete_from_leaves_deleted_redblack.
 Qed.
 
 Definition ddelete (B : dtree) i : dtree := ddel B i.
@@ -1028,8 +1028,8 @@ Definition ddelete (B : dtree) i : dtree := ddel B i.
 Corollary ddelete_is_redblack B i n :
   is_redblack B Red n -> exists n', is_redblack (ddelete B i) Red n'.
 Proof.
-  rewrite /ddelete => /(ddel_is_nearly_redblack' i).
-  rewrite /is_nearly_redblack' /=.
+  rewrite /ddelete => /(ddel_is_deleted_redblack i).
+  rewrite /is_deleted_redblack /=.
   case:ifP; case: ddel => B' /= ? ? ? rb;
   eexists; apply rb.
 Qed.
