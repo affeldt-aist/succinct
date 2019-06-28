@@ -298,6 +298,7 @@ Definition children (t : tree) (p : seq nat) :=
 Definition child (p : seq nat) (n : nat) := rcons p n.
 
 End tree.
+Arguments children_of_node {A}.
 
 Section valid_position.
 
@@ -408,39 +409,65 @@ Qed.
 Section forest.
 
 Variable A : Type.
-Implicit Types l : forest A.
+Implicit Types s : forest A.
 
-Definition labels_of_forest l : seq A :=
-  map (fun t => let: Node v' l' := t in v') l.
+Definition labels_of_forest s : seq A := map (fun '(Node v' _) => v') s.
 
-Definition children_of_forest' l : seq (seq _)  := map (@children_of_node A) l.
+Definition children_of_forest' s : seq (forest A)  := map children_of_node s.
 
-Definition children_of_forest l : seq _ := flatten (children_of_forest' l).
+Definition children_of_forest s : forest A := flatten (children_of_forest' s).
 
-Lemma children_of_forest'_cat l1 l2 : flatten (children_of_forest' (l1 ++ l2)) =
-  flatten (children_of_forest' l1) ++ flatten (children_of_forest' l2).
+Lemma children_of_forest_nil : children_of_forest [::] = [::].
+Proof. by []. Qed.
+
+Lemma children_of_forest'_cat s1 s2 : flatten (children_of_forest' (s1 ++ s2)) =
+  flatten (children_of_forest' s1) ++ flatten (children_of_forest' s2).
 Proof. by rewrite /children_of_forest' map_cat flatten_cat. Qed.
 
-Lemma children_of_forest_cat l1 l2 :
- children_of_forest (l1 ++ l2) = children_of_forest l1 ++ children_of_forest l2.
+Lemma children_of_forest_cat s1 s2 :
+ children_of_forest (s1 ++ s2) = children_of_forest s1 ++ children_of_forest s2.
 Proof.
 by rewrite /children_of_forest /children_of_forest' map_cat flatten_cat.
 Qed.
 
-Lemma children_of_forest_cons a l :
- children_of_forest (a :: l) = children_of_node a ++ children_of_forest l.
+Lemma children_of_forest_cons a s :
+  children_of_forest (a :: s) = children_of_node a ++ children_of_forest s.
 Proof. by []. Qed.
 
 End forest.
+
+Section forest_eqType.
+Variable A : eqType.
+Implicit Types s : forest A.
+
+Lemma children_of_forest_height s n :
+  {in s, forall t, height t <= n.+1 } ->
+  {in children_of_forest s, forall t, height t <= n}.
+Proof.
+move=> H t /= /flattenP [s'] /mapP [t'] t's -> tt'.
+move: (H t') => /(_ t's).
+by rewrite -(nodeK t') => /height_Node/(_ _ tt').
+Qed.
+
+Lemma size_children_of_node_forest (t : tree A) l : t \in l ->
+  size (children_of_node t) <= size (children_of_forest l).
+Proof.
+elim: l t => // h l IH t.
+rewrite children_of_forest_cons size_cat in_cons => /orP[/eqP ->|/IH].
+  by rewrite leq_addr.
+by move/leq_trans => -> //; rewrite leq_addl.
+Qed.
+
+End forest_eqType.
 
 Section level_order_traversal.
 
 Variables (A B : Type) (f : tree A -> B).
 
 (* n to be instantiated with max of map height l *)
-Fixpoint lo_traversal' n (l : forest A) :=
+Fixpoint lo_traversal' n (s : forest A) :=
   if n is n'.+1 then
-    map f l ++ lo_traversal' n' (children_of_forest l)
+    map f s ++ lo_traversal' n' (children_of_forest s)
   else
     [::].
 
@@ -488,6 +515,7 @@ End mzip.
 
 Section lo_traversal_st.
 Variables (A : eqType) (B : Type) (f : tree A -> B).
+Implicit Types s : forest A.
 
 Definition mzip_cat : Monoid.law [::] := mzip_monoid (cat_monoid B).
 
@@ -496,8 +524,7 @@ Fixpoint level_traversal t :=
 
 Definition lo_traversal_st t := flatten (level_traversal t).
 
-Definition forest_traversal cl :=
-  foldr (mzip_cat \o level_traversal) nil cl.
+Definition forest_traversal := foldr (mzip_cat \o level_traversal) nil.
 
 Lemma level_traversal_forest t :
   level_traversal t = forest_traversal [:: t].
@@ -508,47 +535,46 @@ Lemma level_traversal_bigE t :
   [:: f t] :: \big[mzip_cat/nil]_(i <- children_of_node t) level_traversal i.
 Proof. rewrite -foldr_bigE; by case: t. Qed.
 
-Lemma level_traversalE w :
-  ~~ nilp w ->
-  forest_traversal w = map f w :: forest_traversal (children_of_forest w).
+Lemma level_traversalE s :
+  ~~ nilp s ->
+  forest_traversal s = map f s :: forest_traversal (children_of_forest s).
 Proof.
-elim: w => //= -[a cl] [|t w'] IH // _.
+elim: s => //= -[a cl] [|t s'] IH // _.
   by rewrite /children_of_forest /= cats0.
-set w := t :: w' in IH *.
+set s := t :: s' in IH *.
 move/(_ isT): (IH) => ->.
 rewrite /forest_traversal children_of_forest_cons /= foldr_cat /=.
 by rewrite -!(foldr_map level_traversal) foldr1_mulr.
 Qed.
 
-Lemma level_traversalE' st w :
-  ~~ nilp w ->
-  foldr (mzip_cat \o level_traversal) st w =
-  (map f w ++ head nil st) ::
-  foldr (mzip_cat \o level_traversal) (behead st) (children_of_forest w).
+Lemma level_traversalE' st s :
+  ~~ nilp s ->
+  foldr (mzip_cat \o level_traversal) st s =
+  (map f s ++ head nil st) ::
+  foldr (mzip_cat \o level_traversal) (behead st) (children_of_forest s).
 Proof.
-elim: w => //= -[a cl] [|t w'] IH // _.
+elim: s => //= -[a cl] [|t s'] IH // _.
   rewrite /children_of_forest /=.
   case: {IH} st => [|h st]; rewrite !cats0 //=.
   by rewrite -foldr_map foldr1_mulr foldr_map.
-set w := t :: w' in IH *.
+set s := t :: s' in IH *.
 move/(_ isT): (IH) => ->.
 rewrite children_of_forest_cons /= foldr_cat /=.
-rewrite -!(foldr_map level_traversal mzip_cat).
-by rewrite foldr1_mulr.
+by rewrite -!(foldr_map level_traversal mzip_cat) foldr1_mulr.
 Qed.
 
 Theorem lo_traversal_stE t :
   lo_traversal f t = lo_traversal_st t.
 Proof.
 rewrite /lo_traversal_st level_traversal_forest /lo_traversal.
-set w := [:: t]; set h := height t.
-have Hh : forall t : tree A, t \in w -> height t <= h.
+set s := [:: t]; set h := height t.
+have Hh : forall t : tree A, t \in s -> height t <= h.
   by move=> t'; rewrite inE => /eqP ->.
-elim: {t} h w Hh => //= [|h IH] w Hh.
-  case: w Hh => // t w /(_ t (mem_head _ _)); by rewrite leqNgt height_gt0.
+elim: {t} h s Hh => //= [|h IH] s Hh.
+  by case: s Hh => // t w /(_ t (mem_head _ _)); rewrite leqNgt height_gt0.
 rewrite IH.
-  by case /boolP: (nilp w) => [/nilP | /level_traversalE] ->.
-by move=> t /flattenP [s] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
+  by case /boolP: (nilp s) => [/nilP | /level_traversalE] ->.
+by move=> t /flattenP [s'] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
 Qed.
 
 Fixpoint level_traversal_cat (t : tree A) ss {struct t} :=
@@ -635,15 +661,6 @@ rewrite -cat1s level_order_forest_traversal'_cat //.
 by rewrite children_of_forest_cons cats0.
 Qed.
 *)
-
-Lemma size_children_of_node_forest (t : tree A) l : t \in l ->
-  size (children_of_node t) <= size (children_of_forest l).
-Proof.
-elim: l t => // h l IH t.
-rewrite children_of_forest_cons size_cat in_cons => /orP[/eqP ->|/IH].
-  by rewrite leq_addr.
-by move/leq_trans => -> //; rewrite leq_addl.
-Qed.
 
 End forest_eqType.
 
