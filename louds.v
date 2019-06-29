@@ -228,7 +228,7 @@ by rewrite inE => /eqP ->.
 Qed.
 
 Theorem lo_traversal_ltE (t : tree A) (p : seq nat) :
-  size p >= height t -> lo_traversal_st f t = lo_traversal_lt [:: t] p.
+  size p >= height t -> lo_traversal_lt [:: t] p = lo_traversal_st f t.
 Proof.
 rewrite /lo_traversal_st level_traversal_forest => /lo_traversal_lt_max -> {p}.
 set s := [:: t]; set h := height t.
@@ -236,8 +236,8 @@ have Hh : forall t, t \in s -> height t <= h.
   by move=> t'; rewrite inE => /eqP ->.
 elim: {t} h s Hh => [|h IH] s Hh.
   case: s Hh => // t s /(_ t (mem_head _ _)); by rewrite leqNgt height_gt0.
-rewrite [nseq _ _]/= lo_traversal_lt_cons0 -IH.
-  by case/boolP: (nilp s) => [/nilP | /level_traversalE] ->.
+rewrite [nseq _ _]/= lo_traversal_lt_cons0 IH.
+  by case/boolP: (nilp s) => [/nilP | /forest_traversalE] ->.
 by move=> t /flattenP [s'] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
 Qed.
 
@@ -537,7 +537,7 @@ Definition LOUDS_children (B : bitseq) (v : nat) : nat :=
 Theorem LOUDS_childrenE (t : tree A) (p p' : seq nat) :
   let B := LOUDS_lt [:: t] (p ++ 0 :: p') in
   valid_position t p ->
-  children t p = LOUDS_children B (LOUDS_position [:: t] p).
+  LOUDS_children B (LOUDS_position [:: t] p) = children t p.
 Proof.
 move=> B HV.
 rewrite /LOUDS_children succ_drop; last first.
