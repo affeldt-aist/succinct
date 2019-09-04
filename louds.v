@@ -190,7 +190,7 @@ Lemma lo_traversal_lt_cons0 s p :
 Proof. by rewrite lo_traversal_lt_cons lo_traversal_lt0 lo_fringe0. Qed.
 
 Lemma lo_traversal_lt_max0 l r h p :
-  (forall t, t \in l ++ r -> height t <= h) ->
+  {in l ++ r, forall t, height t <= h} ->
   size p >= h ->
   map f l ++ lo_traversal_lt (r ++ children_of_forest l) p =
   lo_traversal_lt (l ++ r) (nseq h 0).
@@ -205,25 +205,21 @@ rewrite [size _]/= ltnS [nseq _ _]/= lo_traversal_lt_cons0 map_cat -catA => Hp.
 congr cat.
 case: r => [|[a cl] r] in Hh *.
   rewrite !cat0s cats0 -(IH (n::p) [::] (children_of_forest l)) ?cats0 //.
-  by rewrite cat0s; apply children_of_forest_height; rewrite cats0 in Hh.
-  by rewrite ltnW // ltnS.
-rewrite /= !map_cat -!catA.
-congr (_ :: _ ++ _).
-rewrite catA -map_cat (children_of_forest_cat l) children_of_forest_cons /=.
-rewrite -[in cl ++ _](cat_take_drop n cl) !children_of_forest_cat -!catA.
-rewrite (catA _ (take n cl)) (catA (drop n cl)).
-rewrite -children_of_forest_cat {}IH => // t.
-rewrite -catA (catA (take n cl)) cat_take_drop.
-rewrite -(children_of_forest_cons (Node a cl)) -children_of_forest_cat.
-move/flattenP => [s] /mapP [t'] Ht' -> Ht.
-by move/Hh: Ht'; rewrite -(nodeK t') => /height_Node/(_ _ Ht).
+    by apply children_of_forest_height; rewrite cats0 in Hh.
+  exact: ltnW.
+rewrite /= !map_cat -!catA; congr (_ :: _ ++ _).
+have splt : children_of_forest (l ++ Node a cl :: r) =
+  (children_of_forest l ++ take n cl) ++ drop n cl ++ children_of_forest r.
+  by rewrite -catA (catA (take _ _)) cat_take_drop children_of_forest_cat.
+rewrite catA -map_cat children_of_forest_cat catA {}IH // -splt //.
+by apply children_of_forest_height.
 Qed.
 
 Theorem lo_traversal_lt_max t p :
   size p >= height t ->
   lo_traversal_lt [:: t] p = lo_traversal_lt [:: t] (nseq (height t) 0).
 Proof.
-refine (@lo_traversal_lt_max0 [::] [:: t] (height t) p _) => t'.
+apply (@lo_traversal_lt_max0 [::] [::t]) => t'.
 by rewrite inE => /eqP ->.
 Qed.
 
@@ -232,13 +228,13 @@ Theorem lo_traversal_ltE (t : tree A) (p : seq nat) :
 Proof.
 rewrite /lo_traversal_st level_traversal_forest => /lo_traversal_lt_max -> {p}.
 set s := [:: t]; set h := height t.
-have Hh : forall t, t \in s -> height t <= h.
+have Hh : {in s, forall t, height t <= h}.
   by move=> t'; rewrite inE => /eqP ->.
 elim: {t} h s Hh => [|h IH] s Hh.
   case: s Hh => // t s /(_ t (mem_head _ _)); by rewrite leqNgt height_gt0.
 rewrite [nseq _ _]/= lo_traversal_lt_cons0 IH.
   by case/boolP: (nilp s) => [/nilP | /forest_traversalE] ->.
-by move=> t /flattenP [s'] /mapP [[a cl]] /Hh Ht -> /(height_Node Ht).
+by apply children_of_forest_height.
 Qed.
 
 End lo_traversal_lt.
@@ -263,7 +259,7 @@ case Hd: (drop n cl).
 by move: HV; rewrite -(addn0 n) -nth_drop Hd.
 Qed.
 
-Definition lo_index (s : forest A) (p : seq nat) := size (lo_traversal_lt id s p).
+Definition lo_index s p := size (lo_traversal_lt id s p).
 
 Definition LOUDS_lt s p := flatten (lo_traversal_lt children_description s p).
 
@@ -336,9 +332,8 @@ elim: p s => // [|n p IH].
 move=> [|[a cl] s] HV //=.
 rewrite map_comp -/(children_of_forest' (s ++ take n cl)).
 rewrite /lo_index /= !size_cat size_node_description !size_map.
-rewrite size_cat -addnA -(add1n (size s + _)) select_addn.
-rewrite count_cat count_mem_false_node_description /=.
-rewrite select_cat count_mem_false_node_description /=.
+rewrite size_cat -addnA -[in RHS]add1n select_addn.
+rewrite count_cat select_cat !count_mem_false_node_description /=.
 rewrite select_false_node_description.
 congr addn.
 rewrite drop_size_cat; last by rewrite size_node_description.
@@ -365,7 +360,7 @@ elim: p s => [|i p IH] [|[a cl] s] HV //=.
   rewrite rank_cat size_node_description ltnS (ltnW Hi).
   by rewrite rank_true_node_description // ltnW.
 rewrite map_comp -/(children_of_forest' (s ++ take i cl)).
-rewrite !size_cat !size_map size_cat -addnA -addSn.
+rewrite !(size_cat,size_map) -addnA -addSn.
 congr addn.
 rewrite -addnA rank_addn rank_cat ltnn rank_size //.
 rewrite count_mem_true_node_description subnn rank0 addn0 drop_cat ltnn.
@@ -377,8 +372,8 @@ rewrite flatten_cat size_cat -addnA [in RHS]rank_addn flatten_cat.
 rewrite drop_cat ltnn subnn drop0.
 congr addn.
 rewrite rank_cat ltnn subnn rank0 addn0 [in RHS]rank_size //.
-rewrite count_flatten -map_comp sumnE big_map.
-rewrite size_flatten sumnE big_map; apply eq_bigr => t _ /=.
+rewrite count_flatten size_flatten -map_comp !sumnE !big_map.
+apply eq_bigr => t _ /=.
 by rewrite count_mem_true_node_description.
 Qed.
 

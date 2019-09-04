@@ -12,10 +12,10 @@ Require FunctionalExtensionality Wf_nat Recdef.
   3. Section valid_position.
   4. Section encode_decode_gentree.
   5. Section forest.
-  6. Section level_order_traversal.
-  7. Section mzip.
-  8. Section lo_traversal_st.
-  9. Section forest_eqType.
+  6. Section forest_eqType.
+  7. Section level_order_traversal.
+  8. Section mzip.
+  9. Section lo_traversal_st.
   10. Section binary_search.
   11. Section bfs.
  *)
@@ -592,6 +592,7 @@ Proof. by rewrite /lo_traversal_cat -level_traversal_catE Monoid.mulm1. Qed.
 
 End lo_traversal_st.
 
+Section lo_traversal_examples.
 Goal lo_traversal_st (@label_of_node _)
      (Node 1 [:: Node 2 [:: Node 4 [::]]; Node 3 [::]]) = [:: 1; 2; 3; 4].
 by [].
@@ -601,63 +602,8 @@ Goal lo_traversal_cat (@label_of_node _)
      (Node 1 [:: Node 2 [:: Node 4 [::]]; Node 3 [::]]) = [:: 1; 2; 3; 4].
 by [].
 Abort.
+End lo_traversal_examples.
 
-Section forest_eqType.
-
-Variable A : eqType.
-Implicit Types l : forest A.
-
-Lemma all_height_Node l n :
-  all (fun x : tree A => height x <= n.+1) l ->
-  all (fun x : tree A => height x <= n) (children_of_forest l).
-Proof.
-elim: l => [|t l IH /= /andP [] Ht Hl]; first by [].
-rewrite all_cat.
-apply/andP.
-split; last by apply IH.
-case: t Ht => v' l' /height_Node Hh.
-by apply/allP.
-Qed.
-
-(*
-Lemma level_order_forest_traversal'_nil (B : Type)
-  (f : forest A -> seq B) (n : nat) (Hf0 : f [::] = [::]) :
-  lo_traversal'' f n [::] = [::].
-Proof. by elim: n => [|n /=]; last rewrite Hf0. Qed.
-
-Lemma level_order_forest_traversal'_cat (B : Type)
-  (f : forest A -> seq B) (n : nat) l1 l2
-  (Hf0 : f [::] = [::])
-  (Hf2 : forall x y, f (x ++ y) = f x ++ f y) :
-  all (fun x => n >= height x) (l1 ++ l2) ->
-  lo_traversal'' f n (l1 ++ l2) =
-  f l1 ++ lo_traversal'' f n (l2 ++ children_of_forest l1).
-Proof.
-elim: n l1 l2 => [l1 l2|n IH l1 l2 H] /=.
-  rewrite all_cat.
-  case: l1 => [|t l1 /=]; by [rewrite Hf0 | rewrite leqNgt height_gt0].
-rewrite children_of_forest_cat {}IH; last first.
-  move: H; rewrite all_cat => /andP [? ?]; by rewrite all_cat !all_height_Node.
-by rewrite !Hf2 -!catA children_of_forest_cat.
-Qed.
-
-Lemma level_order_forest_traversal'_cons (B : Type)
-  (f : forest A -> seq B)
-  (n : nat) v' l' (t : tree A) l
-  (Hf0 : f [::] = [::])
-  (Hf2 : forall x y, f (x ++ y) = f x ++ f y) :
-  t = Node v' l' ->
-  all (fun x => n >= height x) (t :: l) ->
-  lo_traversal'' f n (t :: l) =
-  f [:: t] ++ lo_traversal'' f n (l ++ l').
-Proof.
-move=> -> H.
-rewrite -cat1s level_order_forest_traversal'_cat //.
-by rewrite children_of_forest_cons cats0.
-Qed.
-*)
-
-End forest_eqType.
 
 Section binary_search.
 
