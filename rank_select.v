@@ -363,14 +363,11 @@ case/boolP: (i <= (count_mem b) s) => Hi.
   case: (rank_exists_lt Hi) => x [Hx Hxi].
   exists x => //.
   by rewrite mem_iota add0n Hx.
-- rewrite -ltnNge in Hi.
-  rewrite select_over // /selecti.
+- rewrite select_over ?ltnNge // /selecti.
   rewrite -(addn0 (size s).+1) iota_add map_cat index_cat.
-  case: ifPn.
-    move/mapP => [x _ Hxi].
-    move/(leq_ltn_trans (leq_rank_count b x s)): Hi.
-    by rewrite Hxi ltnn.
-  by rewrite /= size_map size_iota.
+  case: ifPn => Hi'; last by rewrite /= size_map size_iota.
+  elim (negP Hi); move/mapP: Hi' => [x _ ->].
+  by apply leq_rank_count.
 Qed.
 
 Lemma SelectE i n (s : n.-tuple T) : Select b i s = select i s.
