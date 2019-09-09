@@ -370,6 +370,21 @@ case/boolP: (i <= (count_mem b) s) => Hi.
   by apply leq_rank_count.
 Qed.
 
+(* Another proof
+Lemma selectE i (s : seq T) :
+  select i s = index i [seq (rank b k s) | k <- iota 0 (size s).+1].
+Proof.
+  rewrite /= /rank take0 eq_sym; case: ifP => [/eqP ->|].
+   by rewrite select0.
+  elim: s i => [[] //|? ? // IH [] // i H /=].
+  case: ifP => [/eqP ->|Hab].
+   case: i H => [|? _]; first by rewrite take0 select0.
+  all: rewrite take0 addn0 IH // /index; apply/esym;
+  by rewrite -[X in iota X _]addn1 iota_addl -map_comp /=
+             /comp !find_map /= ?eqxx ?Hab.
+Qed.
+*)
+
 Lemma SelectE i n (s : n.-tuple T) : Select b i s = select i s.
 Proof.
 rewrite /Select.
