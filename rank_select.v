@@ -347,6 +347,32 @@ move/select_index => ->.
 by rewrite (leq_trans (index_size _ _)) // size_map size_iota.
 Qed.
 
+Definition selecti i (s : seq T) : nat :=
+  index i [seq rank b k s | k <- iota 0 (size s).+1].
+
+Lemma selectiE i (s : seq T) : selecti i s = select i s.
+Proof.
+case/boolP: (i <= (count_mem b) s) => Hi.
+- rewrite select_index // /selecti.
+  rewrite /mkseq -addn1 iota_add map_cat index_cat.
+  rewrite -[in RHS](addn0 (size s)) iota_add map_cat index_cat.
+  case: ifPn => // Hi'.
+  move: Hi; rewrite leq_eqVlt => /orP [/eqP -> | Hi].
+    by rewrite /= /rank add0n take_size eqxx.
+  move/mapP: Hi'; elim.
+  case: (rank_exists_lt Hi) => x [Hx Hxi].
+  exists x => //.
+  by rewrite mem_iota add0n Hx.
+- rewrite -ltnNge in Hi.
+  rewrite select_over // /selecti.
+  rewrite -(addn0 (size s).+1) iota_add map_cat index_cat.
+  case: ifPn.
+    move/mapP => [x _ Hxi].
+    move/(leq_ltn_trans (leq_rank_count b x s)): Hi.
+    by rewrite Hxi ltnn.
+  by rewrite /= size_map size_iota.
+Qed.
+
 Lemma SelectE i n (s : n.-tuple T) : Select b i s = select i s.
 Proof.
 rewrite /Select.

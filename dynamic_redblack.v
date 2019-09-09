@@ -464,8 +464,8 @@ Proof.
   rewrite /dinsert /binsert /dins -dins_leafE /=; by case: dins_leaf.
 Qed.
 
-(* Well-foundedness lemmas
- * Show that dinsert always returns a well-founded tree
+(* Well-formedness lemmas
+ * Show that dinsert always returns a well-formed tree
  *)
 
 Lemma balanceL_wf c (l r : dtree) d :
