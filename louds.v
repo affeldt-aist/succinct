@@ -87,19 +87,15 @@ Lemma size_LOUDS t : size (LOUDS t) = (number_of_nodes t).*2.-1.
 Proof.
 rewrite /LOUDS.
 elim/tree_ind_eqType: t => a l IH /=.
-rewrite size_cat size_node_description addSn; congr S.
-rewrite -doubleE foldr_bigE.
+rewrite size_cat size_node_description addSn -doubleE foldr_bigE; congr S.
 rewrite (@big_morph _ _ (fun i => size (flatten (flatten i))) 0 addn) //;
         first last.
   elim; first by move=> ?; rewrite add0n.
   move=> x xs IHx [/=|y ys]; first by rewrite addn0.
   by rewrite /= !flatten_cat !size_cat IHx !addnA (addnAC (size _)).
-rewrite big_seq_cond /=.
-rewrite (eq_bigr (fun t => (number_of_nodes t).*2.-1)) /=; last first.
-  by move=> i /andP [Hi _]; rewrite IH.
-rewrite -big_seq_cond -sum1_size -big_split /=.
-rewrite size_flatten /shape -map_comp sumnE big_map -muln2 big_distrl /=.
-by apply eq_bigr => -[??] _; rewrite add1n prednK ?muln2.
+rewrite big_seq /= (eq_bigr _ IH) -big_seq -!sum1_size -big_split /=.
+rewrite big_flatten big_map -muln2 big_distrl /=.
+apply eq_bigr => -[] *; by rewrite sum1_size add1n prednK ?muln2.
 Qed.
 
 End louds_encoding.
