@@ -358,11 +358,11 @@ case/boolP: (i <= (count_mem b) s) => Hi.
   rewrite -[in RHS](addn0 (size s)) iota_add map_cat index_cat.
   case: ifPn => // Hi'.
   move: Hi; rewrite leq_eqVlt => /orP [/eqP -> |].
-    by rewrite /= /rank add0n take_size eqxx.
+    by rewrite /= /rank take_size eqxx.
   case/rank_exists_lt => x [Hx Hxi].
   move/mapP: Hi'; elim.
   exists x => //.
-  by rewrite mem_iota add0n Hx.
+  by rewrite mem_iota Hx.
 - rewrite select_over ?ltnNge // /selecti.
   rewrite -(addn0 (size s).+1) iota_add map_cat index_cat ifF.
     by rewrite /= size_map size_iota.

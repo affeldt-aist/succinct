@@ -89,8 +89,8 @@ rewrite /LOUDS.
 elim/tree_ind_eqType: t => a l IH /=.
 rewrite size_cat size_node_description addSn; congr S.
 rewrite -doubleE foldr_bigE.
-rewrite (@big_morph nat (seq (seq (seq bool)))
-         (fun i => size (flatten (flatten i))) 0 addn nil) //; first last.
+rewrite (@big_morph _ _ (fun i => size (flatten (flatten i))) 0 addn) //;
+        first last.
   elim; first by move=> ?; rewrite add0n.
   move=> x xs IHx [/=|y ys]; first by rewrite addn0.
   by rewrite /= !flatten_cat !size_cat IHx !addnA (addnAC (size _)).
@@ -381,7 +381,7 @@ Qed.
 Definition LOUDS_child (B : bitseq) (v t : nat) :=
   select false (rank true (v + t) B).+1 B.
 
-Theorem LOUDS_childE (t : tree A) (p p' : seq nat) x :
+Theorem LOUDS_childE' (t : tree A) (p p' : seq nat) x :
   let B := LOUDS_lt [::t] (rcons p x ++ p') in
   valid_position t (rcons p x) ->
   LOUDS_child B (LOUDS_position [:: t] p) x = LOUDS_position [:: t] (rcons p x).
@@ -389,6 +389,21 @@ Proof.
 rewrite /LOUDS_child => HV.
 rewrite -add1n (_ : 1 = size [::t]) // -lo_index_rank //.
 by rewrite (@LOUDS_position_select _ _ p') ?cats0.
+Qed.
+
+Lemma LOUDS_ltE' p (P : bitseq -> Prop) (t : tree A) :
+  (forall p', P (LOUDS_lt [:: t] (p ++ p'))) -> P (LOUDS t).
+Proof.
+move=> Hlt; rewrite (@LOUDS_ltE t (p ++ nseq (height t) 0)) //.
+by rewrite size_cat size_nseq leq_addl.
+Qed.
+
+Corollary LOUDS_childE (t : tree A) p x :
+  let B := LOUDS t in
+  valid_position t (rcons p x) ->
+  LOUDS_child B (LOUDS_position [:: t] p) x = LOUDS_position [:: t] (rcons p x).
+Proof.
+move=> /= HV; apply (@LOUDS_ltE' (rcons p x)) => p'; exact: LOUDS_childE'.
 Qed.
 
 Lemma take_children_position t p p' x :
@@ -510,7 +525,7 @@ Definition LOUDS_parent (B : bitseq) (v : nat) : nat :=
   let j := select true (rank false v B) B in
   pred false B j.
 
-Theorem LOUDS_parentE (t : tree A) p p' x :
+Theorem LOUDS_parentE' (t : tree A) p p' x :
   let B := LOUDS_lt [:: t] (rcons p x ++ p') in
   valid_position t (rcons p x) ->
   LOUDS_parent B (LOUDS_position [:: t] (rcons p x)) =
@@ -525,11 +540,20 @@ rewrite -addnS pred_same_of_rank; last by apply rank_false_LOUDS_position.
 by apply pred_false_LOUDS_position.
 Qed.
 
+Corollary LOUDS_parentE (t : tree A) p x :
+  let B := LOUDS t in
+  valid_position t (rcons p x) ->
+  LOUDS_parent B (LOUDS_position [:: t] (rcons p x)) =
+  LOUDS_position [:: t] p.
+Proof.
+move=> /= HV; apply (@LOUDS_ltE' (rcons p x)) => p'; exact: LOUDS_parentE'.
+Qed.
+
 (* see [Navarro, p.214, l.-1] *)
 Definition LOUDS_children (B : bitseq) (v : nat) : nat :=
   succ false B v.+1 - v.+1.
 
-Theorem LOUDS_childrenE (t : tree A) (p p' : seq nat) :
+Theorem LOUDS_childrenE' (t : tree A) (p p' : seq nat) :
   let B := LOUDS_lt [:: t] (p ++ 0 :: p') in
   valid_position t p ->
   LOUDS_children B (LOUDS_position [:: t] p) = children t p.
@@ -537,13 +561,20 @@ Proof.
 move=> B HV.
 rewrite /LOUDS_children succ_drop; last first.
   rewrite /LOUDS_position /B LOUDS_lt_cat.
-  rewrite size_cat -[X in X < _]addn0 ltn_add2l.
-  move: (@size_lo_fringe [:: t] _ HV).
-  case: (lo_fringe _ _) => //= [t' w] _.
-  by rewrite /LOUDS_lt /= size_cat size_node_description addSn.
+  case: (lo_fringe _ _) (@size_lo_fringe [:: t] _ HV) => //= [t' w] _.
+  by rewrite !size_cat -addn1 leq_add2l size_node_description.
 rewrite -(cat_take_drop (children t p).+1 (drop _ _)).
 rewrite /B -cat_rcons take_children_position // select_cat.
 by rewrite count_mem_false_node_description select_false_node_description.
+Qed.
+
+Corollary LOUDS_childrenE (t : tree A) p :
+  let B := LOUDS t in
+  valid_position t p ->
+  LOUDS_children B (LOUDS_position [:: t] p) = children t p.
+Proof.
+move=> /= HV; apply (@LOUDS_ltE' (rcons p 0)) => p'.
+rewrite cat_rcons; exact: LOUDS_childrenE'.
 Qed.
 
 Definition LOUDS_childrank (B : bitseq) (v : nat) : nat :=

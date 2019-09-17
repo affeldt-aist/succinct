@@ -320,10 +320,10 @@ Lemma bins_is_redblack B b i n :
   (is_redblack B Red n -> is_redblack (bins B b i) Black n).
 Proof.
   elim: B i n => [c l IHl d r IHr | a] i n; last first.
-    split => /= /eqP -> //; by apply: is_redblack_nearly_redblack.
+    split => /= /eqP -> //; exact: is_redblack_nearly_redblack.
   have Hbk : is_redblack (Bnode Black l d r) Black n ->
              is_redblack (bins (Bnode Black l d r) b i) Black n.
-  rewrite {3}[Black]lock /= -lock => /andP [/andP [/prednK <- Hl] Hr].
+    rewrite {3}[Black]lock /= -lock => /andP [/andP [/prednK <- Hl] Hr].
     case: ifP => Hi.
       rewrite balanceL_Black_nearly_is_redblack //; by apply IHl.
     rewrite balanceR_Black_nearly_is_redblack //; by apply IHr.
@@ -331,7 +331,7 @@ Proof.
   + move=> /= /andP [Hl Hr].
     case: ifP => Hi /=; [move: Hr | move: Hl] => /is_redblack_Red_Black ->;
       rewrite /= ?andbT; by [apply IHl | apply IHr].
-  + move/Hbk; by apply is_redblack_nearly_redblack.
+  + move/Hbk; exact: is_redblack_nearly_redblack.
 Qed.
 
 Definition is_red D A (B : btree D A) :=
