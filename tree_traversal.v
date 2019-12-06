@@ -504,7 +504,7 @@ Lemma flatten_mzipC h s1 s2 :
 Proof.
 elim: s2 h s1 => // h2 s2 IH h1 s1 /=.
 rewrite -mulmA; congr (M h1).
-case: s1 => //= {h1}h1 s1.
+case: s1 => //= {}h1 s1.
 rewrite -mulmA -{}IH; by case: s2.
 Qed.
 

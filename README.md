@@ -19,8 +19,8 @@ A tentative formalization of compact data structures following [1]
 
 # Requirements
 
-- Coq 8.9.1
-- MathComp 1.9.0
+- Coq 8.10
+- MathComp 1.9.0 or higher
 
 # Compilation
 

@@ -781,7 +781,7 @@ case: ifP => [H | /negbT].
 rewrite -leqNgt => H.
 rewrite [in X in _ <= X]mulSn addnC addnK in H.
 move: (leq_div2r sz2 H).
-rewrite mulnK // => {H}H.
+rewrite mulnK // => {}H.
 have H' : k' * sz2 <= size s - i * (k * sz2).
   rewrite -(leq_add2l (i * (k * sz2))).
   rewrite addnBA; last first.

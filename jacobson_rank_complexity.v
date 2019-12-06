@@ -40,7 +40,7 @@ Lemma Zle0_floor (r : R) : (0 <= r)%R -> (0 <= floor r)%Z.
 Proof.
 rewrite /floor => r0.
 case: (base_Int_part r) => _ H.
-have {H}H : (Int_part r > -1)%R by lra.
+have {}H : (Int_part r > -1)%R by lra.
 move: H; move/lt_IZR => H; omega.
 Qed.
 
