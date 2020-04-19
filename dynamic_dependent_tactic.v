@@ -802,14 +802,14 @@ Proof. by move/leq_trans; apply; rewrite leq_addr. Qed.
 Lemma leq_addrn a b c : a <= c -> a <= b + c.
 Proof. by move/leq_trans; apply; rewrite leq_addl. Qed.
 
-Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addr leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW'.
+Hint Resolve ltn_subLN ltn_subLN2 addnA leq_addr leq_addrn ltn_addl ltn_addr cic_ok leq_access_count sizeW' : core.
 
 Lemma ordinal_caseL {s1 o1 s2 o2 d i cl cr} c
       (lok : color_ok c cl)
       (rok : color_ok c cr)
       (l : tree w s1 o1 d cl)
       (r : tree w s2 o2 d cr) :
-      i < s1 -> 
+      i < s1 ->
       {B' : near_tree' (s1 - 1) (o1 - daccess l i) d cl | dflatteni' B' = delete (dflatten l) i} ->
       {B' : near_tree' (s1 + s2 - 1) (o1 + o2 - daccess l i) (incr_black d c) c | dflatteni' B' = delete (dflatten l) i ++ dflatten r }.
 Proof.
@@ -825,7 +825,7 @@ Lemma ordinal_caseR {s1 o1 s2 o2 d i cl cr} c
       (rok : color_ok c cr)
       (l : tree w s1 o1 d cl)
       (r : tree w s2 o2 d cr) :
-      i < s1 + s2 -> 
+      i < s1 + s2 ->
       {B' : near_tree' (s2 - 1) (o2 - daccess r (i - s1)) d cr | dflatteni' B' = delete (dflatten r) (i - s1)} ->
       {B' : near_tree' (s1 + s2 - 1) (o1 + o2 - daccess r (i - s1)) (incr_black d c) c | dflatteni' B' = dflatten l ++ delete (dflatten r) (i - s1)}.
 Proof.
@@ -871,7 +871,6 @@ Definition ddelete (d: nat) (c: color) (num ones : nat) (i : nat) (B : tree w nu
    apply: (proj2_sig dr).
   apply: (ordinal_caseR c _ _ l r val (IHr d erefl (i - s1) _));
    eauto; apply: ltn_subLN; by eauto.
-  
   case: d r l IHl IHr val H => {d' d''} [| d r l IHl _ val H] /=.
    move creq: Red => cr;
    move cbeq: Black => cb'; move deq: 0 => d r l.

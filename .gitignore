@@ -5,3 +5,6 @@ Makefile.conf
 *~
 .*.aux
 .coqdeps.d
+*.vos
+*.vok
+

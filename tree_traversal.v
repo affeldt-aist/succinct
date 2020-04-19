@@ -85,7 +85,7 @@ Notation "[1, n ]" := (@idx.t n)
 Lemma idx_ltn0 (n : nat) (y : [1,n]) : 0 < idx.i y.
 Proof. by rewrite lt0n; exact: idx.i0. Qed.
 
-Hint Resolve idx_ltn0.
+Hint Resolve idx_ltn0 : core.
 
 Lemma idx_leq (n : nat) (y : [1,n]) : idx.i y <= n.
 Proof. case: y => //= y _; by rewrite -ltnS. Qed.
