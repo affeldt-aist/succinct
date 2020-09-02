@@ -5,7 +5,8 @@ Require Import tree_traversal rank_select insert_delete set_clear dynamic.
 
 Set Implicit Arguments.
 
-Tactic Notation "remember_eq" constr(expr) ident(vname) ident(eqname) := case (exist (fun x => x = expr) expr erefl) => vname eqname.
+Tactic Notation "remember_eq" constr(expr) ident(vname) ident(eqname) :=
+  case (exist (fun x => x = expr) expr erefl) => vname eqname.
 
 Section dynamic_dependent.
 Variable w : nat.
@@ -13,72 +14,72 @@ Hypothesis wordsize_gt1: w > 1.
 
 Section insert.
 
-  Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree w nl ml d cl) (r : tree w nr mr d cr) :
-    color_ok p (fix_color l) (* important claim! *) ->
-    color_ok p cr ->
-    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflatteni tr = dflatteni l ++ dflatten r}.
+Definition balanceL {nl ml d cl cr nr mr} (p : color) (l : near_tree w nl ml d cl) (r : tree w nr mr d cr) :
+  color_ok p (fix_color l) (* important claim! *) ->
+  color_ok p cr ->
+  {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflatteni tr = dflatteni l ++ dflatten r}.
 
-    destruct l as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc l'].
-    (* l is bad *)
-    + case: p => //= cpl cpr.
-      rewrite -(addnA (s1 + s2)) -(addnA (o1 + o2)).
-      exists (Good Black (rnode (bnode x y) (bnode z r))).
+  destruct l as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc l'].
+  (* l is bad *)
+  + case: p => //= cpl cpr.
+    rewrite -(addnA (s1 + s2)) -(addnA (o1 + o2)).
+    exists (Good Black (rnode (bnode x y) (bnode z r))).
+    by rewrite /= !catA.
+  (* l is good *)
+  + case: p => /= cpl cpr; last by exists (Good Black (bnode l' r)).
+    case Hc': c' in cpl.
+    (* bad pattern (c' and p are red) *)
+    - destruct l' as [|s1 o1 s2 o2 d cl' cr' c' w1 w2 l'1 l'2] => //.
+      subst c'; destruct cl', cr', cr => //.
+      exists (Bad l'1 l'2 r).
       by rewrite /= !catA.
-    (* l is good *)
-    + case: p => /= cpl cpr; last by exists (Good Black (bnode l' r)).
-      case Hc': c' in cpl.
-      (* bad pattern (c' and p are red) *)
-      - destruct l' as [|s1 o1 s2 o2 d cl' cr' c' w1 w2 l'1 l'2] => //.
-        subst c'; destruct cl', cr', cr => //.
-        exists (Bad l'1 l'2 r).
-        by rewrite /= !catA.
-      (* otherwise *)
-      - subst c'; destruct cr => //.
-        by exists (Good Red (rnode l' r)).
-  Defined.
+    (* otherwise *)
+    - subst c'; destruct cr => //.
+      by exists (Good Red (rnode l' r)).
+Defined.
 
-  Definition balanceR {nl ml d cl cr nr mr} (p : color) (l : tree w nl ml d cl) (r : near_tree w nr mr d cr):
-    color_ok p cl ->
-    color_ok p (fix_color r) ->  (* important claim! *)
-    {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflatteni tr = dflatten l ++ dflatteni r}.
+Definition balanceR {nl ml d cl cr nr mr} (p : color) (l : tree w nl ml d cl) (r : near_tree w nr mr d cr):
+  color_ok p cl ->
+  color_ok p (fix_color r) ->  (* important claim! *)
+  {tr : near_tree w (nl + nr) (ml + mr) (incr_black d p) p | dflatteni tr = dflatten l ++ dflatteni r}.
 
-    destruct r as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc r'].
-    (* r is bad *)
-    + case: p => //= cpl cpr.
-      rewrite -!addnA [nl + (s1 + (s2 + s3))]addnA [ml + (o1 + (o2 + o3))]addnA.
-      exists (Good Black (rnode (bnode l x) (bnode y z))).
-      by rewrite /= !catA.
-    (* r is good *)
-    + case: p => /= cpl cpr; last by exists (Good Black (bnode l r')).
-      case Hc': c' in cpr.
-      (* bad pattern (c' and p are red) *)
-      - destruct r' as [|s1 o1 s2 o2 d cl' cr' c' w1 w2 r'1 r'2] => //=.
-        subst c'; destruct cl', cr', cl => //.
-        rewrite !addnA.
-        by exists (Bad l r'1 r'2).
-      (* otherwise *)
-      - subst c'; destruct cl => //.
-        by exists (Good Red (rnode l r')).
-  Defined.
+  destruct r as [s1 o1 s2 o2 s3 o3 d' x y z | s o d' c' cc r'].
+  (* r is bad *)
+  + case: p => //= cpl cpr.
+    rewrite -!addnA [nl + (s1 + (s2 + s3))]addnA [ml + (o1 + (o2 + o3))]addnA.
+    exists (Good Black (rnode (bnode l x) (bnode y z))).
+    by rewrite /= !catA.
+  (* r is good *)
+  + case: p => /= cpl cpr; last by exists (Good Black (bnode l r')).
+    case Hc': c' in cpr.
+    (* bad pattern (c' and p are red) *)
+    - destruct r' as [|s1 o1 s2 o2 d cl' cr' c' w1 w2 r'1 r'2] => //=.
+      subst c'; destruct cl', cr', cl => //.
+      rewrite !addnA.
+      by exists (Bad l r'1 r'2).
+    (* otherwise *)
+    - subst c'; destruct cl => //.
+      by exists (Good Red (rnode l r')).
+Defined.
 
-  Program Fixpoint dinsert' {n m d c} (B : tree w n m d c) (b : bool) i
-          {measure (size_of_tree B)} : { B' : near_tree w n.+1 (m + b) d c
-                              | dflatteni B' = insert1 (dflatten B) b i } :=
-    match B with
-    | Leaf s _ _ =>
-      let s' := insert1 s b i in
-      match size s' == 2 * (w ^ 2) with
-      | true => let n  := (size s') %/ 2 in
-                let sl := take n s' in
-                let sr := drop n s' in
-                Good c (rnode (Leaf _ sl _ _) (Leaf _ sr _ _))
-      | false => Good c (Leaf _ s' _ _)
-      end
-    | Node s1 o1 s2 o2 d cl cr _ okl okr l r =>
-      if i < s1
-      then proj1_sig (balanceL c (dinsert' l b i) r _ okr)
-      else proj1_sig (balanceR c l (dinsert' r b (i - s1)) okl _)
-    end.
+Program Fixpoint dinsert' {n m d c} (B : tree w n m d c) (b : bool) i
+        {measure (size_of_tree B)} : { B' : near_tree w n.+1 (m + b) d c
+                            | dflatteni B' = insert1 (dflatten B) b i } :=
+  match B with
+  | Leaf s _ _ =>
+    let s' := insert1 s b i in
+    match size s' == 2 * (w ^ 2) with
+    | true => let n  := (size s') %/ 2 in
+              let sl := take n s' in
+              let sr := drop n s' in
+              Good c (rnode (Leaf _ sl _ _) (Leaf _ sr _ _))
+    | false => Good c (Leaf _ s' _ _)
+    end
+  | Node s1 o1 s2 o2 d cl cr _ okl okr l r =>
+    if i < s1
+    then proj1_sig (balanceL c (dinsert' l b i) r _ okr)
+    else proj1_sig (balanceR c l (dinsert' r b (i - s1)) okl _)
+  end.
 
   Next Obligation.
     move/eqP/eqnP : Heq_anonymous => /=.
@@ -184,90 +185,90 @@ Section insert.
       by rewrite e /insert1 /insert take_cat drop_cat size_dflatten H -!catA.
   Qed.
 
-  Definition dinsert n m d c (B : tree w n m d c) (b : bool) (i : nat) :=
-    fix_near_tree (proj1_sig (dinsert' B b i)).
+Definition dinsert n m d c (B : tree w n m d c) (b : bool) (i : nat) :=
+  fix_near_tree (proj1_sig (dinsert' B b i)).
 
-  Lemma dinsertK n m d c (B : tree w n m d c) b i :
-    dflatten (dinsert B b i) = insert1 (dflatten B) b i.
-  Proof. by rewrite /dinsert fix_near_treeK (proj2_sig (dinsert' B b i)). Qed.
+Lemma dinsertK n m d c (B : tree w n m d c) b i :
+  dflatten (dinsert B b i) = insert1 (dflatten B) b i.
+Proof. by rewrite /dinsert fix_near_treeK (proj2_sig (dinsert' B b i)). Qed.
 
 End insert.
 
 Section query.
 
-  Fixpoint daccess {n m d c} (tr : tree w n m d c) i :=
-    match tr with
-    | Leaf s _ _ => nth false s i
-    | Node lnum _ _ _ _ _ _ _ _ _ l r =>
-      if i < lnum
-      then daccess l i
-      else daccess r (i - lnum)
-    end.
+Fixpoint daccess {n m d c} (tr : tree w n m d c) i :=
+  match tr with
+  | Leaf s _ _ => nth false s i
+  | Node lnum _ _ _ _ _ _ _ _ _ l r =>
+    if i < lnum
+    then daccess l i
+    else daccess r (i - lnum)
+  end.
 
-  Fixpoint drank {n m d c} (tr : tree w n m d c) i :=
-    match tr with
-    | Leaf s _ _ => rank true i s
-    | Node lnum lones rnum rones _ _ _ _ _ _ l r =>
-      if i < lnum
-      then drank l i
-      else lones + drank r (i - lnum)
-    end.
+Fixpoint drank {n m d c} (tr : tree w n m d c) i :=
+  match tr with
+  | Leaf s _ _ => rank true i s
+  | Node lnum lones rnum rones _ _ _ _ _ _ l r =>
+    if i < lnum
+    then drank l i
+    else lones + drank r (i - lnum)
+  end.
 
-  Fixpoint dselect_0 {n m d c} (tr : tree w n m d c) i :=
-    match tr with
-    | Leaf s _ _ => select false i s
-    | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
-      let zeroes := s1 - o1
-      in if i <= zeroes
-      then dselect_0 l i
-      else s1 + dselect_0 r (i - zeroes)
-    end.
+Fixpoint dselect_0 {n m d c} (tr : tree w n m d c) i :=
+  match tr with
+  | Leaf s _ _ => select false i s
+  | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
+    let zeroes := s1 - o1
+    in if i <= zeroes
+    then dselect_0 l i
+    else s1 + dselect_0 r (i - zeroes)
+  end.
 
-  Fixpoint dselect_1 {n m d c} (tr : tree w n m d c) i :=
-    match tr with
-    | Leaf s _ _ => select true i s
-    | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
-      if i <= o1
-      then dselect_1 l i
-      else s1 + dselect_1 r (i - o1)
-    end.
+Fixpoint dselect_1 {n m d c} (tr : tree w n m d c) i :=
+  match tr with
+  | Leaf s _ _ => select true i s
+  | Node s1 o1 s2 o2 _ _ _ _ _ _ l r =>
+    if i <= o1
+    then dselect_1 l i
+    else s1 + dselect_1 r (i - o1)
+  end.
 
-  Definition access (s : seq bool) i := nth false s i.
+Definition access (s : seq bool) i := nth false s i.
 
-  Lemma daccessK nums ones d c (B : tree w nums ones d c) :
-    daccess B =1 access (dflatten B).
-  Proof.
-    rewrite /access.
-    elim: B => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite nth_cat size_dflatten -IHl -IHr.
-  Qed.
+Lemma daccessK nums ones d c (B : tree w nums ones d c) :
+  daccess B =1 access (dflatten B).
+Proof.
+  rewrite /access.
+  elim: B => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+  by rewrite nth_cat size_dflatten -IHl -IHr.
+Qed.
 
-  Lemma drankK nums ones d c (B : tree w nums ones d c) i :
-    drank B i = rank true i (dflatten B).
-  Proof.
-    elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite rank_cat size_dflatten IHl -IHr -dflatten_rank.
-  Qed.
+Lemma drankK nums ones d c (B : tree w nums ones d c) i :
+  drank B i = rank true i (dflatten B).
+Proof.
+  elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+  by rewrite rank_cat size_dflatten IHl -IHr -dflatten_rank.
+Qed.
 
-  Lemma drank_ones num ones d c (B : tree w num ones d c) :
-    drank B num = ones.
-  Proof.
-    by rewrite [in RHS](dflatten_rank B) drankK.
-  Qed.
+Lemma drank_ones num ones d c (B : tree w num ones d c) :
+  drank B num = ones.
+Proof.
+  by rewrite [in RHS](dflatten_rank B) drankK.
+Qed.
 
-  Lemma dselect1K nums ones d c (B : tree w nums ones d c) i :
-    dselect_1 B i = select true i (dflatten B).
-  Proof.
-    elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_ones IHl IHr size_dflatten.
-  Qed.
+Lemma dselect1K nums ones d c (B : tree w nums ones d c) i :
+  dselect_1 B i = select true i (dflatten B).
+Proof.
+  elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+  by rewrite select_cat -dflatten_ones IHl IHr size_dflatten.
+Qed.
 
-  Lemma dselect0K nums ones d c (B : tree w nums ones d c) i :
-    dselect_0 B i = select false i (dflatten B).
-  Proof.
-    elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
-    by rewrite select_cat -dflatten_zeroes IHl IHr size_dflatten.
-  Qed.
+Lemma dselect0K nums ones d c (B : tree w nums ones d c) i :
+  dselect_0 B i = select false i (dflatten B).
+Proof.
+  elim: B i => //= lnum o1 s2 o2 d0 cl cr c0 i i0 l IHl r IHr x.
+  by rewrite select_cat -dflatten_zeroes IHl IHr size_dflatten.
+Qed.
 
 End query.
 
@@ -279,24 +280,24 @@ End query.
 
 Section set_clear.
 
-  Obligation Tactic := idtac.
+Obligation Tactic := idtac.
 
-  Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
-    {measure (size_of_tree B)} :
-    { B'b : tree w num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
-    | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
-    match B with
-    | Leaf s _ _ => (Leaf _ (bit_set s i) _ _, ~~ (access s i))
-    | Node lnum lones rnum rones _ _ _ _ col cor l r =>
-      match lt_dec i lnum with
-      | left H =>
-        let x := bset l i
-        in (Node col cor x.1 r, x.2)
-      | right H =>
-        let x := bset r (i - lnum)
-        in (Node col cor l x.1, x.2)
-      end
-    end.
+Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
+  {measure (size_of_tree B)} :
+  { B'b : tree w num (ones + (~~ (daccess B i)) && (i < num)) d c * bool
+  | dflatten (fst B'b) = bit_set (dflatten B) i/\snd B'b = ~~ daccess B i } :=
+  match B with
+  | Leaf s _ _ => (Leaf _ (bit_set s i) _ _, ~~ (access s i))
+  | Node lnum lones rnum rones _ _ _ _ col cor l r =>
+    match lt_dec i lnum with
+    | left H =>
+      let x := bset l i
+      in (Node col cor x.1 r, x.2)
+    | right H =>
+      let x := bset r (i - lnum)
+      in (Node col cor l x.1, x.2)
+    end
+  end.
 
   Next Obligation. intros. by rewrite size_bit_set. Qed.
 
@@ -318,7 +319,7 @@ Section set_clear.
 
   Next Obligation.
     intros; subst. apply /ltP.
-    rewrite -Heq_B /=.
+    rewrite /=.
     by rewrite -addn1 leq_add2l size_of_tree_pos.
   Qed.
 

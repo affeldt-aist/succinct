@@ -1,6 +1,6 @@
 From mathcomp Require Import ssreflect ssrbool ssrfun eqtype ssrnat div seq.
 From mathcomp Require Import choice fintype prime tuple finfun finset bigop.
-Require Import Omega Reals Rpower Lra.
+Require Import Lia Reals Rpower Lra.
 Require Import tree_traversal rank_select.
 
 (** * Space complexity of the rank algorithm *)
@@ -41,7 +41,7 @@ Proof.
 rewrite /floor => r0.
 case: (base_Int_part r) => _ H.
 have {}H : (Int_part r > -1)%R by lra.
-move: H; move/lt_IZR => H; omega.
+by move: H; move/lt_IZR => H; lia.
 Qed.
 
 Lemma Zlt0_floor (r : R) : (1 <= r)%R -> (0 < floor r)%Z.
