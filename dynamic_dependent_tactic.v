@@ -319,7 +319,6 @@ Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
 
   Next Obligation.
     intros; subst. apply /ltP.
-    rewrite /=.
     by rewrite -addn1 leq_add2l size_of_tree_pos.
   Qed.
 
@@ -329,12 +328,12 @@ Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
   Qed.
 
   Next Obligation.
-    split; subst; last first.
+    split; last first.
       destruct bset as [[l' flip][Hl' Hf]] => /=.
       move/ltP: (H) => ->.
       by rewrite -Hf.
     move=> /=.
-    move: (lones + rones + _) (bset_func_obligation_7 _ _ _ _ _ _) => ones Ho.
+    move: (lones + rones + _) (bset_func_obligation_7 _ _ _ _ _ _) => ones' Ho.
     destruct Ho => /=.
     destruct bset as [[l' flip][Hl' Hf]] => /=.
     rewrite /= in Hl'.
@@ -345,7 +344,6 @@ Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
 
   Next Obligation.
     intros; subst. apply /ltP.
-    rewrite -Heq_B /=.
     by rewrite -add1n leq_add2r size_of_tree_pos.
   Qed.
 
@@ -356,12 +354,12 @@ Program Fixpoint bset {num ones d c} (B : tree w num ones d c) i
   Qed.
 
   Next Obligation.
-    split; subst; last first.
+    split; last first.
       destruct bset as [[r' flip][Hr' Hf]] => /=.
       move/ltP: (H) => Hi.
       by rewrite -if_neg Hi -Hf.
     move=> /=.
-    move: (lones + rones + _) (bset_func_obligation_10 _ _ _ _ _ _) => ones Ho.
+    move: (lones + rones + _) (bset_func_obligation_10 _ _ _ _ _ _) => ones' Ho.
     destruct Ho => /=.
     destruct bset as [[r' flip][Hr' Hf]] => /=.
     rewrite /= in Hr'.
