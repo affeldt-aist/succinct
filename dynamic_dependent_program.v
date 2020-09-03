@@ -1680,7 +1680,7 @@ Local Obligation Tactic := program_simpl.
       end
     end.
 
-  Solve All Obligations with (intros; subst; try exact; intuition).
+  Solve All Obligations with (intros; subst_eq; try exact; intuition).
 
   Next Obligation.
     intros; subst_eq. rewrite /eq_rect.
@@ -1698,8 +1698,6 @@ Local Obligation Tactic := program_simpl.
     destruct balleft_obligation_20, balleft_obligation_17 => //=.
     rewrite /eq_ind_r /eq_ind //=.
     destruct Heq_d.
-    destruct JMeq_ind => /=.
-    destruct JMeq_ind.
     by rewrite -Heq_l -Heq_r //= -Heq_rl //= !catA.
   Qed.
 
@@ -1724,8 +1722,8 @@ Local Obligation Tactic := program_simpl.
   Next Obligation.
     intros; subst_eq. rewrite /eq_rect.
     destruct balleft_obligation_44, balleft_obligation_47, balleft_obligation_48 => //=.
-    rewrite /eq_ind_r /eq_ind //=.
-    repeat destruct JMeq_ind => /=.
+    rewrite /eq_ind_r /eq_ind /=.
+    destruct Heq_d.
     by rewrite -Heq_l -Heq_r //= -Heq_rl //= !catA.
   Qed.
 
@@ -1737,8 +1735,8 @@ Local Obligation Tactic := program_simpl.
     intros; subst_eq. rewrite /eq_rect.
     destruct balleft_obligation_64, balleft_obligation_63.
     destruct balleft_obligation_62, balleft_obligation_57 => //=.
-    rewrite /eq_ind_r /eq_ind //=.
-    repeat destruct JMeq_ind => /=.
+    rewrite /eq_ind_r /eq_ind /=.
+    destruct Heq_d.
     by rewrite -Heq_l -Heq_r //= -Heq_rl //= -Heq_rll //= !catA.
   Qed.
 
@@ -1750,8 +1748,8 @@ Local Obligation Tactic := program_simpl.
     intros; subst_eq. rewrite /eq_rect.
     destruct balleft_obligation_73, balleft_obligation_72.
     destruct balleft_obligation_71, balleft_obligation_67 => //=.
-    rewrite /eq_ind_r /eq_ind //=.
-    repeat destruct JMeq_ind => /=.
+    rewrite /eq_ind_r /eq_ind /=.
+    destruct Heq_d.
     by rewrite -Heq_l -Heq_r //= -Heq_rl //= !catA.
   Qed.
 

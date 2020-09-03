@@ -14,12 +14,6 @@ env:
   - NJOBS="2"
   - CONTRIB_NAME="succinct"
   matrix:
-  - DOCKERIMAGE="mathcomp/mathcomp:1.9.0-coq-8.10"
-  - DOCKERIMAGE="mathcomp/mathcomp:1.9.0-coq-8.11"
-  - DOCKERIMAGE="mathcomp/mathcomp:1.10.0-coq-8.10"
-  - DOCKERIMAGE="mathcomp/mathcomp:1.10.0-coq-8.11"
-  - DOCKERIMAGE="mathcomp/mathcomp:1.11.0-coq-8.10"
-  - DOCKERIMAGE="mathcomp/mathcomp:1.11.0-coq-8.11"
   - DOCKERIMAGE="mathcomp/mathcomp:1.11.0-coq-8.12"
 
 install: |
