@@ -324,7 +324,7 @@ Lemma LOUDS_position_select s p p' :
 Proof.
 rewrite /LOUDS_position /LOUDS_lt.
 elim: p s => // [|n p IH].
-  move=> [|? ?]; by rewrite /lo_index /= select0.
+  case=> *; by rewrite /lo_index /= select0.
 move=> [|[a cl] s] HV //=.
 rewrite map_comp -/(children_of_forest' (s ++ take n cl)).
 rewrite /lo_index /= !size_cat size_node_description !size_map.
@@ -335,7 +335,7 @@ congr addn.
 rewrite drop_size_cat; last by rewrite size_node_description.
 rewrite addnA flatten_cat size_cat.
 rewrite {}IH; last by rewrite (valid_position_drop _ HV).
-rewrite flatten_cat select_addn count_cat.
+rewrite -/(lo_index _ p) flatten_cat select_addn count_cat.
 rewrite count_mem_false_flatten_node_description size_map (size_cat s) leq_addr.
 rewrite select_cat count_mem_false_flatten_node_description.
 rewrite size_map (size_cat s) leqnn.
