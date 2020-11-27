@@ -688,11 +688,7 @@ move=> s1 s2 i w_ok1 w_ok2 Hi filtered_var Heq_anonymous.
     rewrite /access nth_cat -/filtered_var -Heq_anonymous //= addn0.
     rewrite -addnA eqb_id subnKC.
     by rewrite addnC [in RHS]addnC addnBA //= -/access access_leq_count.
-    have Hmatch: (match s2 with
-                  | [::] => false
-                  | x :: _ => x
-                  end = access s2 0). by rewrite /access.
-    by rewrite Hmatch access_leq_count //= -(eqP w_ok2) wordsize_sqrn_div2_gt0.
+    by rewrite access_leq_count //= -(eqP w_ok2) wordsize_sqrn_div2_gt0.
   Qed.
 
   Next Obligation.
