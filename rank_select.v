@@ -332,7 +332,7 @@ Lemma select_index i s : i <= (count_mem b) s ->
   select i s = index i (mkseq ((rank b)^~ s) (size s)).
 Proof.
 elim: s i => [i|a s IH [//|/= i Hi]] /=; first by rewrite leqn0; case: i.
-rewrite -(addn0 1) iota_addl -map_comp; congr S.
+rewrite -(addn0 1) iotaDl -map_comp; congr S.
 case: ifP Hi => //= ab.
 - rewrite add1n ltnS => Hi.
   rewrite IH // -[LHS](index_map succn_inj) -map_comp; congr index.
@@ -380,7 +380,7 @@ Proof.
   case: ifP => [/eqP ->|Hab].
    case: i H => [|? _]; first by rewrite take0 select0.
   all: rewrite take0 addn0 IH // /index; apply/esym;
-  by rewrite -[X in iota X _]addn1 iota_addl -map_comp /=
+  by rewrite -[X in iota X _]addn1 iotaDl -map_comp /=
              /comp !find_map /= ?eqxx ?Hab.
 Qed.
 *)
